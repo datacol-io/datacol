@@ -7,8 +7,8 @@ import (
   "mime/multipart"
   "context"
   "io"
+  "strings"
 
-  "github.com/satori/go.uuid"
   "golang.org/x/oauth2/google"
   cstorage "cloud.google.com/go/storage"
   "google.golang.org/api/cloudbuild/v1"
@@ -47,8 +47,8 @@ func AppBuildCreate(w http.ResponseWriter, r *http.Request){
     return
   }
 
-  bucketName  := "build"
-  build       := domain.Build{ProjectId: prid, Id: fmt.Sprintf("%s",uuid.NewV4()), AppName: appName }
+  bucketName  := generateId("S", 10)
+  build       := domain.Build{ProjectId: prid, Id: generateId("B", 10), AppName: appName, Status: "created" }
   buildObject := fmt.Sprintf("%s.tar.gz", build.Id)
 
   log.Printf("Pushing code to gs://%s/%s", bucketName, buildObject)
@@ -81,13 +81,13 @@ func AppBuildCreate(w http.ResponseWriter, r *http.Request){
     Images: []string{"gcr.io/" + build.ProjectId + "/" + build.AppName},
   })
 
-  _, err = call.Context(ctx).Do()
+  op, err = call.Context(ctx).Do()
   if err != nil {
     http.Error(w, err.Error(), http.StatusBadRequest)
     return
   }
 
-  fmt.Fprintf(w, "Done")
+  RenderJson(w, build)
 }
 
 func setupBucket(ctx context.Context, service *cstorage.Client, bucket string, projectID string) error {

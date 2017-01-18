@@ -1,0 +1,7 @@
+
+resources:
+- name: {{ env['project'] }}-registry
+  type: storage.v1.bucket
+  properties:
+    location: {{ properties['bucketLocation'] }}
+    projectNumber: {{ properties['projectNumber'] }}
