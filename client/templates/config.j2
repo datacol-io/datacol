@@ -1,15 +1,9 @@
 
 resources:
-- type: vm.jinja
-  name: rz-stack
-  properties:
-    machineType: {{ .MachineType }}
-    zone: {{ .Zone }}
-
 - type: registry.jinja
-  name: rz-registry
+  name: {{ .Bucket }}
   properties:
     projectNumber: {{ .ProjectNumber }}
     zone: {{ .Zone }}
-
+    bucketLocation: {{ .BucketLocation }}
 

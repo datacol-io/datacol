@@ -1,0 +1,35 @@
+package: github.com/dinesh/rz
+import:
+- package: cloud.google.com/go
+  subpackages:
+  - storage
+- package: github.com/docker/docker
+  subpackages:
+  - builder/dockerignore
+  - pkg/archive
+  - pkg/fileutils
+- package: github.com/gorilla/mux
+- package: golang.org/x/oauth2
+  subpackages:
+  - google
+- package: google.golang.org/api
+  subpackages:
+  - cloudbuild/v1
+  - cloudresourcemanager/v1
+  - deploymentmanager/v2
+  - storage/v1
+  - iam/v1
+- package: gopkg.in/urfave/cli.v2
+- package: k8s.io/client-go
+  version: v2.0.0
+  subpackages:
+  - kubernetes
+  - pkg/api/v1
+  - rest
+  - tools/clientcmd
+- package: github.com/mitchellh/go-homedir
+- package: github.com/skratchdot/open-golang
+  subpackages:
+  - open
+- package: github.com/pkg/errors
+  version: ^0.8.0

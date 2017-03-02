@@ -1,7 +1,7 @@
-
 package client
 
 import (
+  "os"
   "fmt"
   "time"
   "context"
@@ -11,42 +11,79 @@ import (
   "text/template"
   "net/http"
 
+  "github.com/pkg/errors"
   "golang.org/x/oauth2/google"
   dm "google.golang.org/api/deploymentmanager/v2"
   csm "google.golang.org/api/cloudresourcemanager/v1"
 )
 
 type ConfigOption struct {
-  Zone, ProjectId, BucketLocation string
-  ProjectNumber int64
+  RackName, Zone, ProjectId, BucketLocation, Bucket string
+  ProjectNumber, DiskSize int64
+  NumNodes int
   MachineType string
 }
 
 func getProject(client *http.Client, projectId string) int64 {
   service, err := csm.New(client)
-  if err != nil { panic(err) }
+  if err != nil { 
+    checkErr(errors.Wrap(err, "failed to get cloudresourcemanager client"))
+  }
 
   resp, err := service.Projects.Get(projectId).Do()
-  if err != nil { panic(err) }
+
+  if err != nil { 
+    checkErr(errors.Wrap(err, fmt.Sprintf("failed to fetch project %s", projectId)))
+  }
 
   return resp.ProjectNumber
 }
 
-func CreateStack(name string, zone string, projectId string) {
-  if name == "" { name = generateId("dm-", 5) }
-  ctx := context.Background()
-  hc, err := google.DefaultClient(ctx)
-  checkErr(err)
+func DeleteStack(auth *Auth) error {
+  hc := GetClientOrDie(auth)
+
+  service, err := dm.New(hc)
+  if err != nil {
+    return errors.Wrap(err, "failed to get deploymentmanager client")
+  }
+
+  op, err := service.Deployments.Delete(auth.ProjectId, auth.RackName).Do()
+  if err != nil {
+    return errors.Wrap(err, fmt.Sprintf("failed to get deployment %s", auth.RackName))
+  }
+
+  if err = awaitOp(auth.ProjectId, service, op); err != nil {
+    return errors.Wrap(err, "failed to delete stack")
+  }
+
+  return nil
+}
+
+func GetClientOrDie(auth *Auth) *http.Client {
+  jwtConfig, err := google.JWTConfigFromJSON(auth.ServiceKey, csm.CloudPlatformScope)
+  checkErr(errors.Wrap(err, "failed to get jwt client"))
+
+  return jwtConfig.Client(context.TODO())
+}
+
+func CreateStack(auth *Auth, numNodes int) error {
+  name := auth.RackName
+  projectId := auth.ProjectId
+  hc := GetClientOrDie(auth)
 
   service, err := dm.New(hc)
   checkErr(err)
 
   co := &ConfigOption {
-    Zone: zone,
+    RackName: name,
+    Zone: auth.Zone,
     ProjectId: projectId,
     ProjectNumber: getProject(hc, projectId),
     MachineType: "f1-micro",
     BucketLocation: "asia-east1",
+    Bucket: auth.BucketName,
+    DiskSize: 10,
+    NumNodes: numNodes,
   }
 
   log.Printf("creating stack: %s with %+v", name, *co)
@@ -56,8 +93,8 @@ func CreateStack(name string, zone string, projectId string) {
     Target: &dm.TargetConfiguration {
       Imports: [] *dm.ImportFile {
         {
-          Name: "vm.jinja",
-          Content: loadTemplate("vm.j2"),
+          Name: "container-vm.jinja",
+          Content: loadTemplate("container-vm.j2"),
         },
         {
           Name: "registry.jinja",
@@ -73,8 +110,7 @@ func CreateStack(name string, zone string, projectId string) {
   op, err := service.Deployments.Insert(projectId, deployment).Do()
   checkErr(err)
 
-  err = awaitOp(projectId, service, op)
-  checkErr(err)
+  return awaitOp(projectId, service, op)
 }
 
 func loadTemplate(name string) string {
@@ -93,12 +129,15 @@ func compileConfig(name string, co *ConfigOption) string {
 }
 
 func checkErr(err error) {
-  if err != nil { panic(err) }
+  if err != nil { 
+    fmt.Printf("%+v\n", err)
+    os.Exit(1)
+  }
 }
 
 func awaitOp(projectId string, svc *dm.Service, op *dm.Operation) error {
   opName := op.Name
-  log.Printf("Waiting on operation %v\n", opName)
+  log.Printf("Waiting on %s [%v]\n", op.Kind, opName)
   for {
     time.Sleep(2 * time.Second)
     op, err := svc.Operations.Get(projectId, opName).Do()
@@ -106,18 +145,17 @@ func awaitOp(projectId string, svc *dm.Service, op *dm.Operation) error {
 
     switch op.Status {
     case "PENDING", "RUNNING":
-      log.Printf("Waiting on operation %v", opName)
+      fmt.Print(".")
       continue
     case "DONE":
       if op.Error != nil {
         var last error
         for _, operr := range op.Error.Errors {
-          log.Printf("Error: %+v", operr)
           last = fmt.Errorf("%v", operr)
         }
         return last
       }
-      log.Printf("Success. %+v", op)
+      log.Printf("Done.")
       return nil
     default:
       return fmt.Errorf("Unknown status %q: %+v", op.Status, op)

@@ -1,9 +1,8 @@
-package client
+package build
 
 import (
   "os"
   "fmt"
-  "context"
   "log"
   "path"
   "bytes"
@@ -12,67 +11,83 @@ import (
   "path/filepath"
   "encoding/json"
 
+  "github.com/pkg/errors"
   "google.golang.org/api/storage/v1"
   "google.golang.org/api/cloudbuild/v1"
-  "golang.org/x/oauth2/google"
   "github.com/docker/docker/builder/dockerignore"
   "github.com/docker/docker/pkg/archive"
   "github.com/docker/docker/pkg/fileutils"
+  "google.golang.org/api/googleapi"
+
+  "github.com/dinesh/rz/client/helper"
+  "github.com/dinesh/rz/client"
 )
 
-var (
-  projectId string
-  bucket string
-)
+func ExecuteBuildDir(app *client.App, auth *client.Auth) error {
+  dir := app.Dir
 
-func ExecuteBuildDir(projectId, bucket, dir string) error {
   dir, err := filepath.Abs(dir)
   if err != nil { return err }
 
-  log.Printf("Creating tarball... ")
+  log.Printf("Creating tarball...")
 
   tar, err := createTarball(dir)
   if err != nil { return err }
 
   log.Printf("OK")
-  name, err := uploadBuildSource(bucket, projectId, tar)
+  buildId, err := uploadBuildSource(tar, app, auth)
   if err != nil { return err }
 
-  return finishBuild(projectId, bucket, name)  
+  return finishBuild(buildId, app, auth)
 }
 
-func uploadBuildSource(bucket string, projectId string, tarf []byte) (string, error) {
-  hc, err := google.DefaultClient(context.TODO())
-  if err != nil { return "", err }
+func uploadBuildSource(tarf []byte, app *client.App, auth *client.Auth) (string, error) {
+  bucket  := auth.BucketName
+  hc := client.GetClientOrDie(auth)
 
-  buildId := generateId("B", 10)
+  buildId := helper.GenerateId("B", 10)
   objectName  := fmt.Sprintf("%s.tar.gz", buildId)
   log.Printf("Pushing code to gs://%s/%s", bucket, objectName)
   
   service, err := storage.New(hc)
-  if err != nil { return "", err }
-  
+  if err != nil { 
+    return "", errors.Wrap(err, "failed to get storage client") 
+  }
+
   object := &storage.Object{
-    Bucket: bucket,
-    Name: objectName,
+    Bucket:       bucket,
+    Name:         objectName,
     ContentType: "application/gzip",
   }
 
   if _, err = service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil { 
-    return "", err 
+    return "", errors.Wrap(err, fmt.Sprintf("failed to upload gs://%s/%s", bucket, objectName))
   }
 
   return objectName, nil
 }
 
-func finishBuild(projectId, bucket, objectName string) error {
-  hc, err := google.DefaultClient(context.TODO())
-  if err != nil { return err }
+func CancelBuild(auth *client.Auth, buildId string) error {
+  hc := client.GetClientOrDie(auth)
+  service, err := cloudbuild.New(hc)
+  if err != nil { return errors.Wrap(err, "failed to get cloudbuild client") }
+  
+  if _, err = service.Projects.Builds.Cancel(auth.ProjectId, buildId, &cloudbuild.CancelBuildRequest{}).Do(); err != nil {
+    return err
+  }
+
+  return nil
+}
+
+func finishBuild(objectName string, app *client.App, auth *client.Auth) error {
+  projectId := auth.ProjectId
+  bucket    := auth.BucketName
+  appName   := app.Name
+  hc        := client.GetClientOrDie(auth)
 
   service, err := cloudbuild.New(hc)
-  if err != nil { return err }
+  if err != nil { return errors.Wrap(err, "failed to get cloudbuild client") }
 
-  appName := generateId("b-", 10)
   log.Printf("Building from gs://%s/%s", bucket, objectName)
 
   op, err := service.Projects.Builds.Create(projectId, &cloudbuild.Build{
@@ -92,13 +107,18 @@ func finishBuild(projectId, bucket, objectName string) error {
     Images: []string{"gcr.io/" + projectId + "/" + appName },
   }).Do()
 
-  if err != nil { return err }
+  if err != nil {
+    if ae, ok := err.(*googleapi.Error); ok && ae.Code == 403 {
+      log.Fatal(ae)
+    }
+    return errors.Wrap(err, "failed to initiate build")
+  }
 
   remoteId, err := getBuildID(op)
-  if err != nil { return err }
+  if err != nil { return errors.Wrap(err, "failed to get Id for build") }
+  log.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
 
   awaitCSOp(service, projectId, remoteId)
-  log.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
 
   return nil
 }

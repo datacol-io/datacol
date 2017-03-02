@@ -1,6 +1,12 @@
 
 resources:
-- name: {{ env['project'] }}-registry
+- name: {{ env['name'] }}
+  type: storage.v1.bucket
+  properties:
+    location: {{ properties['bucketLocation'] }}
+    projectNumber: {{ properties['projectNumber'] }}
+
+- name: artifacts.{{ env['project'] }}.appspot.com
   type: storage.v1.bucket
   properties:
     location: {{ properties['bucketLocation'] }}

@@ -1,4 +1,4 @@
-package client
+package helper
 
 import (
   "crypto/rand"
@@ -7,7 +7,7 @@ import (
 
 var idAlphabet = []rune("abcdefghijklmnopqrstuvwxyz")
 
-func generateId(prefix string, size int) string {
+func GenerateId(prefix string, size int) string {
   b := make([]rune, size)
   for i := range b {
     idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(idAlphabet))))
