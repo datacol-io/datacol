@@ -1,19 +1,19 @@
-package deploy
+package google
 
 import (
   "fmt"
   log "github.com/Sirupsen/logrus"
 
+  "github.com/pkg/errors"
   "k8s.io/client-go/kubernetes"
-  "k8s.io/client-go/pkg/api"
   "k8s.io/client-go/pkg/api/v1"
   "k8s.io/client-go/pkg/api/unversioned"
-  "k8s.io/client-go/rest"
   "k8s.io/client-go/pkg/util/intstr"
   "k8s.io/client-go/pkg/apis/extensions/v1beta1"
   "k8s.io/client-go/pkg/watch"
   "k8s.io/client-go/pkg/labels"
   "k8s.io/client-go/pkg/selection"
+  "k8s.io/client-go/tools/clientcmd"
   apierrs "k8s.io/client-go/pkg/api/errors"
 )
 
@@ -22,12 +22,10 @@ const (
   k8sBetaAPIVersion string = "extensions/v1beta1"
 )
 
-// Deployer is a representation of a job runner
 type Deployer struct {
   Client *kubernetes.Clientset
 }
 
-// DeployRequest represents the request payload
 type DeployRequest struct {
   Args          []string           `json:"arguments"`
   ContainerPort intstr.IntOrString `json:"containerPort"`
@@ -41,7 +39,7 @@ type DeployRequest struct {
     TimeoutSeconds               int32              `json:"timeoutSeconds"`
   } `json:"heartbeat"`
   Image     string  `json:"image"`
-  Replicas  *int32  `json:"replicas"`
+  Replicas  int32   `json:"replicas"`
   ServiceID string  `json:"serviceId"`
   Secrets   []struct {
     Name  string `json:"name"`
@@ -51,41 +49,47 @@ type DeployRequest struct {
   Zone string            `json:"zone"`
 }
 
-// DeployResponse represents the response payload
 type DeployResponse struct {
   Request  DeployRequest `json:"request"`
   NodePort int           `json:"nodePort"`
 }
 
-// NewDeployer creates a new deployer
-func NewDeployer(host, token string, insecure bool) (*Deployer, error) {
-  var c *kubernetes.Clientset
-  config := &rest.Config {
-    Host: host,
-    BearerToken: token,
-    Insecure: insecure,
+func NewDeployer(cfgpath string, token string) (*Deployer, error) {
+  config, err := clientcmd.BuildConfigFromFlags("", cfgpath)
+  if err != nil {
+    return nil, err 
   }
+
+  config.BearerToken = token
+  fmt.Printf("rest config: %+v\n", config)
+
   c, err := kubernetes.NewForConfig(config)
-  if err != nil { return nil, err }
+  if err != nil {
+    return nil, fmt.Errorf("cluster connection %v", err)
+  }
 
   return &Deployer{c}, nil
 }
 
-// Run runs the deployment
+
 func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     res := &DeployResponse{Request: *payload}
+    
+    if payload.Environment == "" {
+      return nil, fmt.Errorf("environment not found.")
+    }
 
     // create namespace if needed
     if _, err := d.Client.Core().Namespaces().Create(newNamespace(payload)); err != nil {
       if !apierrs.IsAlreadyExists(err) {
-        return nil, err
+        return nil, fmt.Errorf("creating namespace %v err: %v", payload.Environment, err)
       }
     }
 
     // create service
     svc, err := d.CreateOrUpdateService(newService(payload), payload.Environment)
     if err != nil {
-      return res, err
+      return res, errors.Wrap(err, "failed to create service")
     }
 
     if len(svc.Spec.Ports) > 0 {
@@ -95,7 +99,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     // create deployment
     deployment, err := d.CreateOrUpdateDeployment(newDeployment(payload), payload.Environment)
     if err != nil {
-      return res, err
+      return res, errors.Wrap(err, "failed to create deployment")
     }
 
     // get deployment status
@@ -197,20 +201,11 @@ func newService(payload *DeployRequest) *v1.Service {
     Spec: v1.ServiceSpec{
       Type: v1.ServiceTypeNodePort,
       Ports: []v1.ServicePort{{
-        Port: int32(payload.ContainerPort.IntVal),
+        Port: payload.ContainerPort.IntVal,
       }},
       Selector: map[string]string{"name": payload.ServiceID},
     },
     TypeMeta: unversioned.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Service"},
-  }
-}
-
-func newApiMetadata(payload *DeployRequest) api.ObjectMeta {
-  return api.ObjectMeta{
-    Annotations: payload.Tags,
-    Labels:      map[string]string{"name": payload.ServiceID},
-    Name:        payload.ServiceID,
-    Namespace:   payload.Environment,
   }
 }
 
@@ -256,7 +251,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
   return &v1beta1.Deployment{
     ObjectMeta: newMetadata(payload),
     Spec: v1beta1.DeploymentSpec{
-      Replicas: payload.Replicas,
+      Replicas: &payload.Replicas,
       Selector: &unversioned.LabelSelector{MatchLabels: map[string]string{"name": payload.ServiceID}},
       Strategy: v1beta1.DeploymentStrategy{
         Type: v1beta1.RollingUpdateDeploymentStrategyType,
@@ -273,6 +268,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
               Args:  payload.Args,
               Name:  payload.ServiceID,
               Image: payload.Image,
+              ImagePullPolicy: "IfNotPresent",
               Ports: []v1.ContainerPort{{
                 Name:          "http",
                 ContainerPort: int32(payload.ContainerPort.IntVal),

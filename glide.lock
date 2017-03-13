@@ -1,15 +1,16 @@
-hash: b5d4bb47c66c6b0ad89c4e088995d9bc9fd83f58eeaff764edf7733bd45f44ff
-updated: 2017-02-25T20:05:30.988086334+05:30
+hash: 031443669cd6ca5cd2779796b07752812c814555b1c80aa6db2756c200664bcb
+updated: 2017-03-12T18:15:16.255587624+05:30
 imports:
 - name: cloud.google.com/go
-  version: 81b7822b1e798e8f17bf64b59512a5be4097e966
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
   - internal
-  - internal/optional
   - storage
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
+- name: github.com/boltdb/bolt
+  version: 583e8937c61f1af6513608ccc75c97b6abdf4ff9
 - name: github.com/coreos/go-oidc
   version: 5644a2f50e2d2d5ba0b474bc5bc55fea1925936d
   subpackages:
@@ -75,12 +76,12 @@ imports:
   - proto
 - name: github.com/google/gofuzz
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
-- name: github.com/googleapis/gax-go
-  version: da06d194a00e19ce00d9011a13931c3f6f6887c7
-- name: github.com/gorilla/context
-  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
   version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
+- name: github.com/howeyc/gopass
+  version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
+- name: github.com/imdario/mergo
+  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/juju/ratelimit
@@ -109,7 +110,7 @@ imports:
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/Sirupsen/logrus
-  version: 61e43dc76f7ee59a82bdf3d71033dc12bea4c77d
+  version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
 - name: github.com/skratchdot/open-golang
   version: 75fb7ed4208cf72d323d7d02fd1a5964a7a9073c
   subpackages:
@@ -120,6 +121,10 @@ imports:
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
   - codec
+- name: golang.org/x/crypto
+  version: 1f22c0103821b9390939b6776727195525381532
+  subpackages:
+  - ssh/terminal
 - name: golang.org/x/net
   version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
@@ -128,9 +133,7 @@ imports:
   - http2
   - http2/hpack
   - idna
-  - internal/timeseries
   - lex/httplex
-  - trace
 - name: golang.org/x/oauth2
   version: 314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd
   subpackages:
@@ -161,17 +164,13 @@ imports:
   subpackages:
   - cloudbuild/v1
   - cloudresourcemanager/v1
+  - container/v1
   - deploymentmanager/v2
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
-  - googleapi/transport
   - iam/v1
-  - internal
-  - iterator
-  - option
   - storage/v1
-  - transport
 - name: google.golang.org/appengine
   version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
@@ -182,22 +181,8 @@ imports:
   - internal/log
   - internal/modules
   - internal/remote_api
-  - internal/socket
   - internal/urlfetch
-  - socket
   - urlfetch
-- name: google.golang.org/grpc
-  version: d3ddb4469d5a1b949fc7a7da7c1d6a0d1b6de994
-  subpackages:
-  - codes
-  - credentials
-  - credentials/oauth
-  - grpclog
-  - internal
-  - metadata
-  - naming
-  - peer
-  - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/urfave/cli.v2
@@ -287,6 +272,7 @@ imports:
   - pkg/util/errors
   - pkg/util/flowcontrol
   - pkg/util/framer
+  - pkg/util/homedir
   - pkg/util/integer
   - pkg/util/intstr
   - pkg/util/json
@@ -309,8 +295,11 @@ imports:
   - plugin/pkg/client/auth/gcp
   - plugin/pkg/client/auth/oidc
   - rest
+  - tools/auth
   - tools/clientcmd
   - tools/clientcmd/api
+  - tools/clientcmd/api/latest
+  - tools/clientcmd/api/v1
   - tools/metrics
   - transport
 testImports: []

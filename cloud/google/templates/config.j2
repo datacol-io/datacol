@@ -1,0 +1,15 @@
+
+resources:
+- type: registry.jinja
+  name: {{ .Bucket }}
+  properties:
+    projectNumber: {{ .ProjectNumber }}
+    zone: {{ .Zone }}
+
+- type: container-vm.jinja
+  name: {{ .ClusterName }}
+  properties:
+    zone: {{ .Zone }}
+    numNodes: {{ .NumNodes }}
+    diskSize: {{ .DiskSize }}
+    machineType: {{ .MachineType }}

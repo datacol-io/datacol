@@ -1,8 +1,6 @@
-package controller
+package client
 
 import (
-  "net/http"
-  "encoding/json"
   "crypto/rand"
   "math/big"
 )
@@ -19,12 +17,5 @@ func generateId(prefix string, size int) string {
     b[i] = idAlphabet[idx.Int64()]
   }
   return prefix + string(b)
-}
-
-func RenderJson(rw http.ResponseWriter, model interface{}){
-  if err := json.NewEncoder(rw).Encode(model); err != nil {
-    http.Error(rw, err.Error(), http.StatusInternalServerError)
-  }
-  rw.Header().Set("Content-Type", "application/json")
 }
 
