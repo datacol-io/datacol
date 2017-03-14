@@ -1,7 +1,6 @@
 package client
 
 import (
-  "os"
   "time"
   "fmt"
   "path/filepath"
@@ -11,17 +10,17 @@ import (
 )
 
 type Release struct {
-  Id      string
-  App     string
-  BuildId string
-  Status  string
-  CreatedAt time.Time
+  Id      string  `json: "id"`
+  App     string  `json: "app"`
+  BuildId string  `json: "buildId"`
+  Status  string  `json: "status"`
+  CreatedAt time.Time `json: "created_at"`
 }
 
 func (c *Client) NewRelease(b *Build) *Release {
   r := &Release {
     Id:         generateId("R", 5),
-    App:        b.AppName, 
+    App:        b.App, 
     BuildId:    b.Id,
     CreatedAt:  time.Now(),
   }

@@ -39,6 +39,7 @@ func cmdBuild(c *cli.Context) error {
   if err != nil { return err }
 
   build := client.NewBuild(app)
+
   return executeBuildDir(c, build, dir)
 }
 
@@ -138,9 +139,26 @@ func finishBuild(c *cli.Context, b *client.Build, objectName string) error {
     ProjectId:  client.Stack.ProjectId,
     Bucket:     client.Stack.Bucket,
     ObjectName: objectName,
+    BuildId:    b.Id,
   }
 
-  return provider.BuildWithGCR(client.PrdClient(), b.AppName, bopts)
+  b.Status = "running"
+  if err := b.Persist(); err != nil {
+    return err
+  }
+
+  err := provider.BuildWithGCR(client.PrdClient(), b.App, bopts)
+  if err != nil {
+    b.Status = "failed"
+  } else {
+    b.Status = "success"
+  }
+
+  if berr := b.Persist(); berr != nil {
+    return berr
+  }
+
+  return err
 }
 
 

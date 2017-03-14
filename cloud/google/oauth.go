@@ -172,6 +172,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
         &crmgr.Binding{Role: "roles/deploymentmanager.editor", Members: members},
         &crmgr.Binding{Role: "roles/storage.admin", Members: members},
         &crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
+        &crmgr.Binding{Role: "roles/container.developer", Members: members},
       },
   }
 

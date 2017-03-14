@@ -74,9 +74,16 @@ func GetSetting(setting string) string {
 }
 
 func WriteSetting(setting, value string) error {
-  err := ioutil.WriteFile(fmt.Sprintf(".rz/%s", setting), []byte(value), 0777)
+  dirpath := ".rz"
+  if err := os.MkdirAll(dirpath, 0777); err != nil { 
+    return err 
+  }
 
-  return err
+  return ioutil.WriteFile(
+    fmt.Sprintf(dirpath + "/%s", setting), 
+    []byte(value),
+    0777,
+  )
 }
 
 func CheckFlagsPresence(c *cli.Context, flags ...string){

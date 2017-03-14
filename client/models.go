@@ -1,28 +1,25 @@
 package client
 
 import (
-  "fmt"
+  "errors"
   "encoding/json"
-  "github.com/boltdb/bolt"
+  "github.com/joyrexus/buckets"
 )
 
 var (
-  DB *Database
-  bucketName []byte
+  DB *buckets.DB
+  stackBxName []byte
+  ErrNotFound = errors.New("key not found")
 )
 
-type Database struct {
-  store *bolt.DB
-}
-
-func (db *Database) Close() {
-  if db.store != nil {
-    db.store.Close()
+func DBClose() {
+  if DB != nil {
+    DB.Close()
   }
 }
 
 func init(){
-  bucketName = []byte("stacks")
+  stackBxName = []byte("stacks")
 }
 
 type Stack struct {
@@ -34,51 +31,28 @@ type Stack struct {
 }
 
 func (st *Stack) Persist(mk bool) error {
-  err := DB.store.Update(func(tx *bolt.Tx) error {
-    var bucket *bolt.Bucket
-    if mk {
-      b, err := tx.CreateBucketIfNotExists(bucketName)
-      if err != nil { return err }
-      bucket = b
-    } else {
-      bucket = tx.Bucket(bucketName)
-    }
+  encoded, err := json.Marshal(st)
+  if err != nil { return err }
 
-    encoded, err := json.Marshal(st)
-    if err != nil {
-      return err
-    }
-    return bucket.Put([]byte(st.Name), encoded)
-  })
-
-  return err
+  sbx, _ := DB.New(stackBxName)
+  return sbx.Put([]byte(st.Name), encoded)
 }
 
 func (st *Stack) Delete() error {
-  return DB.store.Update(func(tx *bolt.Tx) error {
-    bucket := tx.Bucket(bucketName)
-    return bucket.Delete([]byte(st.Name))
-  })
+  sbx, _ := DB.New(stackBxName)
+  return sbx.Delete([]byte(st.Name))
 }
 
-func findStack(name string) (*Stack, error) {
+func FindStack(name string) (*Stack, error) {
   var instance Stack
+  sbx, _ := DB.New(stackBxName)
+  v, err := sbx.Get([]byte(name))
+  if err != nil { return nil, err }
 
-  err := DB.store.View(func(tx *bolt.Tx) error {
-    bucket := tx.Bucket(bucketName)
-    v := bucket.Get([]byte(name))
-    err := json.Unmarshal(v, &instance)
-    if err != nil {
-      return fmt.Errorf("find stack: %v", err)
-    }
-    return nil
-  })
-
-  if err != nil {
+  if err = json.Unmarshal(v, &instance); err != nil { 
     return nil, err
   }
 
   return &instance, nil
 }
-
 

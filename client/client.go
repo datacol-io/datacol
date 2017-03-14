@@ -3,11 +3,11 @@ package client
 import (
   "path/filepath"
   "os"
-  "time"
   "fmt"
+  "errors"
   "net/http"
 
-  "github.com/boltdb/bolt"
+  "github.com/joyrexus/buckets"
   homedir "github.com/mitchellh/go-homedir"
   "github.com/dinesh/rz/cmd/stdcli"
   provider "github.com/dinesh/rz/cloud/google"
@@ -16,6 +16,7 @@ import (
 var (
   rzDirName  = ".razorbox"
   dbFileName = "rz.db"
+  stack404 = errors.New("Please create a stack with: $ rz init")
 )
 
 func init() {
@@ -40,13 +41,13 @@ func init() {
   }
 
   dbpath := filepath.Join(home, rzDirName, dbFileName)
-  db, err := bolt.Open(dbpath, 0700, &bolt.Options{Timeout: 1 * time.Second})
+  db, err := buckets.Open(dbpath)
   if err != nil {
     stdcli.Error(fmt.Errorf("creating database file: %v", err))
     return
   }
   
-  DB = &Database{store: db}
+  DB = db
 }
 
 type Client struct {
@@ -62,12 +63,10 @@ func (c *Client) configRoot() string {
 
 func (c *Client) SetStack(name string) error {
   c.StackName = name
-  st, err := findStack(name)
-  if err != nil {
-    return fmt.Errorf("Please create a stack with: $ rz init")
-  }
-  c.Stack = st
+  st, err := FindStack(name)
+  if err != nil { return stack404 }
 
+  c.Stack = st
   return nil
 }
 

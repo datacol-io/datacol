@@ -1,46 +1,28 @@
 package client
 
 import (
-  "fmt"
+  "errors"
   provider "github.com/dinesh/rz/cloud/google"
 )
 
 var (
-  serviceKey []byte
+  credNotFound = errors.New("Invalid credentials")
 )
 
 func init(){
-  serviceKey = []byte("serviceKey")
 }
 
-func (c *Client) CreateStack(projectId, zone, bucket string, nodes int) (*Stack, error) {
+func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
   stackName := c.StackName
 
   resp := provider.CreateCredential(stackName, projectId)
-  if resp.Err != nil { 
+  if resp.Err != nil {
     return nil, resp.Err
   }
 
   cred := resp.Cred
   if len(cred) == 0 {
-    return nil, fmt.Errorf("invalid GCP credentials")
-  }
-  
-  dp, err := provider.NewDeployment(cred, stackName, projectId, zone, bucket, nodes)
-  if err != nil { return nil, err }
-
-  if err := dp.Run(false); err != nil {
-    if derr := dp.Delete(); derr != nil { 
-      return nil, derr
-    }
-    return nil, err
-  }
-
-  cluster, err := dp.GetCluster()
-  if err != nil { return nil, err }
-
-  if err := provider.GenerateClusterConfig(stackName, c.configRoot(), cluster); err != nil {
-    return nil, err
+    return nil, credNotFound
   }
 
   st := &Stack{
@@ -54,8 +36,24 @@ func (c *Client) CreateStack(projectId, zone, bucket string, nodes int) (*Stack,
   if err := st.Persist(true); err != nil { 
     return nil, err
   }
-
   return st, nil
+}
+
+func (c *Client) DeployStack(st *Stack, nodes int) error {  
+  dp, err := provider.NewDeployment(st.ServiceKey, st.Name, st.ProjectId, st.Zone, st.Bucket, nodes)
+  if err != nil { return err }
+
+  if err := dp.Run(false); err != nil {
+    if derr := dp.Delete(); derr != nil { 
+      return derr
+    }
+    return err
+  }
+
+  cluster, err := dp.GetCluster()
+  if err != nil { return err }
+
+  return provider.GenerateClusterConfig(st.Name, c.configRoot(), cluster)
 }
 
 func (c *Client) DestroyStack() error {

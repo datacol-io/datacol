@@ -3,6 +3,7 @@ package main
 import (
   "gopkg.in/urfave/cli.v2"
   "github.com/dinesh/rz/cmd/stdcli"
+  "github.com/dinesh/rz/client"
 )
 
 func init(){
@@ -14,10 +15,11 @@ func init(){
       &cli.StringFlag{
         Name: "stack",
         Usage: "Name of stack",
+        Value: "dev",
       },
       &cli.StringFlag{
-        Name: "project-id",
-        Usage: "GCP project-id to use",
+        Name: "project",
+        Usage: "GCP project id to use",
       },
       &cli.StringFlag{
         Name: "zone",
@@ -34,6 +36,10 @@ func init(){
         Usage: "number of nodes in container cluster",
         Value: 3,
       },
+      &cli.BoolFlag{
+        Name: "dry-run",
+        Usage: "dry run mode",
+      },
     },
   })
 
@@ -45,33 +51,39 @@ func init(){
 }
 
 func cmdStackCreate(c *cli.Context) error {
-  stdcli.CheckFlagsPresence(c, "stack", "project-id")
+  stdcli.CheckFlagsPresence(c, "project")
 
   stackName := c.String("stack")
-  projectId := c.String("project-id")
+  projectId := c.String("project")
   zone := c.String("zone")
   nodes := c.Int("nodes")
   bucket := c.String("bucket")
+  dryRun := c.Bool("dry-run")
 
-  client := getAnonClient(c)
-  client.StackName = stackName
+  ac := getAnonClient(c)
+  st, err := client.FindStack(stackName)
 
-  _, err := client.CreateStack(projectId, zone, bucket, nodes)
   if err != nil {
-    return err
+    ac.StackName = stackName
+    if st, err = ac.CreateStack(projectId, zone, bucket); err != nil {
+      return err
+    }
   }
 
-  return nil
+  if dryRun { return nil }
+
+  ac.SetStack(st.Name)
+  return ac.DeployStack(st, nodes)
 }
 
 func cmdStackDestroy(c *cli.Context) error {
   client := getClient(c)
+
   if err := client.DestroyStack(); err != nil {
     return err
   }
 
-  return nil
-  // return client.Stack.Delete()
+  return client.Stack.Delete()
 }
 
 

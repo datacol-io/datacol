@@ -1,5 +1,5 @@
-hash: 031443669cd6ca5cd2779796b07752812c814555b1c80aa6db2756c200664bcb
-updated: 2017-03-12T18:15:16.255587624+05:30
+hash: 15f2efe9fb546501ec9a0c6d1ed1682a043112dcac141fcfe8fe95523ef78c4e
+updated: 2017-03-13T19:31:21.842105239+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -84,6 +84,8 @@ imports:
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+- name: github.com/joyrexus/buckets
+  version: 95fcbf1aabe464641d7180b55a99650486f1edf9
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/mailru/easyjson

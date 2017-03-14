@@ -4,7 +4,6 @@ import (
   "fmt"
   log "github.com/Sirupsen/logrus"
 
-  "github.com/pkg/errors"
   "k8s.io/client-go/kubernetes"
   "k8s.io/client-go/pkg/api/v1"
   "k8s.io/client-go/pkg/api/unversioned"
@@ -89,7 +88,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     // create service
     svc, err := d.CreateOrUpdateService(newService(payload), payload.Environment)
     if err != nil {
-      return res, errors.Wrap(err, "failed to create service")
+      return res, fmt.Errorf("failed to create service %v", err)
     }
 
     if len(svc.Spec.Ports) > 0 {
@@ -99,7 +98,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     // create deployment
     deployment, err := d.CreateOrUpdateDeployment(newDeployment(payload), payload.Environment)
     if err != nil {
-      return res, errors.Wrap(err, "failed to create deployment")
+      return res, fmt.Errorf("failed to create deployment %v", err)
     }
 
     // get deployment status

@@ -36,7 +36,7 @@ func UploadSource(htc *http.Client, bucket string, objectName string, tarf []byt
 }
 
 type BuildOpts struct {
-  ProjectId, Bucket, ObjectName string
+  BuildId, ProjectId, Bucket, ObjectName string
 }
 
 func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
@@ -46,6 +46,8 @@ func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
   }
 
   fmt.Printf("Building from gs://%s/%s\n", opt.Bucket, opt.ObjectName)
+  tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", appName, opt.BuildId)
+  latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", appName)
 
   op, err := service.Projects.Builds.Create(opt.ProjectId, &cloudbuild.Build{
     LogsBucket: opt.Bucket,
@@ -57,11 +59,11 @@ func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
     },
     Steps: []*cloudbuild.BuildStep{
       {
-        Name: "gcr.io/cloud-builders/dockerizer",
-        Args: []string{"gcr.io/" + opt.ProjectId + "/" + appName },
+        Name: "gcr.io/cloud-builders/docker",
+        Args: []string{"build", "-t", tag, "-t", latestTag, "."},
       },
     },
-    Images: []string{"gcr.io/" + opt.ProjectId + "/" + appName },
+    Images: []string{tag},
   }).Do()
 
   if err != nil {
@@ -77,7 +79,7 @@ func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
     return fmt.Errorf("failed to get Id for build %v", err) 
   }
 
-  log.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt\n", opt.Bucket, remoteId)
+  fmt.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt\n", opt.Bucket, remoteId)
 
   return waitForOp(service, opt.ProjectId, remoteId)
 }
@@ -104,7 +106,7 @@ func waitForOp(svc *cloudbuild.Service, projectId string, id string) error {
     if err != nil { return err }
     
     if b.Status != "WORKING" && b.Status != "QUEUED" {
-      log.Printf("Build status: %v\n", b.Status)
+      fmt.Printf("\nBuild status: %v\n", b.Status)
       break
     }
   }

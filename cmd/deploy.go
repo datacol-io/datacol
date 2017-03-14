@@ -37,8 +37,9 @@ func cmdDeploy(c *cli.Context) error {
   app, err := client.GetApp(name)
   if err != nil { return err }
   
-  // Get latest build
-  build := client.NewBuild(app)
+  build, err := client.LatestBuild(app)
+  if err != nil { return err }
+
   r := client.NewRelease(build)
 
   port := c.Int("port")

@@ -1,7 +1,6 @@
 package google
 
 import (
-  "log"
   "fmt"
   "net/http"
   "time"
@@ -105,7 +104,7 @@ func (dp *Deployment) Delete() error {
 }
 
 func (dp *Deployment) waitForOp(svc *dm.Service, op *dm.Operation) error {
-  log.Printf("Waiting on %s [%v]\n", op.Kind, op.Name)
+  fmt.Printf("Waiting on %s [%v]\n", op.Kind, op.Name)
 
   for {
     time.Sleep(2 * time.Second)
@@ -124,7 +123,7 @@ func (dp *Deployment) waitForOp(svc *dm.Service, op *dm.Operation) error {
         }
         return last
       }
-      log.Printf("Done.")
+      fmt.Printf("Done.")
       return nil
     default:
       return fmt.Errorf("Unknown status %q: %+v", op.Status, op)

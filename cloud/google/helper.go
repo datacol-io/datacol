@@ -5,6 +5,8 @@ import (
   "net/http"
   "fmt"
   "log"
+  "runtime"
+  "path"
   "io/ioutil"
   "html/template"
   "bytes"
@@ -49,10 +51,12 @@ func BearerToken(sva []byte) (string, error) {
 }
 
 func loadTemplate(name string) string {
-  content, err := ioutil.ReadFile("cloud/google/templates/" + name)
-  if err != nil {
-    log.Fatal(err) 
-  }
+  _, filename, _, _ := runtime.Caller(1)
+  dir := path.Join(path.Dir(filename), "templates")
+  content, err := ioutil.ReadFile(dir + "/" + name)
+
+  if err != nil { log.Fatal(err) }
+
   return string(content)
 }
 
