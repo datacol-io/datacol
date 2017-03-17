@@ -5,20 +5,13 @@ import (
   "fmt"
   "path/filepath"
   "k8s.io/client-go/pkg/util/intstr"
+  "github.com/dinesh/rz/client/models"
 
   provider "github.com/dinesh/rz/cloud/google"
 )
 
-type Release struct {
-  Id      string  `json: "id"`
-  App     string  `json: "app"`
-  BuildId string  `json: "buildId"`
-  Status  string  `json: "status"`
-  CreatedAt time.Time `json: "created_at"`
-}
-
-func (c *Client) NewRelease(b *Build) *Release {
-  r := &Release {
+func (c *Client) NewRelease(b *models.Build) *models.Release {
+  r := &models.Release {
     Id:         generateId("R", 5),
     App:        b.App, 
     BuildId:    b.Id,
@@ -28,7 +21,7 @@ func (c *Client) NewRelease(b *Build) *Release {
   return r
 }
 
-func (c *Client) DeployRelease(r *Release, port int, image, env string) error {
+func (c *Client) DeployRelease(r *models.Release, port int, image, env string) error {
   if image == "" {
     image = fmt.Sprintf("gcr.io/%v/%v", c.Stack.ProjectId, r.App)
   }
@@ -39,8 +32,9 @@ func (c *Client) DeployRelease(r *Release, port int, image, env string) error {
   cfgpath := filepath.Join(c.configRoot(), "kubeconfig")
   // cfgpath := filepath.Join(os.Getenv("HOME") + "/.kube/config")
 
-  token, err := c.PrdToken()
-  if err != nil { return err }
+  // token, err := c.Provider().BearerToken()
+  // if err != nil { return err }
+  token := "foobar"
 
   deployer, err := provider.NewDeployer(cfgpath, token)
   if err != nil { 

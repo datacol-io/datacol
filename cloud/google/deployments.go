@@ -2,113 +2,126 @@ package google
 
 import (
   "fmt"
-  "net/http"
   "time"
 
   "google.golang.org/api/googleapi"
    dm "google.golang.org/api/deploymentmanager/v2"
-   container "google.golang.org/api/container/v1"
 )
 
-type Deployment struct {
-  Name, ClusterName string
-  Zone, ProjectId, BucketLocation, Bucket, MachineType string
-  ProjectNumber, DiskSize int64
-  NumNodes int
-  htc *http.Client
+type initOptions struct {
+  ClusterName   string
+  MachineType   string
+  DiskSize      int64
+  NumNodes      int
+  ClusterNotExists bool
+  ProjectNumber int64
+  Zone, Bucket  string
 }
 
-func NewDeployment(cred []byte,n,prid,zn,b string,nodes int) (*Deployment, error) {
-  htc := JwtClient(cred)
-  number, err := getProjectNumber(htc, prid)
-  if err != nil { return nil, err }
+func (g *GCPCloud) Initialize(cluster string, nodes int) error {
+  cnexists := true
 
-  return &Deployment {
-    Name:         n,
-    ClusterName:  fmt.Sprintf("%v-cluster", n),
-    ProjectId:    prid,
-    Zone:         zn,
+  if len(cluster) == 0 {
+    cluster = fmt.Sprintf("%v-cluster", g.DeploymentName)
+  } else {
+    cnexists = false
+  }
+
+  resp, err := g.csmanager().Projects.Get(g.Project).Do()
+  if err != nil { return err }
+
+  options := initOptions {
+    ClusterName:  cluster,
     DiskSize:     10,
     NumNodes:     nodes,
-    Bucket:       b,
-    ProjectNumber: number,
-    htc:          htc,
-    MachineType:  ditermineMachineType(nodes),
-  }, nil
-}
-
-func NewDeploymentByCred(cred []byte) *Deployment {
-  return &Deployment{
-    htc: JwtClient(cred),
+    ClusterNotExists: cnexists,
+    MachineType: ditermineMachineType(nodes),
+    Zone: g.Zone,
+    Bucket: g.BucketName,
+    ProjectNumber: resp.ProjectNumber,
   }
-}
 
-func (dp *Deployment) Run(force bool) error {
-  fmt.Printf("creating new stack: %+v\n", dp)
+  name := g.DeploymentName
+  fmt.Printf("creating new stack %s with: \n", name)
+  dumpJson(options)
+
+  imports := []*dm.ImportFile {
+    {
+      Name: "registry.jinja",
+      Content: loadTemplate("registry.j2"),
+    },
+  }
+
+  if cnexists {
+    imports = append(imports, &dm.ImportFile{
+       Name: "container-vm.jinja",
+       Content: loadTemplate("container-vm.j2"),
+    })
+  }
 
   req := &dm.Deployment {
-    Name: dp.Name,
+    Name: name,
     Target: &dm.TargetConfiguration {
-      Imports: [] *dm.ImportFile {
-        {
-          Name: "container-vm.jinja",
-          Content: loadTemplate("container-vm.j2"),
-        },
-        {
-          Name: "registry.jinja",
-          Content: loadTemplate("registry.j2"),
-        },
-      },
+      Imports: imports,
       Config: &dm.ConfigFile {
-        Content: compileConfig("config.j2", dp),
+        Content: compileConfig("config.j2", &options),
       },
     },
   }
 
-  service, err := dm.New(dp.htc)
-  if err != nil { return err }
+  service := g.deploymentmanager()
 
-  op, err := service.Deployments.Insert(dp.ProjectId, req).Do()
+  op, err := service.Deployments.Insert(g.Project, req).Do()
   if err != nil { 
     if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-      return fmt.Errorf("%s is already created.", dp.Name)
+      return fmt.Errorf("%s is already created.", name)
     } else {
       return err 
     }
   }
   
-  if err = dp.waitForOp(service, op); err != nil {
+  if err = waitForDpOp(service, op, g.Project); err != nil {
     return err
   }
-  return nil
+
+  kube, err := g.getCluster(cluster)
+  return GenerateClusterConfig(name, cluster, kube)
 }
 
-func (dp *Deployment) Delete() error {
-  service, err := dm.New(dp.htc)
-  fmt.Printf("Deleting deployment %+v\n", dp)
+func (g *GCPCloud) Teardown() error {
+  name := g.DeploymentName
+  fmt.Printf("Deleting stack %s\n", name)
 
-  if err != nil {
-    return fmt.Errorf("deploymentmanager client %v", err)
+  gsService := g.storage()
+  resp, err := gsService.Objects.List(g.BucketName).Do()
+  if err != nil { return err }
+
+  for _, obj := range resp.Items {
+    if err := gsService.Objects.Delete(obj.Bucket, obj.Name).Do(); err != nil {
+      return err
+    }
   }
 
-  op, err := service.Deployments.Delete(dp.ProjectId, dp.Name).Do()
-  if err != nil {
-    return err
-  }
+  dmService := g.deploymentmanager()
+  op, err := dmService.Deployments.Delete(g.Project, name).Do()
+  if err != nil { 
+    return err 
+  } 
 
-  if err = dp.waitForOp(service, op); err != nil {
+  if err = waitForDpOp(dmService, op, g.Project); err != nil {
     return fmt.Errorf("deleting stack %v", err)
   }
 
+  fmt.Printf("OK\n")
   return nil
 }
 
-func (dp *Deployment) waitForOp(svc *dm.Service, op *dm.Operation) error {
+func waitForDpOp(svc *dm.Service, op *dm.Operation, project string) error {
   fmt.Printf("Waiting on %s [%v]\n", op.Kind, op.Name)
 
   for {
     time.Sleep(2 * time.Second)
-    op, err := svc.Operations.Get(dp.ProjectId, op.Name).Do()
+    op, err := svc.Operations.Get(project, op.Name).Do()
     if err != nil { return err }
 
     switch op.Status {
@@ -123,24 +136,10 @@ func (dp *Deployment) waitForOp(svc *dm.Service, op *dm.Operation) error {
         }
         return last
       }
-      fmt.Printf("Done.")
+      fmt.Printf("\nDone.")
       return nil
     default:
       return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
     }
   }
-}
-
-func (dp *Deployment) GetCluster() (*container.Cluster, error) {
-  svc, err := container.New(dp.htc)
-  if err != nil {
-    return nil, fmt.Errorf("container service %s", err.Error()) 
-  }
-
-  return svc.Projects.Zones.Clusters.Get(
-      dp.ProjectId,
-      dp.Zone,
-      dp.ClusterName,
-  ).Do()
-
 }

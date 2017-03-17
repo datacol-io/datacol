@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
   "github.com/dinesh/rz/cmd/stdcli"
   "gopkg.in/urfave/cli.v2"
 )
@@ -40,6 +41,7 @@ func cmdDeploy(c *cli.Context) error {
   build, err := client.LatestBuild(app)
   if err != nil { return err }
 
+  fmt.Printf("Deploying build %s", build.Id)
   r := client.NewRelease(build)
 
   port := c.Int("port")

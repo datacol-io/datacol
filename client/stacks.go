@@ -1,6 +1,7 @@
 package client
 
 import (
+  "fmt"
   "errors"
   provider "github.com/dinesh/rz/cloud/google"
 )
@@ -8,9 +9,6 @@ import (
 var (
   credNotFound = errors.New("Invalid credentials")
 )
-
-func init(){
-}
 
 func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
   stackName := c.StackName
@@ -39,27 +37,22 @@ func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
   return st, nil
 }
 
-func (c *Client) DeployStack(st *Stack, nodes int) error {  
-  dp, err := provider.NewDeployment(st.ServiceKey, st.Name, st.ProjectId, st.Zone, st.Bucket, nodes)
-  if err != nil { return err }
+func (c *Client) DeployStack(st *Stack, clusterName string, nodes int) error {
+  if len(st.ServiceKey) == 0 {
+    return credNotFound
+  }
+  provider := c.Provider()
 
-  if err := dp.Run(false); err != nil {
-    if derr := dp.Delete(); derr != nil { 
+  if err := provider.Initialize(clusterName, nodes); err != nil {
+    fmt.Printf("failed: %v\n", err)
+    if derr := provider.Teardown(); derr != nil { 
       return derr
     }
     return err
   }
-
-  cluster, err := dp.GetCluster()
-  if err != nil { return err }
-
-  return provider.GenerateClusterConfig(st.Name, c.configRoot(), cluster)
+  return nil
 }
 
 func (c *Client) DestroyStack() error {
-  dp := provider.NewDeploymentByCred(c.Stack.ServiceKey)
-  dp.ProjectId = c.Stack.ProjectId
-  dp.Name = c.StackName
-
-  return dp.Delete()
+  return c.Provider().Teardown()
 }

@@ -5,12 +5,13 @@ import (
   "os"
   "fmt"
   "errors"
-  "net/http"
+  "encoding/json"
 
   "github.com/joyrexus/buckets"
   homedir "github.com/mitchellh/go-homedir"
   "github.com/dinesh/rz/cmd/stdcli"
-  provider "github.com/dinesh/rz/cloud/google"
+
+  "github.com/dinesh/rz/cloud"
 )
 
 var (
@@ -50,6 +51,14 @@ func init() {
   DB = db
 }
 
+func Persist(b []byte, pk string, object interface {}) error {
+  bx, _ := DB.New(b)
+  encoded, err := json.Marshal(object)
+  if err != nil { return err }
+
+  return bx.Put([]byte(pk), encoded)
+}
+
 type Client struct {
   Version     string
   StackName   string
@@ -70,10 +79,12 @@ func (c *Client) SetStack(name string) error {
   return nil
 }
 
-func (c *Client) PrdClient() *http.Client {
-  return provider.JwtClient(c.Stack.ServiceKey)
-}
-
-func (c *Client) PrdToken() (string, error) {
-  return provider.BearerToken(c.Stack.ServiceKey)
+func (c *Client) Provider() cloud.Provider {
+  return cloud.Getgcp(
+    c.Stack.Name,
+    c.Stack.ProjectId, 
+    c.Stack.Zone,
+    c.Stack.Bucket, 
+    c.Stack.ServiceKey,
+  )
 }

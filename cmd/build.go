@@ -13,8 +13,8 @@ import (
   "gopkg.in/urfave/cli.v2"
 
   "github.com/dinesh/rz/cmd/stdcli"
+  "github.com/dinesh/rz/client/models"
   "github.com/dinesh/rz/client"
-  provider "github.com/dinesh/rz/cloud/google"
 )
 
 func init(){
@@ -36,14 +36,16 @@ func cmdBuild(c *cli.Context) error {
   if err != nil { return err }
 
   app, err := client.GetApp(name)
-  if err != nil { return err }
+  if err != nil { 
+    return fmt.Errorf("%s not found", name) 
+  }
 
   build := client.NewBuild(app)
 
   return executeBuildDir(c, build, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *client.Build, dir string) error {
+func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
   fmt.Println("Creating tarball ...")
 
   tar, err := createTarball(dir)
@@ -122,42 +124,29 @@ func createTarball(base string) ([]byte, error) {
   return bytes, nil
 }
 
-func uploadBuildSource(c *cli.Context, b *client.Build, tarf []byte) (string, error) {
+func uploadBuildSource(c *cli.Context, b *models.Build, tarf []byte) (string, error) {
   client := getClient(c)
-  bucket := client.Stack.Bucket
-  objectName := fmt.Sprintf("%s.tar.gz", b.Id)
+  source := fmt.Sprintf("%s.tar.gz", b.Id)
 
-  if err := provider.UploadSource(client.PrdClient(), bucket, objectName, tarf); err != nil {
+  if err := client.Provider().BuildImport(source, tarf); err != nil {
     return "", nil
   }
-  return objectName, nil
+  return source, nil
 }
 
-func finishBuild(c *cli.Context, b *client.Build, objectName string) error {
-  client := getClient(c)
-  bopts := &provider.BuildOpts{
-    ProjectId:  client.Stack.ProjectId,
-    Bucket:     client.Stack.Bucket,
-    ObjectName: objectName,
-    BuildId:    b.Id,
-  }
-
-  b.Status = "running"
-  if err := b.Persist(); err != nil {
-    return err
-  }
-
-  err := provider.BuildWithGCR(client.PrdClient(), b.App, bopts)
+func finishBuild(c *cli.Context, b *models.Build, objectName string) error {
+  bopts := &models.BuildOptions{Key: objectName, Id: b.Id}
+  
+  err := getClient(c).Provider().BuildCreate(b.App, objectName, bopts)
   if err != nil {
     b.Status = "failed"
   } else {
     b.Status = "success"
+    if err := client.Persist([]byte("builds"), b.Id, b); err != nil {
+      return err
+    }
   }
-
-  if berr := b.Persist(); berr != nil {
-    return berr
-  }
-
+  
   return err
 }
 

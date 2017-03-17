@@ -6,55 +6,46 @@ import (
   "log"
   "encoding/json"
   "time"
-  "net/http"
 
   "google.golang.org/api/storage/v1"
   "google.golang.org/api/cloudbuild/v1"
   "google.golang.org/api/googleapi"
+  "github.com/dinesh/rz/client/models"
 )
 
-func UploadSource(htc *http.Client, bucket string, objectName string, tarf []byte) error {
-  fmt.Printf("Pushing code to gs://%s/%s\n", bucket, objectName)
+func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
+  service := g.storage()
+  bucket := g.BucketName
 
-  service, err := storage.New(htc)
-  
-  if err != nil { 
-    return fmt.Errorf("storage client %s", err) 
-  }
+  fmt.Printf("Pushing code to gs://%s/%s\n", g.BucketName, gskey)
 
   object := &storage.Object{
     Bucket:       bucket,
-    Name:         objectName,
+    Name:         gskey,
     ContentType: "application/gzip",
   }
 
-  if _, err = service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil { 
-    return fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, objectName, err)
+  if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil { 
+    return fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
   }
 
   return nil
 }
 
-type BuildOpts struct {
-  BuildId, ProjectId, Bucket, ObjectName string
-}
+func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptions) error {
+  service := g.cloudbuilder()
+  bucket  := g.BucketName
 
-func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
-  service, err := cloudbuild.New(htc)
-  if err != nil { 
-    return fmt.Errorf("cloudbuilder client %v", err)
-  }
+  fmt.Printf("Building from gs://%s/%s\n", bucket, gskey)
+  tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, opts.Id)
+  latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", app)
 
-  fmt.Printf("Building from gs://%s/%s\n", opt.Bucket, opt.ObjectName)
-  tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", appName, opt.BuildId)
-  latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", appName)
-
-  op, err := service.Projects.Builds.Create(opt.ProjectId, &cloudbuild.Build{
-    LogsBucket: opt.Bucket,
+  op, err := service.Projects.Builds.Create(g.Project, &cloudbuild.Build{
+    LogsBucket: bucket,
     Source: &cloudbuild.Source{
       StorageSource: &cloudbuild.StorageSource{
-        Bucket: opt.Bucket,
-        Object: opt.ObjectName,
+        Bucket: bucket,
+        Object: gskey,
       },
     },
     Steps: []*cloudbuild.BuildStep{
@@ -79,9 +70,9 @@ func BuildWithGCR(htc *http.Client, appName string, opt *BuildOpts) error {
     return fmt.Errorf("failed to get Id for build %v", err) 
   }
 
-  fmt.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt\n", opt.Bucket, remoteId)
+  fmt.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt\n", bucket, remoteId)
 
-  return waitForOp(service, opt.ProjectId, remoteId)
+  return waitForOp(service, g.Project, remoteId)
 }
 
 func getBuildID(op *cloudbuild.Operation) (string, error) {

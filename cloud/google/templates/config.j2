@@ -6,6 +6,7 @@ resources:
     projectNumber: {{ .ProjectNumber }}
     zone: {{ .Zone }}
 
+{{ if .ClusterNotExists }}
 - type: container-vm.jinja
   name: {{ .ClusterName }}
   properties:
@@ -13,3 +14,4 @@ resources:
     numNodes: {{ .NumNodes }}
     diskSize: {{ .DiskSize }}
     machineType: {{ .MachineType }}
+{{ end }}

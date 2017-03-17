@@ -7,9 +7,7 @@ import (
   "net/http"
   "context"
   "encoding/base64"
-  "encoding/json"
-
-  "github.com/pkg/errors"
+ 
   "github.com/skratchdot/open-golang/open"
   goauth2 "golang.org/x/oauth2"
   oauth2_google "golang.org/x/oauth2/google"
@@ -105,7 +103,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
   token, err := gauthConfig.Exchange(context.Background(), code)
   if err != nil {
-    return cred, errors.Wrap(err, "invalid context")
+    return cred, fmt.Errorf("invalid context: %v", err)
   }
 
   client := goauth2.NewClient(context.Background(), goauth2.StaticTokenSource(&goauth2.Token{
@@ -114,12 +112,12 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
   rmgrClient, err := crmgr.New(client)
   if err != nil {
-    return cred, errors.Wrap(err, "failed to get cloudsource manager")
+    return cred, fmt.Errorf("failed to get cloudsource manager: %v", err)
   }
 
   presp, err := rmgrClient.Projects.List().Do()
   if err != nil {
-    return cred, errors.Wrap(err, "failed to list google projects")
+    return cred, fmt.Errorf("failed to list google projects")
   }
 
   if len(presp.Projects) == 0 {
@@ -141,7 +139,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
   iamClient, err := iam.New(client)
   if err != nil {
-    return cred, errors.Wrap(err, "failed to create iam client")
+    return cred, fmt.Errorf("failed to create iam client: %v", err)
   }
 
   saName := "razorctl"
@@ -156,13 +154,13 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
     }).Do()
 
     if err != nil {
-     return cred, errors.Wrap(err, fmt.Sprintf("failed to create iam %q", saFQN))
+     return cred, fmt.Errorf("failed to create iam %q", saFQN)
     }
   }
 
   p, err := rmgrClient.Projects.GetIamPolicy(projectId, &crmgr.GetIamPolicyRequest{}).Do()
   if err != nil {
-    return cred, errors.Wrap(err, fmt.Sprintf("failed to get iam policy for %q", projectId))
+    return cred, fmt.Errorf("failed to get iam policy for %q", projectId)
   }
 
   members := []string{fmt.Sprintf("serviceAccount:%v@%v.iam.gserviceaccount.com", saName, projectId)}
@@ -180,22 +178,22 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
   mergedBindingsMap := rolesToMembersMap(mergedBindings)
   p.Bindings = rolesToMembersBinding(mergedBindingsMap)
 
-  dump, _ := json.MarshalIndent(p.Bindings, " ", "  ")
-  log.Printf(string(dump))
+  fmt.Printf("Creating IAM permissions:\n")
+  dumpJson(p.Bindings)
 
   _, err = rmgrClient.Projects.SetIamPolicy(projectId, &crmgr.SetIamPolicyRequest{Policy: p}).Do()
   if err != nil {
-    return cred, errors.Wrap(err, "failed to apply iam roles")
+    return cred, fmt.Errorf("failed to apply iam roles")
   }
 
   sKey, err := iamClient.Projects.ServiceAccounts.Keys.Create(saFQN, &iam.CreateServiceAccountKeyRequest{}).Do()
   if err != nil {
-    return cred, errors.Wrap(err, "failed to create iam key")
+    return cred, fmt.Errorf("failed to create iam key: %v", err)
   }
 
   cred, err = base64.StdEncoding.DecodeString(sKey.PrivateKeyData)
   if err != nil {
-    return cred, errors.Wrap(err, "failed to decode private key")
+    return cred, fmt.Errorf("failed to decode private key: %v", err)
   }
 
   return cred, nil

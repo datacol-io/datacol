@@ -17,6 +17,10 @@ func init(){
         Action: cmdAppCreate,
       },
       cli.Command{
+        Name:    "delete",
+        Action:  cmdAppDelete,
+      },
+      cli.Command{
         Name:   "info",
         Action: cmdAppInfo,
       },
@@ -61,3 +65,10 @@ func cmdAppInfo(c *cli.Context) error {
   return nil
 }
 
+
+func cmdAppDelete(c *cli.Context) error {
+    _, name, err := getDirApp(".")
+  if err != nil { return err }
+
+  return getClient(c).DeleteApp(name)
+}

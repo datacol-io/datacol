@@ -1,10 +1,11 @@
-hash: 15f2efe9fb546501ec9a0c6d1ed1682a043112dcac141fcfe8fe95523ef78c4e
-updated: 2017-03-13T19:31:21.842105239+05:30
+hash: 0f7aa143e3f9e56ac89c853cbb11957ee05709719decb47f52dbf83499e1ea22
+updated: 2017-03-16T18:58:31.07677471+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
+  - datastore
   - internal
   - storage
 - name: github.com/blang/semver
@@ -105,14 +106,12 @@ imports:
   - libcontainer/user
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
-- name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/Sirupsen/logrus
-  version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
+  version: ba1b36c82c5e05c4f912a88eab0dcd91a171688f
 - name: github.com/skratchdot/open-golang
   version: 75fb7ed4208cf72d323d7d02fd1a5964a7a9073c
   subpackages:
