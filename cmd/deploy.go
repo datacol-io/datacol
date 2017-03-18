@@ -34,14 +34,14 @@ func cmdDeploy(c *cli.Context) error {
   client := getClient(c)
   _, name, err := getDirApp(dir)
   if err != nil { return err }
-
-  app, err := client.GetApp(name)
-  if err != nil { return err }
   
-  build, err := client.LatestBuild(app)
+  build, err := client.LatestBuild(name)
   if err != nil { return err }
+  if build == nil {
+    return fmt.Errorf("No build found.")    
+  }
 
-  fmt.Printf("Deploying build %s", build.Id)
+  fmt.Printf("Deploying build %s\n", build.Id)
   r := client.NewRelease(build)
 
   port := c.Int("port")

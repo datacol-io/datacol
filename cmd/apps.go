@@ -65,7 +65,6 @@ func cmdAppInfo(c *cli.Context) error {
   return nil
 }
 
-
 func cmdAppDelete(c *cli.Context) error {
     _, name, err := getDirApp(".")
   if err != nil { return err }

@@ -13,14 +13,13 @@ type Stack struct {
 }
 
 type App struct {
-  Name    string    `datastore: "name"`
-  Status  string    `datastore: "status"`
-  Release string    `datastore: "release"`
-  id      int64
+  Name    string    `json: "name"`
+  Status  string    `json: "status"`
+  Release string    `json: "release"`
+  Stack   string    `json: "stack"`
 }
 
 type Apps []*App
-
 
 type Build struct {
   Id  string            `json: "id"`
@@ -39,9 +38,16 @@ type Release struct {
   CreatedAt time.Time `json: "created_at"`
 }
 
+type Releases []*Release
+
 type BuildOptions struct {
   Id  string
   Key string
 }
 
+type Environment map[string]string
 
+type LogStreamOptions struct {
+  Follow bool
+  Since  time.Duration
+}

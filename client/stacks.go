@@ -41,18 +41,50 @@ func (c *Client) DeployStack(st *Stack, clusterName string, nodes int) error {
   if len(st.ServiceKey) == 0 {
     return credNotFound
   }
-  provider := c.Provider()
 
-  if err := provider.Initialize(clusterName, nodes); err != nil {
-    fmt.Printf("failed: %v\n", err)
-    if derr := provider.Teardown(); derr != nil { 
-      return derr
-    }
-    return err
-  }
-  return nil
+  return c.Provider().Initialize(clusterName, nodes, c.configRoot())
 }
 
 func (c *Client) DestroyStack() error {
-  return c.Provider().Teardown()
+  if err := c.Provider().Teardown(); err != nil {
+    return err
+  }
+  return c.purgeStack()
+}
+
+
+func (c *Client) purgeStack() error {
+  name := c.Stack.Name
+  apps, err := c.GetApps()
+  if err != nil { return err }
+
+  fmt.Printf("apps: %+v", apps)
+  
+  for _, app := range apps {
+    builds, err := c.GetBuilds(app.Name)
+    if err != nil { return err }
+
+    for _, b := range builds {
+      if err := c.DeleteBuild(b.Id); err != nil {
+        return err
+      }
+    }
+
+    rs, err := c.GetReleases(app.Name)
+    if err != nil { return err }
+
+    for _, r := range rs {
+      if err := c.DeleteRelease(r.Id); err != nil {
+        return err
+      }
+    }
+    c.DeleteApp(app.Name)
+  }
+
+  sbx, _ := DB.New(stackBxName)
+  if err := sbx.Delete([]byte(name)); err != nil {
+    return err
+  }
+
+  return nil
 }

@@ -12,7 +12,6 @@ import (
   "k8s.io/client-go/pkg/watch"
   "k8s.io/client-go/pkg/labels"
   "k8s.io/client-go/pkg/selection"
-  "k8s.io/client-go/tools/clientcmd"
   apierrs "k8s.io/client-go/pkg/api/errors"
 )
 
@@ -53,23 +52,14 @@ type DeployResponse struct {
   NodePort int           `json:"nodePort"`
 }
 
-func NewDeployer(cfgpath string, token string) (*Deployer, error) {
-  config, err := clientcmd.BuildConfigFromFlags("", cfgpath)
+func NewDeployer(cfgpath, token string) (*Deployer, error) {
+  c, err := getKubeClientset(cfgpath, token)
   if err != nil {
-    return nil, err 
-  }
-
-  config.BearerToken = token
-  fmt.Printf("rest config: %+v\n", config)
-
-  c, err := kubernetes.NewForConfig(config)
-  if err != nil {
-    return nil, fmt.Errorf("cluster connection %v", err)
+    return nil, err
   }
 
   return &Deployer{c}, nil
 }
-
 
 func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     res := &DeployResponse{Request: *payload}

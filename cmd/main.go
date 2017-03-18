@@ -11,9 +11,15 @@ import (
 )
 
 func main(){
+  if len(os.Args) > 1 {
+    if os.Args[1] == "kubectl" {
+      cmdKubectl(os.Args[2:])
+      return
+    }
+  }
+
   app := stdcli.New()
   app.Run(os.Args)
-
   defer closeDb()
 }
 

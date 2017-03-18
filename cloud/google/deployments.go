@@ -3,6 +3,9 @@ package google
 import (
   "fmt"
   "time"
+  "os"
+  "os/signal"
+  "syscall"
 
   "google.golang.org/api/googleapi"
    dm "google.golang.org/api/deploymentmanager/v2"
@@ -18,7 +21,9 @@ type initOptions struct {
   Zone, Bucket  string
 }
 
-func (g *GCPCloud) Initialize(cluster string, nodes int) error {
+func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
+  name := g.DeploymentName
+  fmt.Printf("creating new stack %s with: %d\n", name, len(g.ServiceKey))
   cnexists := true
 
   if len(cluster) == 0 {
@@ -41,8 +46,6 @@ func (g *GCPCloud) Initialize(cluster string, nodes int) error {
     ProjectNumber: resp.ProjectNumber,
   }
 
-  name := g.DeploymentName
-  fmt.Printf("creating new stack %s with: \n", name)
   dumpJson(options)
 
   imports := []*dm.ImportFile {
@@ -80,16 +83,27 @@ func (g *GCPCloud) Initialize(cluster string, nodes int) error {
     }
   }
   
-  if err = waitForDpOp(service, op, g.Project); err != nil {
+  if err = g.waitForDpOp(service, op, true); err != nil {
     return err
   }
 
   kube, err := g.getCluster(cluster)
-  return GenerateClusterConfig(name, cluster, kube)
+  return GenerateClusterConfig(name, cfgroot, kube)
 }
 
 func (g *GCPCloud) Teardown() error {
   name := g.DeploymentName
+  dmService := g.deploymentmanager()
+  
+  // add fingerprint of in stop request
+  // if op, err := dmService.Deployments.Stop(g.Project, name, &dm.DeploymentsStopRequest{}).Do(); err != nil {
+  //   fmt.Printf(err.Error())
+  //   gerr, ok := err.(*googleapi.Error) 
+  //   if !ok  || (ok && gerr.Code != 412) {
+  //     return fmt.Errorf("waiting to stop deployment: %v", err)
+  //   }
+  // }
+
   fmt.Printf("Deleting stack %s\n", name)
 
   gsService := g.storage()
@@ -102,13 +116,12 @@ func (g *GCPCloud) Teardown() error {
     }
   }
 
-  dmService := g.deploymentmanager()
   op, err := dmService.Deployments.Delete(g.Project, name).Do()
   if err != nil { 
     return err 
   } 
 
-  if err = waitForDpOp(dmService, op, g.Project); err != nil {
+  if err = g.waitForDpOp(dmService, op, false); err != nil {
     return fmt.Errorf("deleting stack %v", err)
   }
 
@@ -116,13 +129,27 @@ func (g *GCPCloud) Teardown() error {
   return nil
 }
 
-func waitForDpOp(svc *dm.Service, op *dm.Operation, project string) error {
+func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
   fmt.Printf("Waiting on %s [%v]\n", op.Kind, op.Name)
+  project := g.Project
+
+  cancelCh := make(chan os.Signal, 1)
+  signal.Notify(cancelCh, os.Interrupt, syscall.SIGTERM)
 
   for {
     time.Sleep(2 * time.Second)
     op, err := svc.Operations.Get(project, op.Name).Do()
     if err != nil { return err }
+
+    select {
+      case <- cancelCh:
+        if interrupt {
+          return g.Teardown()
+        } else {
+          return nil
+        }
+      default:
+    }
 
     switch op.Status {
     case "PENDING", "RUNNING":

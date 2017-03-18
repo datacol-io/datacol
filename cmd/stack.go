@@ -36,10 +36,6 @@ func init(){
         Usage: "number of nodes in container cluster",
         Value: 3,
       },
-      &cli.BoolFlag{
-        Name: "dry-run",
-        Usage: "dry run mode",
-      },
       &cli.StringFlag{
         Name: "cluster",
         Usage: "IP:[PORT] for existing Kuberenetes cluster",
@@ -62,7 +58,6 @@ func cmdStackCreate(c *cli.Context) error {
   zone := c.String("zone")
   nodes := c.Int("nodes")
   bucket := c.String("bucket")
-  dryRun := c.Bool("dry-run")
   cluster := c.String("cluster")
 
   ac := getAnonClient(c)
@@ -74,8 +69,6 @@ func cmdStackCreate(c *cli.Context) error {
       return err
     }
   }
-
-  if dryRun { return nil }
   
   ac.SetStack(st.Name)
   
@@ -84,11 +77,6 @@ func cmdStackCreate(c *cli.Context) error {
 
 func cmdStackDestroy(c *cli.Context) error {
   client := getClient(c)
-
-  if err := client.DestroyStack(); err != nil {
-    return err
-  }
-
-  return client.Stack.Delete()
+  return client.DestroyStack()
 }
 

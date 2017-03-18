@@ -38,11 +38,6 @@ func (st *Stack) Persist(mk bool) error {
   return sbx.Put([]byte(st.Name), encoded)
 }
 
-func (st *Stack) Delete() error {
-  sbx, _ := DB.New(stackBxName)
-  return sbx.Delete([]byte(st.Name))
-}
-
 func FindStack(name string) (*Stack, error) {
   var instance Stack
   sbx, _ := DB.New(stackBxName)

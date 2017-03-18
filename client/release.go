@@ -4,10 +4,15 @@ import (
   "time"
   "fmt"
   "path/filepath"
+  "encoding/json"
   "k8s.io/client-go/pkg/util/intstr"
   "github.com/dinesh/rz/client/models"
 
   provider "github.com/dinesh/rz/cloud/google"
+)
+
+var (
+  r_bucket = []byte("releases")
 )
 
 func (c *Client) NewRelease(b *models.Build) *models.Release {
@@ -21,20 +26,44 @@ func (c *Client) NewRelease(b *models.Build) *models.Release {
   return r
 }
 
+func (c *Client) GetReleases(app string) (models.Releases, error) {
+  rbx, _ := DB.New(r_bucket)
+  items, err := rbx.Items()
+  if err != nil { return nil, err }
+
+  var rs models.Releases
+
+  for _, item := range items {
+    var r models.Release
+    err := json.Unmarshal(item.Value, &r)
+    if err != nil { return nil, err }
+
+    if r.App == app {
+      rs = append(rs, &r)
+    }
+  }
+
+  return rs, nil
+}
+
+func (c *Client) DeleteRelease(Id string) error {
+  rbx, _ := DB.New(r_bucket)
+  return rbx.Delete([]byte(Id))
+}
+
 func (c *Client) DeployRelease(r *models.Release, port int, image, env string) error {
   if image == "" {
-    image = fmt.Sprintf("gcr.io/%v/%v", c.Stack.ProjectId, r.App)
+    image = fmt.Sprintf("gcr.io/%v/%v:%v", c.Stack.ProjectId, r.App, r.BuildId)
   }
+
   if env == "" {
     env = c.Stack.Name
   }
 
   cfgpath := filepath.Join(c.configRoot(), "kubeconfig")
-  // cfgpath := filepath.Join(os.Getenv("HOME") + "/.kube/config")
 
-  // token, err := c.Provider().BearerToken()
-  // if err != nil { return err }
-  token := "foobar"
+  token, err := c.Provider().BearerToken()
+  if err != nil { return err }
 
   deployer, err := provider.NewDeployer(cfgpath, token)
   if err != nil { 
@@ -52,6 +81,11 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
 
   resp, err := deployer.Run(req)
   if err != nil {
+    return err
+  }
+
+  r.Status = "success"
+  if err := Persist(r_bucket, r.Id, r); err != nil {
     return err
   }
 

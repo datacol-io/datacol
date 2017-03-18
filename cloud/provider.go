@@ -1,13 +1,14 @@
 package cloud
 
 import (
+  "io"
+
   "github.com/dinesh/rz/cloud/google"
   "github.com/dinesh/rz/client/models"
-
 )
 
 type Provider interface {
-  Initialize(string, int) error
+  Initialize(string, int, string) error
   Teardown() error
 
   AppCreate(app *models.App) error
@@ -17,12 +18,19 @@ type Provider interface {
   BuildImport(key string, source []byte) error
   BuildCreate(app, source string, opts *models.BuildOptions) error
 
+  EnvironmentGet(app string) (models.Environment, error)
+  EnvironmentSet(app string, body io.Reader) error
+
+  LogStream(cfgpath, app string, w io.Writer, opts models.LogStreamOptions) error
+
   // BuildDelete(app, id string) (*client.Build, error)
   // BuildGet(app, id string) (*client.Build, error)
   // BuildLogs(app, id string, w io.Writer) error
   // BuildList(app string, limit int64) (client.Builds, error)
   // BuildRelease(*client.Build) (*client.Release, error)
   // BuildSave(*client.Build) error
+
+  BearerToken() (string, error)
 }
 
 
