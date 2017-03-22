@@ -2,8 +2,9 @@ package main
 
 import (
   "fmt"
-  "github.com/dinesh/rz/cmd/stdcli"
   "gopkg.in/urfave/cli.v2"
+  "github.com/dinesh/datacol/cmd/stdcli"
+  "github.com/dinesh/datacol/client/models"
 )
 
 func init(){
@@ -20,25 +21,40 @@ func init(){
         Name:   "port, p",
         Usage:  "service port",
       },
+      cli.StringFlag{
+        Name: "build, b",
+        Usage: "Build id to use",
+      },
     },
   })
 }
 
 func cmdDeploy(c *cli.Context) error {
-  dir := "."
-
-  if c.NArg() > 0 {
-    dir = c.Args().Get(0)
-  }
+  dir, name, err := getDirApp(".")
+  if err != nil { return err }
 
   client := getClient(c)
-  _, name, err := getDirApp(dir)
-  if err != nil { return err }
-  
-  build, err := client.LatestBuild(name)
-  if err != nil { return err }
-  if build == nil {
-    return fmt.Errorf("No build found.")    
+  app, err := client.GetApp(name)
+  if err != nil { 
+    return app404Err(name)
+  }
+
+  var build *models.Build
+  buildId := c.String("build")
+
+  if len(buildId) == 0 {
+    build = client.NewBuild(app)
+    if err = executeBuildDir(c, build, dir); err != nil {
+      return err
+    }
+  } else {
+    b, err := client.GetBuild(buildId)
+    if err != nil { return err }
+    if b == nil {
+      return fmt.Errorf("No build found by id: %s.", buildId)
+    }
+    
+    build = b
   }
 
   fmt.Printf("Deploying build %s\n", build.Id)

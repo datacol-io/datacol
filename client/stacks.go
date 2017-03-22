@@ -1,9 +1,10 @@
 package client
 
 import (
-  "fmt"
+  "os"
+  "path/filepath"
   "errors"
-  provider "github.com/dinesh/rz/cloud/google"
+  provider "github.com/dinesh/datacol/cloud/google"
 )
 
 var (
@@ -21,6 +22,11 @@ func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
   cred := resp.Cred
   if len(cred) == 0 {
     return nil, credNotFound
+  }
+
+  cfgpath := filepath.Join(c.configRoot(), stackName)
+  err := os.MkdirAll(cfgpath, 0777); if err != nil {
+    return nil, err
   }
 
   st := &Stack{
@@ -52,13 +58,10 @@ func (c *Client) DestroyStack() error {
   return c.purgeStack()
 }
 
-
 func (c *Client) purgeStack() error {
   name := c.Stack.Name
   apps, err := c.GetApps()
   if err != nil { return err }
-
-  fmt.Printf("apps: %+v", apps)
   
   for _, app := range apps {
     builds, err := c.GetBuilds(app.Name)
@@ -86,5 +89,5 @@ func (c *Client) purgeStack() error {
     return err
   }
 
-  return nil
+  return os.RemoveAll(c.configRoot())
 }

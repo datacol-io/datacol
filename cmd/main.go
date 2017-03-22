@@ -2,20 +2,36 @@ package main
 
 import (
   "os"
-  "log"
   "path/filepath"
 
-  "github.com/dinesh/rz/client"
-  "github.com/dinesh/rz/cmd/stdcli"
+  log "github.com/Sirupsen/logrus"
+  "github.com/dinesh/datacol/client"
+  "github.com/dinesh/datacol/cmd/stdcli"
   "gopkg.in/urfave/cli.v2"
 )
 
+var verbose = false
+
+func init(){
+  verbose = os.Getenv("DEBUG") == "1" || 
+            os.Getenv("DEBUG") == "true" ||
+            os.Getenv("LOGNAME") == "dinesh"
+}
+
 func main(){
-  if len(os.Args) > 1 {
-    if os.Args[1] == "kubectl" {
-      cmdKubectl(os.Args[2:])
-      return
-    }
+  defer handlePanic()
+
+  log.SetFormatter(&log.TextFormatter{
+    DisableTimestamp: true,
+  })
+
+  if verbose {
+    log.SetLevel(log.DebugLevel)
+  }
+
+  if len(os.Args) > 0 && os.Args[1] == "kubectl" {
+    cmdKubectl(os.Args[2:])
+    return
   }
 
   app := stdcli.New()
@@ -48,10 +64,4 @@ func getDirApp(path string) (string, string, error) {
 
 func getAnonClient(c *cli.Context) *client.Client {
   return &client.Client{}
-}
-
-func closeDb(){
-  if client.DB != nil {
-    client.DB.Close()
-  }
 }

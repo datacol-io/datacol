@@ -3,12 +3,11 @@ package client
 import (
   "time"
   "fmt"
-  "path/filepath"
   "encoding/json"
   "k8s.io/client-go/pkg/util/intstr"
-  "github.com/dinesh/rz/client/models"
 
-  provider "github.com/dinesh/rz/cloud/google"
+  "github.com/dinesh/datacol/client/models"
+  provider "github.com/dinesh/datacol/cloud/google"
 )
 
 var (
@@ -60,12 +59,12 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
     env = c.Stack.Name
   }
 
-  cfgpath := filepath.Join(c.configRoot(), "kubeconfig")
+  envVars, err := c.Provider().EnvironmentGet(r.App)
+  if err != nil {
+    return err
+  }
 
-  token, err := c.Provider().BearerToken()
-  if err != nil { return err }
-
-  deployer, err := provider.NewDeployer(cfgpath, token)
+  deployer, err := provider.NewDeployer(env)
   if err != nil { 
     return err
   }
@@ -77,6 +76,7 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
     Environment:   env,
     Zone:          c.Stack.Zone,
     ContainerPort: intstr.FromInt(port),
+    EnvVars:       envVars,
   }
 
   resp, err := deployer.Run(req)

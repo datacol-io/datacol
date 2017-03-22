@@ -1,9 +1,10 @@
 package main
 
 import (
+  "time"
   "gopkg.in/urfave/cli.v2"
-  "github.com/dinesh/rz/cmd/stdcli"
-  "github.com/dinesh/rz/client"
+  "github.com/dinesh/datacol/cmd/stdcli"
+  "github.com/dinesh/datacol/client"
 )
 
 func init(){
@@ -29,7 +30,7 @@ func init(){
       &cli.StringFlag{
         Name:  "bucket",
         Usage: "GCP storage bucket",
-        Value: "rzdev",
+        Value: "datacol",
       },
       &cli.IntFlag{
         Name: "nodes",
@@ -38,7 +39,7 @@ func init(){
       },
       &cli.StringFlag{
         Name: "cluster",
-        Usage: "IP:[PORT] for existing Kuberenetes cluster",
+        Usage: "name for existing Kuberenetes cluster in GCP",
       },
     },
   })
@@ -71,6 +72,13 @@ func cmdStackCreate(c *cli.Context) error {
   }
   
   ac.SetStack(st.Name)
+  
+  // sleep for IAM permissons to resolve before getting token
+  time.Sleep(time.Second * 2)
+
+  if _, err = ac.Provider().CacheCredentials(); err != nil {
+    return err
+  }
   
   return ac.DeployStack(st, cluster, nodes)
 }

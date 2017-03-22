@@ -3,21 +3,23 @@ package google
 import (
   "fmt"
   "bytes"
-  "log"
   "encoding/json"
   "time"
 
+  log "github.com/Sirupsen/logrus"
   "google.golang.org/api/storage/v1"
   "google.golang.org/api/cloudbuild/v1"
   "google.golang.org/api/googleapi"
-  "github.com/dinesh/rz/client/models"
+  "github.com/skratchdot/open-golang/open"
+
+  "github.com/dinesh/datacol/client/models"
 )
 
 func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
   service := g.storage()
   bucket := g.BucketName
 
-  fmt.Printf("Pushing code to gs://%s/%s\n", g.BucketName, gskey)
+  log.Infof("Pushing code to gs://%s/%s", g.BucketName, gskey)
 
   object := &storage.Object{
     Bucket:       bucket,
@@ -36,7 +38,7 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
   service := g.cloudbuilder()
   bucket  := g.BucketName
 
-  fmt.Printf("Building from gs://%s/%s\n", bucket, gskey)
+  log.Infof("Building from gs://%s/%s", bucket, gskey)
   tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, opts.Id)
   latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", app)
 
@@ -70,9 +72,14 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
     return fmt.Errorf("failed to get Id for build %v", err) 
   }
 
-  fmt.Printf("Logs at https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt\n", bucket, remoteId)
+  logURL := fmt.Sprintf("https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
+  log.Infof("Logs at %s", logURL)
 
-  return waitForOp(service, g.Project, remoteId)
+  status, err := waitForOp(service, g.Project, remoteId)
+  if status == "FAILED" {
+    open.Start(logURL)
+  }
+  return err
 }
 
 func getBuildID(op *cloudbuild.Operation) (string, error) {
@@ -88,19 +95,23 @@ func getBuildID(op *cloudbuild.Operation) (string, error) {
   return bm.Build.Id, nil
 }
 
-func waitForOp(svc *cloudbuild.Service, projectId string, id string) error {
-  fmt.Printf("Waiting on build %s\n", id)
+func waitForOp(svc *cloudbuild.Service, projectId string, id string) (string, error) {
+  log.Infof("Waiting on build %s", id)
+  status := "PENDING"
 
   for {
     time.Sleep(2 * time.Second)
     b, err := svc.Projects.Builds.Get(projectId, id).Do()
-    if err != nil { return err }
-    
+    if err != nil { log.Fatal(err) }
+    status = b.Status
+
     if b.Status != "WORKING" && b.Status != "QUEUED" {
-      fmt.Printf("\nBuild status: %v\n", b.Status)
+      log.Infof("\nBuild status: %v", b.Status)
       break
+    } else {
+      fmt.Print(".")
     }
   }
 
-  return nil
+  return status, nil
 }

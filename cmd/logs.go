@@ -3,7 +3,7 @@ package main
 import (
   "time"
   "os"
-  "github.com/dinesh/rz/cmd/stdcli"
+  "github.com/dinesh/datacol/cmd/stdcli"
   "gopkg.in/urfave/cli.v2"
 )
 
@@ -13,8 +13,8 @@ func init(){
     UsageText: "streams logs for an app",
     Action: cmdAppLogStream,
     Flags: []cli.Flag{
-      cli.BoolTFlag{
-        Name:  "follow",
+      cli.BoolFlag{
+        Name:  "follow, -f",
         Usage: "keep streaming new log output (default)",
       },
       cli.DurationFlag{
@@ -29,6 +29,10 @@ func init(){
 func cmdAppLogStream(c *cli.Context) error {
   _, name, err := getDirApp(".")
   if err != nil { return err }
+  
+  if c.NArg() > 0 {
+    name = c.Args().Get(0)
+  }
 
-  return getClient(c).StreamAppLogs(name, c.BoolT("follow"), c.Duration("since"), os.Stdout)
+  return getClient(c).StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), os.Stdout)
 }

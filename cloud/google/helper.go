@@ -2,18 +2,31 @@ package google
 
 import (
   "fmt"
-  "log"
   "runtime"
   "path"
   "io/ioutil"
   "html/template"
   "encoding/json"
+  "path/filepath"
   "bytes"
   "bufio"
   "strings"
+  log "github.com/Sirupsen/logrus"
 
-  "github.com/dinesh/rz/client/models"
+  "github.com/dinesh/datacol/client/models"
 )
+
+func kubecfgPath(name string) string {
+  return filepath.Join(models.ConfigPath, name, "kubeconfig")
+}
+
+func getCachedToken(name string) string {
+  value, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "token"))
+  if err != nil {
+    return ""
+  }
+  return strings.TrimSpace(string(value))
+}
 
 func loadTemplate(name string) string {
   _, filename, _, _ := runtime.Caller(1)
@@ -38,15 +51,15 @@ func compileConfig(name string, opts *initOptions) string {
 }
 
 func ditermineMachineType(num int) string {
-  return "f1-micro"
+  return "n1-standard-1"
 }
 
-func dumpJson(object interface {}) {
+func toJson(object interface {}) string {
   dump, err := json.MarshalIndent(object, " ", "  ")
   if err != nil { 
     log.Fatal(fmt.Errorf("dumping json: %v", err)) 
   }
-  fmt.Println(string(dump))
+  return string(dump)
 }
 
 

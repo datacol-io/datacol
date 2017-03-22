@@ -1,5 +1,5 @@
-hash: 0f7aa143e3f9e56ac89c853cbb11957ee05709719decb47f52dbf83499e1ea22
-updated: 2017-03-16T18:58:31.07677471+05:30
+hash: a5750b75ce7e30de4e5504e2cb740e9f94c638af936d804e9c8585be6c94e43e
+updated: 2017-03-20T17:34:04.182351984+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -79,6 +79,8 @@ imports:
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
 - name: github.com/gorilla/mux
   version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
+- name: github.com/hashicorp/logutils
+  version: 0dc08b1671f34c4250ce212759ebd880f743d883
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
@@ -106,6 +108,8 @@ imports:
   - libcontainer/user
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -118,6 +122,8 @@ imports:
   - open
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: github.com/stvp/rollbar
+  version: d8cae2dd0eb0ce093eca83bfd2122f31e12694a0
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
@@ -136,7 +142,7 @@ imports:
   - idna
   - lex/httplex
 - name: golang.org/x/oauth2
-  version: 314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd
+  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
   subpackages:
   - google
   - internal

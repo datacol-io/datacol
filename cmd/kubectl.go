@@ -6,12 +6,12 @@ import (
   "os/exec"
   "syscall"
   "fmt"
-  "log"
   "path/filepath"
+  log "github.com/Sirupsen/logrus"
 
-  "github.com/dinesh/rz/client"
-  "github.com/dinesh/rz/cmd/stdcli"
-  homeDir "github.com/mitchellh/go-homedir"
+  "github.com/dinesh/datacol/client"
+  "github.com/dinesh/datacol/client/models"
+  "github.com/dinesh/datacol/cmd/stdcli"
 )
 
 func cmdKubectl(args []string) {
@@ -20,10 +20,8 @@ func cmdKubectl(args []string) {
     log.Fatal(err)
   }
 
-  token, err := ct.Provider().BearerToken()
-  if err != nil {
-    log.Fatal(err)
-  }
+  token, err := ct.Provider().CacheCredentials()
+  if err != nil { log.Fatal(err) }
 
   excode := execute(ct.Stack.Name, token, args)
   os.Exit(excode)
@@ -35,9 +33,7 @@ func execute(env, token string, args []string) int {
     exitcode int
   )
 
-  home, _ := homeDir.Dir()
-  cfgpath := filepath.Join(home, ".razorbox", env, "kubeconfig")
-  
+  cfgpath := filepath.Join(models.ConfigPath, env, "kubeconfig")
   args = append([]string{"--kubeconfig", cfgpath, "-n", env, "--token", token}, args...)
   c := exec.Command("kubectl", args...)
 

@@ -2,12 +2,12 @@ package google
 
 import (
   "fmt"
-  "log"
   "net"
   "net/http"
   "context"
   "encoding/base64"
- 
+
+  log "github.com/Sirupsen/logrus" 
   "github.com/skratchdot/open-golang/open"
   goauth2 "golang.org/x/oauth2"
   oauth2_google "golang.org/x/oauth2/google"
@@ -18,7 +18,8 @@ import (
 const (
   googleOauth2ClientID     = "992213213700-ideosm7la1g4jf2rghn0n89achgstehb.apps.googleusercontent.com"
   googleOauth2ClientSecret = "JaJjVGA5c6tSdluQdfFqNau8"
-  saName = "razorctl"
+  saName = "dcolctl"
+  getUserEmail = false
 )
 
 var gauthConfig goauth2.Config
@@ -34,23 +35,29 @@ func CreateCredential(rackName, projectId string) authPacket {
     return authPacket{Err: err}
   }
 
-  log.Printf("Oauth2 callback receiver listening on %s", listener.Addr().String())
+  log.Debugf("Oauth2 callback receiver listening on %s", listener.Addr().String())
+
+  scopes := []string{
+    "https://www.googleapis.com/auth/iam",
+    "https://www.googleapis.com/auth/cloudplatformprojects",
+  }
+
+  if getUserEmail {
+    scopes = append(scopes, "https://www.googleapis.com/auth/userinfo.email")
+  }
 
   gauthConfig = goauth2.Config{
     Endpoint:     oauth2_google.Endpoint,
     ClientID:     googleOauth2ClientID,
     ClientSecret: googleOauth2ClientSecret,
-    Scopes:       []string{
-      "https://www.googleapis.com/auth/cloudplatformprojects",
-      "https://www.googleapis.com/auth/iam",
-    },
+    Scopes:       scopes,
     RedirectURL:  "http://" + listener.Addr().String(),
   }
 
   promptSelectAccount := goauth2.SetAuthURLParam("prompt", "select_account")
   codeURL := gauthConfig.AuthCodeURL("/", promptSelectAccount)
 
-  log.Printf("Auhtorization code URL: %v", codeURL)
+  log.Debugf("Auhtorization code URL: %v", codeURL)
   open.Start(codeURL)
 
   stop := make(chan authPacket, 1)
@@ -138,6 +145,12 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
     return cred, fmt.Errorf("failed to get %v", h.projectId)
   }
 
+  if getUserEmail {
+    if err := addToContactList(token.AccessToken); err != nil {
+      log.WithFields(log.Fields{"project": projectId}).Warn(err)
+    }
+  }
+
   iamClient, err := iam.New(client)
   if err != nil {
     return cred, fmt.Errorf("failed to create iam client: %v", err)
@@ -149,7 +162,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
     _, err = iamClient.Projects.ServiceAccounts.Create("projects/"+projectId, &iam.CreateServiceAccountRequest{
       AccountId: saName,
       ServiceAccount: &iam.ServiceAccount{
-        DisplayName: "Razorbox cli svc account",
+        DisplayName: "Datacol cli service account",
       },
     }).Do()
 
@@ -168,7 +181,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
       Bindings: []*crmgr.Binding{
         &crmgr.Binding{Role: "roles/viewer", Members: members},
         &crmgr.Binding{Role: "roles/deploymentmanager.editor", Members: members},
-        &crmgr.Binding{Role: "roles/storage.admin", Members: members},
+        &crmgr.Binding{Role: "roles/storage.objectAdmin", Members: members},
         &crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
         &crmgr.Binding{Role: "roles/container.developer", Members: members},
       },
@@ -178,12 +191,11 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
   mergedBindingsMap := rolesToMembersMap(mergedBindings)
   p.Bindings = rolesToMembersBinding(mergedBindingsMap)
 
-  fmt.Printf("Creating IAM permissions:\n")
-  dumpJson(p.Bindings)
+  log.Debugf("Creating IAM permissions: +%v \n", string(toJson(p.Bindings)))
 
   _, err = rmgrClient.Projects.SetIamPolicy(projectId, &crmgr.SetIamPolicyRequest{Policy: p}).Do()
   if err != nil {
-    return cred, fmt.Errorf("failed to apply iam roles")
+    return cred, fmt.Errorf("failed to apply IAM roles")
   }
 
   sKey, err := iamClient.Projects.ServiceAccounts.Keys.Create(saFQN, &iam.CreateServiceAccountKeyRequest{}).Do()

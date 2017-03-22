@@ -3,8 +3,8 @@ package cloud
 import (
   "io"
 
-  "github.com/dinesh/rz/cloud/google"
-  "github.com/dinesh/rz/client/models"
+  "github.com/dinesh/datacol/cloud/google"
+  "github.com/dinesh/datacol/client/models"
 )
 
 type Provider interface {
@@ -30,7 +30,7 @@ type Provider interface {
   // BuildRelease(*client.Build) (*client.Release, error)
   // BuildSave(*client.Build) error
 
-  BearerToken() (string, error)
+  CacheCredentials() (string, error)
 }
 
 

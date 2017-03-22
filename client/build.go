@@ -6,7 +6,7 @@ import (
   "sort"
   "encoding/json"
 
-  "github.com/dinesh/rz/client/models"
+  "github.com/dinesh/datacol/client/models"
 )
 
 var (
@@ -65,6 +65,21 @@ func (c *Client) GetBuilds(app string) (models.Builds, error) {
   }
 
   return builds, nil
+}
+
+func (c *Client) GetBuild(id string) (*models.Build, error) {
+  bbx, _ := DB.New(b_bucket)
+  item, err := bbx.Get([]byte(id))
+  if err != nil {
+    return nil, err
+  }
+
+  var b models.Build
+  if err := json.Unmarshal(item, &b); err != nil { 
+    return nil, err
+  }
+
+  return &b, nil
 }
 
 func (c *Client) DeleteBuild(Id string) error {

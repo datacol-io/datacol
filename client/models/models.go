@@ -2,7 +2,25 @@ package models
 
 import (
   "time"
+  "log"
+  "path/filepath"
+  homedir "github.com/mitchellh/go-homedir"
 )
+
+var (
+  ConfigPath string
+  DbFilename string
+)
+
+func init(){
+  DbFilename = "dcol.db"
+
+  home, err := homedir.Dir()
+  if err != nil {
+    log.Fatal(err)
+  }
+  ConfigPath = filepath.Join(home, ".datacol")
+}
 
 type Stack struct {
   Name      string

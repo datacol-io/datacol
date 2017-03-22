@@ -12,9 +12,9 @@ import (
   "github.com/docker/docker/pkg/archive"
   "gopkg.in/urfave/cli.v2"
 
-  "github.com/dinesh/rz/cmd/stdcli"
-  "github.com/dinesh/rz/client/models"
-  "github.com/dinesh/rz/client"
+  "github.com/dinesh/datacol/cmd/stdcli"
+  "github.com/dinesh/datacol/client/models"
+  "github.com/dinesh/datacol/client"
 )
 
 func init(){
@@ -27,26 +27,21 @@ func init(){
 
 func cmdBuild(c *cli.Context) error {
   client := getClient(c)
-  dir := "."
-  if c.NArg() > 0 {
-    dir = c.Args().Get(0)
-  }
 
-  _, name, err := getDirApp(dir)
+  dir, name, err := getDirApp(".")
   if err != nil { return err }
 
   app, err := client.GetApp(name)
   if err != nil { 
-    return fmt.Errorf("%s not found", name) 
+    return app404Err(name)
   }
 
   build := client.NewBuild(app)
-
   return executeBuildDir(c, build, dir)
 }
 
 func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
-  fmt.Println("Creating tarball ...")
+  fmt.Print("Creating tarball ...")
 
   tar, err := createTarball(dir)
   if err != nil { return err }

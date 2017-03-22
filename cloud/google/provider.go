@@ -3,16 +3,16 @@ package google
 import (
   "context"
   "net/http"
-  "log"
   "fmt"
   "io"
   "time"
   "math"
+  "strings"
   "strconv"
   "io/ioutil"
+  "path/filepath"
 
-  "github.com/dinesh/rz/client/models"
-
+  log "github.com/Sirupsen/logrus"
   oauth2_google "golang.org/x/oauth2/google"
   "google.golang.org/api/storage/v1"
   "google.golang.org/api/cloudbuild/v1"
@@ -22,11 +22,10 @@ import (
   iam "google.golang.org/api/iam/v1"
   "k8s.io/client-go/tools/clientcmd"
   "k8s.io/client-go/kubernetes"
-  "k8s.io/client-go/rest"
-)
+  kerrors "k8s.io/client-go/pkg/api/errors"
+  kapi "k8s.io/client-go/pkg/api/v1"
 
-var (
-  appBucket = "App"
+  "github.com/dinesh/datacol/client/models"
 )
 
 var _jwtClient *http.Client
@@ -49,6 +48,34 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
 }
 
 func (g *GCPCloud) AppDelete(name string) error {
+  ns := g.DeploymentName
+  kube, err := getKubeClientset(ns)
+  if err != nil { return err }
+
+  if _, err := kube.Core().Services(ns).Get(name); err != nil {
+    if !kerrors.IsNotFound(err) {
+      return err
+    }
+  } else if err := kube.Core().Services(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+    return err
+  }
+
+  if _, err = kube.Extensions().Deployments(ns).Get(name); err != nil {
+    if !kerrors.IsNotFound(err) {
+      return err
+    }
+  } else if err = kube.Extensions().Deployments(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+    return err
+  }
+
+  if _, err = kube.Extensions().Ingresses(ns).Get(name); err != nil {
+    if !kerrors.IsNotFound(err) {
+      return err
+    }
+  } else if err = kube.Extensions().Ingresses(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+    return err
+  }
+
   return nil
 }
 
@@ -67,18 +94,15 @@ func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
   return g.gsPut(g.BucketName, gskey, body)
 }
 
-func (g *GCPCloud) LogStream(cfgpath, name string, out io.Writer, opts models.LogStreamOptions) error {
-  token, err := g.BearerToken()
-  if err != nil { return err }
-
-  c, err := getKubeClientset(cfgpath, token)
+func (g *GCPCloud) LogStream(cfgpath, podId string, out io.Writer, opts models.LogStreamOptions) error {
+  c, err := getKubeClientset(g.DeploymentName)
   if err != nil { return err }
 
   req := c.Core().RESTClient().Get().
     Namespace(g.DeploymentName).
-    Name(name).
+    Name(podId).
     Resource("pods").
-    SubResource("logs").
+    SubResource("log").
     Param("follow", strconv.FormatBool(opts.Follow))
 
   if opts.Since > 0 {
@@ -94,15 +118,26 @@ func (g *GCPCloud) LogStream(cfgpath, name string, out io.Writer, opts models.Lo
   return err
 }
 
-func (g *GCPCloud) BearerToken() (string, error) {
-  jwtConfig, err := oauth2_google.JWTConfigFromJSON(g.ServiceKey, csm.CloudPlatformScope)
-  if err != nil { return "", err }
+func (g *GCPCloud) CacheCredentials() (string, error) {
+  setting := "token"
+  cfgpath := filepath.Join(models.ConfigPath, g.DeploymentName, setting)
+  value, err := ioutil.ReadFile(cfgpath)
 
-  source := jwtConfig.TokenSource(context.TODO())
-  tk, err := source.Token()
-  if err != nil { return "", err }
-  
-  return tk.AccessToken, nil
+  if err != nil {
+    jwtConfig, err := oauth2_google.JWTConfigFromJSON(g.ServiceKey, csm.CloudPlatformScope)
+    if err != nil { return "", err }
+
+    source := jwtConfig.TokenSource(context.TODO())
+    tk, err := source.Token()
+    if err != nil { 
+      return "", err 
+    }
+    value = []byte(tk.AccessToken)
+    err = ioutil.WriteFile(cfgpath, value, 0777)
+    if err != nil { return "", err }
+  }
+
+  return strings.TrimSpace(string(value)), nil
 }
 
 func (g *GCPCloud) storage() *storage.Service {
@@ -176,7 +211,6 @@ func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
   return service.Projects.Zones.Clusters.Get(g.Project, g.Zone, name).Do()
 }
 
-
 func jwtClient(sva []byte) *http.Client {
   if _jwtClient != nil {
     return _jwtClient
@@ -208,13 +242,14 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
   return err
 }
 
-func getKubeClientset(cfgpath, token string) (*kubernetes.Clientset, error) {
-  config, err := clientcmd.BuildConfigFromFlags("", cfgpath)
+func getKubeClientset(name string) (*kubernetes.Clientset, error) {
+  config, err := clientcmd.BuildConfigFromFlags("", kubecfgPath(name))
   if err != nil {
-    return nil, err 
+    return nil, err
   }
 
-  config.BearerToken = token
+  config.BearerToken = getCachedToken(name)
+
   c, err := kubernetes.NewForConfig(config)
   if err != nil {
     return nil, fmt.Errorf("cluster connection %v", err)

@@ -7,6 +7,7 @@ import (
   "os/signal"
   "syscall"
 
+  log "github.com/Sirupsen/logrus"
   "google.golang.org/api/googleapi"
    dm "google.golang.org/api/deploymentmanager/v2"
 )
@@ -23,7 +24,7 @@ type initOptions struct {
 
 func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   name := g.DeploymentName
-  fmt.Printf("creating new stack %s with: %d\n", name, len(g.ServiceKey))
+  log.Infof("creating new stack %s", name)
   cnexists := true
 
   if len(cluster) == 0 {
@@ -46,7 +47,7 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
     ProjectNumber: resp.ProjectNumber,
   }
 
-  dumpJson(options)
+  log.Debug(toJson(options))
 
   imports := []*dm.ImportFile {
     {
@@ -77,7 +78,7 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   op, err := service.Deployments.Insert(g.Project, req).Do()
   if err != nil { 
     if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-      return fmt.Errorf("%s is already created.", name)
+      return fmt.Errorf("Failed: Deployment %s is already created.", name)
     } else {
       return err 
     }
@@ -104,7 +105,7 @@ func (g *GCPCloud) Teardown() error {
   //   }
   // }
 
-  fmt.Printf("Deleting stack %s\n", name)
+  log.Infof("Deleting stack %s", name)
 
   gsService := g.storage()
   resp, err := gsService.Objects.List(g.BucketName).Do()
@@ -125,12 +126,12 @@ func (g *GCPCloud) Teardown() error {
     return fmt.Errorf("deleting stack %v", err)
   }
 
-  fmt.Printf("OK\n")
+  log.Infoln("OK")
   return nil
 }
 
 func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
-  fmt.Printf("Waiting on %s [%v]\n", op.Kind, op.Name)
+  log.Infof("Waiting on %s [%v]", op.Kind, op.Name)
   project := g.Project
 
   cancelCh := make(chan os.Signal, 1)

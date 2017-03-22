@@ -2,8 +2,9 @@ package main
 
 import (
   "fmt"
+  "errors"
   "gopkg.in/urfave/cli.v2"
-  "github.com/dinesh/rz/cmd/stdcli"
+  "github.com/dinesh/datacol/cmd/stdcli"
 )
 
 func init(){
@@ -70,4 +71,8 @@ func cmdAppDelete(c *cli.Context) error {
   if err != nil { return err }
 
   return getClient(c).DeleteApp(name)
+}
+
+func app404Err(name string) error {
+  return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running $ dcol apps create", name))
 }

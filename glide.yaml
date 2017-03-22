@@ -1,4 +1,4 @@
-package: github.com/dinesh/rz
+package: github.com/dinesh/datacol
 import:
 - package: cloud.google.com/go
   subpackages:
@@ -32,9 +32,12 @@ import:
 - package: github.com/skratchdot/open-golang
   subpackages:
   - open
-- package: github.com/Sirupsen/logrus
-  version: ^0.11.4
 - package: github.com/joyrexus/buckets
 - package: golang.org/x/net
   subpackages:
   - context
+- package: github.com/hashicorp/logutils
+- package: github.com/Sirupsen/logrus
+  version: ^0.11.5
+- package: github.com/stvp/rollbar
+  version: ^0.4.0

@@ -5,7 +5,7 @@ import (
   "io"
   "path/filepath"
   "encoding/json"
-  "github.com/dinesh/rz/client/models"
+  "github.com/dinesh/datacol/client/models"
 )
 
 var (
@@ -59,6 +59,10 @@ func (c *Client) CreateApp(name string) (*models.App, error) {
 }
 
 func (c *Client) DeleteApp(name string) error {
+  if err := c.Provider().AppDelete(name); err != nil {
+    return err
+  }
+
   abx, _ := DB.New(a_bucket)
   return abx.Delete([]byte(name))
 }

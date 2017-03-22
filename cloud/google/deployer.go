@@ -52,8 +52,8 @@ type DeployResponse struct {
   NodePort int           `json:"nodePort"`
 }
 
-func NewDeployer(cfgpath, token string) (*Deployer, error) {
-  c, err := getKubeClientset(cfgpath, token)
+func NewDeployer(name string) (*Deployer, error) {
+  c, err := getKubeClientset(name)
   if err != nil {
     return nil, err
   }
@@ -127,8 +127,12 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
       return res, err
     }
 
-    log.Infof("Deployment completed: %+v", svc)
+    log.Debugf("Deployment completed: %+v", svc)
     return res, nil
+}
+
+func (d *Deployer) Remove(r *DeployRequest) error {
+  return nil
 }
 
 // WatchLoop loops, passing events in w to fn.
@@ -172,10 +176,10 @@ func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Servi
     if err != nil {
       return nil, err
     }
-    log.Infof("Service updated: %+v", svc)
+    log.Debugf("Service updated: %+v", svc)
     return svc, nil
   }
-  log.Infof("Service created: %+v", svc)
+  log.Debugf("Service created: %+v", svc)
   return newsSvc, nil
 }
 
@@ -220,11 +224,11 @@ func (r *Deployer) CreateOrUpdateDeployment(d *v1beta1.Deployment, env string) (
     if err != nil {
       return nil, err
     }
-    log.Infof("Deployment updated: %+v", d)
+    log.Debugf("Deployment updated: %+v", d)
     return d, nil
 
   }
-  log.Infof("Deployment created: %+v", d)
+  log.Debugf("Deployment created: %+v", d)
   return newD, nil
 }
 
@@ -295,11 +299,10 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
     if err != nil {
       return nil, err
     }
-    log.Infof("Ingress updated: %+v", ingress)
+    log.Debugf("Ingress updated: %+v", ingress)
     return ingress, nil
-
   }
-  log.Infof("Ingress created: %+v", ingress)
+  log.Debugf("Ingress created: %+v", ingress)
   return newIngress, nil
 }
 

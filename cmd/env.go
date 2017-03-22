@@ -4,8 +4,8 @@ import (
   "fmt"
   "strings"
   "gopkg.in/urfave/cli.v2"
-  "github.com/dinesh/rz/cmd/stdcli"
-  "github.com/dinesh/rz/client/models"
+  "github.com/dinesh/datacol/cmd/stdcli"
+  "github.com/dinesh/datacol/client/models"
 )
 
 func init(){

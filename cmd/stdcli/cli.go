@@ -1,23 +1,27 @@
 package stdcli
 
 import (
-  "path/filepath"
   "os"
   "fmt"
-  "io/ioutil"
+  "runtime"
   "strings"
+  "io/ioutil"
+  "path/filepath"
 
   "gopkg.in/urfave/cli.v2"
+  rollbarAPI "github.com/stvp/rollbar"
 )
 
 var (
   Binary string
   Version string
   Commands []cli.Command
+  localappdir string
 )
 
 func init() {
   Version  = "0.0.1-alpha"
+  localappdir = ".dtcol"
   Binary   = filepath.Base(os.Args[0])
   Commands = []cli.Command{}
 }
@@ -54,7 +58,7 @@ func GetStack() string {
   }
 
   if stack == "" {
-    Error(fmt.Errorf("no stack found, Please run $] rz init"))
+    Error(fmt.Errorf("no stack found, Please run $] dtcol init"))
   }
   return stack
 }
@@ -64,7 +68,7 @@ func AddCommand(cmd cli.Command) {
 }
 
 func GetSetting(setting string) string {
-  value, err := ioutil.ReadFile(fmt.Sprintf(".rz/%s", setting))
+  value, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", localappdir, setting))
   if err != nil {
     return ""
   }
@@ -74,13 +78,12 @@ func GetSetting(setting string) string {
 }
 
 func WriteSetting(setting, value string) error {
-  dirpath := ".rz"
-  if err := os.MkdirAll(dirpath, 0777); err != nil { 
-    return err 
+  if err := os.MkdirAll(localappdir, 0777); err != nil { 
+    return err
   }
 
   return ioutil.WriteFile(
-    fmt.Sprintf(dirpath + "/%s", setting), 
+    fmt.Sprintf(localappdir + "/%s", setting), 
     []byte(value),
     0777,
   )
@@ -100,4 +103,33 @@ func Error(err error){
     fmt.Println(err.Error())
     os.Exit(1)
   }
+}
+
+func HandlePanicErr(err error) {
+  fmt.Println(err.Error())
+  rollbar(err, "error")
+}
+
+func rollbar(err error, level string) {
+  if os.Getenv("TESTING") == "1" {
+    return
+  }
+
+  rollbarAPI.Platform = "client"
+  rollbarAPI.Token = "915b990fdfee4bd4a8c280b3a838205d"  
+  var cmd string
+
+  if len(os.Args) > 1 {
+    cmd = os.Args[1]
+  }
+
+  fields := []*rollbarAPI.Field{
+    {"version", Version},
+    {"os", runtime.GOOS},
+    {"arch", runtime.GOARCH},
+    {"command", cmd},
+  }
+
+  rollbarAPI.Error(level, err, fields...)
+  rollbarAPI.Wait()
 }
