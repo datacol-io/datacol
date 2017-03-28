@@ -31,15 +31,15 @@ func getCachedToken(name string) string {
 func loadTemplate(name string) string {
   _, filename, _, _ := runtime.Caller(1)
   dir := path.Join(path.Dir(filename), "templates")
-  content, err := ioutil.ReadFile(dir + "/" + name)
 
+  content, err := ioutil.ReadFile(dir + "/" + name)
   if err != nil { log.Fatal(err) }
 
   return string(content)
 }
 
-func compileConfig(name string, opts *initOptions) string {
-  tmpl, err := template.New("ct").Parse(loadTemplate(name))
+func compileConfig(data string, opts *initOptions) string {
+  tmpl, err := template.New("ct").Parse(data)
   if err != nil { log.Fatal(err) }
 
   var doc bytes.Buffer

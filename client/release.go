@@ -5,9 +5,9 @@ import (
   "fmt"
   "encoding/json"
   "k8s.io/client-go/pkg/util/intstr"
-
   "github.com/dinesh/datacol/client/models"
-  provider "github.com/dinesh/datacol/cloud/google"
+  "github.com/dinesh/datacol/cloud/google"
+  log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -50,7 +50,7 @@ func (c *Client) DeleteRelease(Id string) error {
   return rbx.Delete([]byte(Id))
 }
 
-func (c *Client) DeployRelease(r *models.Release, port int, image, env string) error {
+func (c *Client) DeployRelease(r *models.Release, port int, image, env string, wait bool) error {
   if image == "" {
     image = fmt.Sprintf("gcr.io/%v/%v:%v", c.Stack.ProjectId, r.App, r.BuildId)
   }
@@ -59,17 +59,18 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
     env = c.Stack.Name
   }
 
-  envVars, err := c.Provider().EnvironmentGet(r.App)
+  provider := c.Provider()
+  envVars, err := provider.EnvironmentGet(r.App)
   if err != nil {
     return err
   }
 
-  deployer, err := provider.NewDeployer(env)
+  deployer, err := google.NewDeployer(env)
   if err != nil { 
     return err
   }
 
-  req := &provider.DeployRequest{
+  req := &google.DeployRequest{
     ServiceID:     r.App,
     Image:         image,
     Replicas:      1,
@@ -79,8 +80,7 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
     EnvVars:       envVars,
   }
 
-  resp, err := deployer.Run(req)
-  if err != nil {
+  if _, err := deployer.Run(req); err != nil {
     return err
   }
 
@@ -89,7 +89,36 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string) e
     return err
   }
 
-  fmt.Printf("Deployed at port: %d", resp.NodePort)
+  app, err := c.GetApp(r.App)
+  if err != nil { return err }
+
+  app.Status = "Running"
+  if err = Persist(a_bucket, app.Name, &app); err != nil {
+    return err
+  }
+
+  if wait {
+    waitTill := time.Now().Add(time.Duration(1) * time.Minute)
+    fmt.Printf("waiting for ip")
+
+    for {
+      time.Sleep(1 * time.Second)
+      fmt.Print(".")
+      if err = c.SyncApp(app, wait); err != nil {
+        return err
+      }
+
+      if len(app.HostPort) > 0 {
+        break
+      }
+
+      if time.Now().After(waitTill) {
+        log.Warn("timed out. Skipping.")
+        break
+      }
+    }
+  }
+
   return nil
 }
 

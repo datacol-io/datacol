@@ -25,6 +25,10 @@ func init(){
         Name: "build, b",
         Usage: "Build id to use",
       },
+      cli.BoolTFlag{
+        Name: "wait, w",
+        Usage: "Wait for the service become available",
+      },
     },
   })
 }
@@ -53,7 +57,7 @@ func cmdDeploy(c *cli.Context) error {
     if b == nil {
       return fmt.Errorf("No build found by id: %s.", buildId)
     }
-    
+
     build = b
   }
 
@@ -63,5 +67,17 @@ func cmdDeploy(c *cli.Context) error {
   port := c.Int("port")
   if port == 0 { port = 80 }
 
-  return client.DeployRelease(r, port, c.String("image"), c.String("env"))
+  wait := c.BoolT("wait")
+  if err = client.DeployRelease(r, port, c.String("image"), c.String("env"), wait); err != nil {
+    return err
+  }
+
+  app, _ = client.GetApp(name)
+  if len(app.HostPort) > 0 {
+    fmt.Printf("Deployed at %s:%d\n", app.HostPort, port)
+  } else {
+    fmt.Println("DONE.")
+  }
+  
+  return nil
 }

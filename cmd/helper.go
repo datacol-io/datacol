@@ -2,12 +2,17 @@ package main
 
 import (
   "os"
+  "regexp"
   "errors"
+  "strings"
   "github.com/dinesh/datacol/cmd/stdcli"
   "github.com/dinesh/datacol/client"
 )
 
-var crashing = false
+var (
+  crashing = false
+  re = regexp.MustCompile("[^a-z0-9]+")
+)
 
 func handlePanic(){
   if crashing { return }
@@ -28,4 +33,8 @@ func closeDb(){
   if client.DB != nil {
     client.DB.Close()
   }
+}
+
+func slug(s string) string {
+  return strings.Trim(re.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }

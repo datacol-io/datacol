@@ -24,6 +24,12 @@ func init(){
       cli.Command{
         Name:   "info",
         Action: cmdAppInfo,
+        Flags:  []cli.Flag{
+          cli.BoolFlag{
+            Name:    "wait, w",
+            Usage:   "wait for GCP to allocate IP",
+          },
+        },
       },
     },
   })
@@ -50,7 +56,7 @@ func cmdAppCreate(c *cli.Context) error {
   app, err := client.CreateApp(name)
   if err != nil { return err }
 
-  fmt.Printf("%+v created.\n", app)
+  fmt.Printf("%s is created.\n", app.Name)
 
   return stdcli.WriteSetting("stack", client.Stack.Name)
 }
@@ -62,15 +68,27 @@ func cmdAppInfo(c *cli.Context) error {
   app, err := getClient(c).GetApp(name)
   if err != nil { return err }
 
+  wait := c.Bool("wait")
+  if err = getClient(c).SyncApp(app, wait); err != nil {
+    return err
+  }
+
   fmt.Printf("%+v", app)
   return nil
 }
 
 func cmdAppDelete(c *cli.Context) error {
-    _, name, err := getDirApp(".")
+  abs, name, err := getDirApp(".")    
   if err != nil { return err }
 
-  return getClient(c).DeleteApp(name)
+  app, err := getClient(c).GetApp(name)
+  if err != nil { return err }
+
+  if err = getClient(c).DeleteApp(app.Name); err != nil {
+    return err
+  }
+
+  return stdcli.RmSettingDir(abs)
 }
 
 func app404Err(name string) error {

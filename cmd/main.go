@@ -13,9 +13,7 @@ import (
 var verbose = false
 
 func init(){
-  verbose = os.Getenv("DEBUG") == "1" || 
-            os.Getenv("DEBUG") == "true" ||
-            os.Getenv("LOGNAME") == "dinesh"
+  verbose = os.Getenv("DEBUG") == "1" || os.Getenv("DEBUG") == "true"
 }
 
 func main(){

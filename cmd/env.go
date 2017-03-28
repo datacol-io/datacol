@@ -32,7 +32,12 @@ func cmdConfigList(c *cli.Context) error {
   _, name, err := getDirApp(".")
   if err != nil { return err }
 
-  env, err := getClient(c).Provider().EnvironmentGet(name)
+  ct := getClient(c)
+  if _, err = ct.GetApp(name); err != nil { 
+    return err 
+  }
+
+  env, err := ct.Provider().EnvironmentGet(name)
   if err != nil {
     return err
   }

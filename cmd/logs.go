@@ -14,7 +14,7 @@ func init(){
     Action: cmdAppLogStream,
     Flags: []cli.Flag{
       cli.BoolFlag{
-        Name:  "follow, -f",
+        Name:  "follow, f",
         Usage: "keep streaming new log output (default)",
       },
       cli.DurationFlag{
@@ -30,6 +30,10 @@ func cmdAppLogStream(c *cli.Context) error {
   _, name, err := getDirApp(".")
   if err != nil { return err }
   
+  if _, err := getClient(c).GetApp(name); err != nil { 
+    return err 
+  }
+
   if c.NArg() > 0 {
     name = c.Args().Get(0)
   }

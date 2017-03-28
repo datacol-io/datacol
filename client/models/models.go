@@ -31,28 +31,31 @@ type Stack struct {
 }
 
 type App struct {
-  Name    string    `json: "name"`
-  Status  string    `json: "status"`
-  Release string    `json: "release"`
-  Stack   string    `json: "stack"`
+  Name      string    `json: "name"`
+  Status    string    `json: "status"`
+  Release   string    `json: "release"`
+  HostPort  string    `json: "host_port"`
+  Stack     string    `json: "stack"`
 }
 
 type Apps []*App
 
 type Build struct {
-  Id  string            `json: "id"`
-  App string            `json: "app"`
-  Status string         `json: "status"`
+  Id        string      `json: "id"`
+  App       string      `json: "app"`
+  Status    string      `json: "status"`
+  Stack     string      `json: "stack"`
   CreatedAt time.Time   `json: "created_at"`
 }
 
 type Builds []*Build
 
 type Release struct {
-  Id      string  `json: "id"`
-  App     string  `json: "app"`
-  BuildId string  `json: "buildId"`
-  Status  string  `json: "status"`
+  Id      string      `json: "id"`
+  App     string      `json: "app"`
+  Stack   string      `json: "stack"`
+  BuildId string      `json: "buildId"`
+  Status  string      `json: "status"`
   CreatedAt time.Time `json: "created_at"`
 }
 

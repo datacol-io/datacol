@@ -5,11 +5,13 @@ import (
   "time"
   "os"
   "os/signal"
+  "path/filepath"
   "syscall"
 
   log "github.com/Sirupsen/logrus"
   "google.golang.org/api/googleapi"
-   dm "google.golang.org/api/deploymentmanager/v2"
+  dm "google.golang.org/api/deploymentmanager/v2"
+  "github.com/dinesh/datacol/client/models"
 )
 
 type initOptions struct {
@@ -17,12 +19,12 @@ type initOptions struct {
   MachineType   string
   DiskSize      int64
   NumNodes      int
-  ClusterNotExists bool
   ProjectNumber int64
   Zone, Bucket  string
+  ClusterNotExists, Preemptible bool
 }
 
-func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
+func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt bool) error {
   name := g.DeploymentName
   log.Infof("creating new stack %s", name)
   cnexists := true
@@ -36,15 +38,20 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   resp, err := g.csmanager().Projects.Get(g.Project).Do()
   if err != nil { return err }
 
+  if len(machineType) == 0 {
+    machineType = ditermineMachineType(nodes)
+  }
+
   options := initOptions {
     ClusterName:  cluster,
     DiskSize:     10,
     NumNodes:     nodes,
+    MachineType:  machineType,
+    Zone:         g.Zone,
+    Bucket:       g.BucketName,
+    ProjectNumber:    resp.ProjectNumber,
     ClusterNotExists: cnexists,
-    MachineType: ditermineMachineType(nodes),
-    Zone: g.Zone,
-    Bucket: g.BucketName,
-    ProjectNumber: resp.ProjectNumber,
+    Preemptible: preemt,
   }
 
   log.Debug(toJson(options))
@@ -52,14 +59,14 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   imports := []*dm.ImportFile {
     {
       Name: "registry.jinja",
-      Content: loadTemplate("registry.j2"),
+      Content: registryYAML,
     },
   }
 
   if cnexists {
     imports = append(imports, &dm.ImportFile{
        Name: "container-vm.jinja",
-       Content: loadTemplate("container-vm.j2"),
+       Content: vmYAML,
     })
   }
 
@@ -68,7 +75,7 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
     Target: &dm.TargetConfiguration {
       Imports: imports,
       Config: &dm.ConfigFile {
-        Content: compileConfig("config.j2", &options),
+        Content: compileConfig(configYAML, &options),
       },
     },
   }
@@ -78,9 +85,9 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   op, err := service.Deployments.Insert(g.Project, req).Do()
   if err != nil { 
     if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-      return fmt.Errorf("Failed: Deployment %s is already created.", name)
+      return fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
     } else {
-      return err 
+      return err
     }
   }
   
@@ -89,6 +96,7 @@ func (g *GCPCloud) Initialize(cluster string, nodes int, cfgroot string) error {
   }
 
   kube, err := g.getCluster(cluster)
+  cfgroot := filepath.Join(models.ConfigPath, g.DeploymentName)
   return GenerateClusterConfig(name, cfgroot, kube)
 }
 
@@ -126,12 +134,11 @@ func (g *GCPCloud) Teardown() error {
     return fmt.Errorf("deleting stack %v", err)
   }
 
-  log.Infoln("OK")
   return nil
 }
 
 func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
-  log.Infof("Waiting on %s [%v]", op.Kind, op.Name)
+  log.Infof("Waiting on %s [%v]", op.OperationType, op.Name)
   project := g.Project
 
   cancelCh := make(chan os.Signal, 1)
@@ -154,20 +161,84 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
 
     switch op.Status {
     case "PENDING", "RUNNING":
-      fmt.Print(".")
+      // fmt.Print(".")
       continue
     case "DONE":
       if op.Error != nil {
         var last error
         for _, operr := range op.Error.Errors {
-          last = fmt.Errorf("%v", operr)
+          last = fmt.Errorf("%v", operr.Message)
+        }
+        // try to teardown if, just ignore error if any
+        log.Errorf("Deployment failed: %v, Canceling ..", last)
+
+        if err := g.Teardown(); err != nil {
+          log.Debugf("deleting stack: %+v", err)
         }
         return last
       }
-      fmt.Printf("\nDone.")
       return nil
     default:
       return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
     }
   }
 }
+
+var registryYAML = `
+resources:
+- name: {{ env['name'] }}
+  type: storage.v1.bucket
+  properties:
+    location: {{ properties['bucketLocation'] }}
+    projectNumber: {{ properties['projectNumber'] }}
+`
+
+var vmYAML = `
+{% set CLUSTER_NAME = env['name'] %}
+{% set TYPE_NAME = CLUSTER_NAME + '-type' %}
+
+resources:
+- name: {{ CLUSTER_NAME }}
+  type: container.v1.cluster
+  properties:
+    zone: {{ properties['zone'] }}
+    cluster:
+      name: {{ CLUSTER_NAME }}
+      description: "cluster created by datacol.io"
+      initialNodeCount: {{ properties['numNodes'] }}
+      enableKubernetesAlpha: false
+      nodeConfig:
+        preemptible: {{ properties['preemptible'] }}
+        machineType: {{ properties['machineType'] }}
+        imageType: CONTAINER_VM
+        diskSizeGb: {{ properties['diskSize'] }}
+        oauthScopes:
+          - https://www.googleapis.com/auth/compute
+          - https://www.googleapis.com/auth/devstorage.read_only
+          - https://www.googleapis.com/auth/logging.write
+          - https://www.googleapis.com/auth/monitoring
+
+outputs:
+- name: clusterType
+  value: {{ TYPE_NAME }}
+`
+
+var configYAML = `
+resources:
+- type: registry.jinja
+  name: {{ .Bucket }}
+  properties:
+    projectNumber: {{ .ProjectNumber }}
+    zone: {{ .Zone }}
+
+{{ if .ClusterNotExists }}
+- type: container-vm.jinja
+  name: {{ .ClusterName }}
+  properties:
+    zone: {{ .Zone }}
+    numNodes: {{ .NumNodes }}
+    diskSize: {{ .DiskSize }}
+    machineType: {{ .MachineType }}
+    preemptible: {{ .Preemptible }}
+{{ end }}
+`

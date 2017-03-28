@@ -24,6 +24,8 @@ import (
   "k8s.io/client-go/kubernetes"
   kerrors "k8s.io/client-go/pkg/api/errors"
   kapi "k8s.io/client-go/pkg/api/v1"
+  klabels "k8s.io/client-go/pkg/labels"
+  "google.golang.org/api/googleapi"
 
   "github.com/dinesh/datacol/client/models"
 )
@@ -44,7 +46,25 @@ func (g *GCPCloud) AppCreate(app *models.App) error {
 }
 
 func (g *GCPCloud) AppGet(name string) (*models.App, error) {
-  return nil, nil 
+  app := &models.App{Name: name}
+
+  ns := g.DeploymentName
+  kube, err := getKubeClientset(ns)
+  if err != nil { return app, err }
+
+  svc, err := kube.Core().Services(ns).Get(name)
+  if err != nil { return app, err }
+
+  if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
+    ing := svc.Status.LoadBalancer.Ingress[0]
+    if len(ing.Hostname) > 0 {
+      app.HostPort = ing.Hostname
+    } else {
+      app.HostPort = ing.IP
+    }
+  }
+
+  return app, nil
 }
 
 func (g *GCPCloud) AppDelete(name string) error {
@@ -83,6 +103,9 @@ func (g *GCPCloud) EnvironmentGet(name string) (models.Environment, error) {
   gskey := fmt.Sprintf("%s.env", name)  
   data, err := g.gsGet(g.BucketName, gskey)
   if err != nil {
+    if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 404 {
+      return models.Environment{}, nil
+    }
     return nil, err
   }
 
@@ -94,13 +117,29 @@ func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
   return g.gsPut(g.BucketName, gskey, body)
 }
 
-func (g *GCPCloud) LogStream(cfgpath, podId string, out io.Writer, opts models.LogStreamOptions) error {
-  c, err := getKubeClientset(g.DeploymentName)
+func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOptions) error {
+  ns := g.DeploymentName
+  c, err := getKubeClientset(ns)
   if err != nil { return err }
+  
+  selector := klabels.Set(map[string]string{"name": app}).AsSelector()
+  res, err := c.Core().Pods(ns).List(kapi.ListOptions{LabelSelector: selector.String()})
+  if err != nil {
+    return err
+  }
+
+  var podNames []string
+  for _, p := range res.Items {
+    podNames = append(podNames, p.Name)
+  }
+  
+  if len(podNames) < 1 {
+    return fmt.Errorf("No pod running for %s", app)
+  }
 
   req := c.Core().RESTClient().Get().
     Namespace(g.DeploymentName).
-    Name(podId).
+    Name(podNames[0]).
     Resource("pods").
     SubResource("log").
     Param("follow", strconv.FormatBool(opts.Follow))
@@ -229,7 +268,7 @@ func (g *GCPCloud) gsGet(bucket, key string) ([]byte, error) {
   service := g.storage()
   resp, err := service.Objects.Get(bucket, key).Download()
   if err != nil {
-    return nil, fmt.Errorf("downloading gs://%s/%s: %v", bucket, key, err)
+    return nil, err
   }
   
   defer resp.Body.Close()

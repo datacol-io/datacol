@@ -2,7 +2,6 @@ package client
 
 import (
   "os"
-  "path/filepath"
   "errors"
   provider "github.com/dinesh/datacol/cloud/google"
 )
@@ -11,10 +10,10 @@ var (
   credNotFound = errors.New("Invalid credentials")
 )
 
-func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
+func (c *Client) CreateStack(project, zone, bucket string) (*Stack, error) {
   stackName := c.StackName
 
-  resp := provider.CreateCredential(stackName, projectId)
+  resp := provider.CreateCredential(stackName, project)
   if resp.Err != nil {
     return nil, resp.Err
   }
@@ -24,14 +23,13 @@ func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
     return nil, credNotFound
   }
 
-  cfgpath := filepath.Join(c.configRoot(), stackName)
-  err := os.MkdirAll(cfgpath, 0777); if err != nil {
+  err := os.MkdirAll(c.configRoot(), 0777); if err != nil {
     return nil, err
   }
 
   st := &Stack{
     Name:       stackName,
-    ProjectId:  projectId,
+    ProjectId:  resp.ProjectId,
     Zone:       zone,
     Bucket:     bucket,
     ServiceKey: cred,
@@ -43,12 +41,12 @@ func (c *Client) CreateStack(projectId, zone, bucket string) (*Stack, error) {
   return st, nil
 }
 
-func (c *Client) DeployStack(st *Stack, clusterName string, nodes int) error {
+func (c *Client) DeployStack(st *Stack, clusterName, machineType string, nodes int, preem bool) error {
   if len(st.ServiceKey) == 0 {
     return credNotFound
   }
 
-  return c.Provider().Initialize(clusterName, nodes, c.configRoot())
+  return c.Provider().Initialize(clusterName, machineType, nodes, preem)
 }
 
 func (c *Client) DestroyStack() error {

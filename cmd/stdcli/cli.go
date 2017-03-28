@@ -89,6 +89,10 @@ func WriteSetting(setting, value string) error {
   )
 }
 
+func RmSettingDir(path string) error {
+  return os.RemoveAll(filepath.Join(path, localappdir))
+}
+
 func CheckFlagsPresence(c *cli.Context, flags ...string){
   for _, name := range flags {
     value := c.String(name)

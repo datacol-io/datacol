@@ -3,7 +3,6 @@ package client
 import (
   "time"
   "io"
-  "path/filepath"
   "encoding/json"
   "github.com/dinesh/datacol/client/models"
 )
@@ -44,6 +43,19 @@ func (c *Client) GetApp(name string) (*models.App, error) {
   return &a, nil
 }
 
+func (c *Client) SyncApp(app *models.App, wait bool) error {
+  if len(app.HostPort) == 0 && app.Status == "Running" && wait {
+    if napp, _ := c.Provider().AppGet(app.Name); napp != nil {
+      app.HostPort = napp.HostPort
+    }
+    
+    if err := Persist(a_bucket, app.Name, &app); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
 func (c *Client) CreateApp(name string) (*models.App, error) {
   app := &models.App{
     Name:   name,
@@ -70,8 +82,7 @@ func (c *Client) DeleteApp(name string) error {
 
 func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, out io.Writer) error {
   opts := models.LogStreamOptions{Since: since, Follow: follow}
-  cfgpath := filepath.Join(c.configRoot(), "kubeconfig")
-  return c.Provider().LogStream(cfgpath, name, out, opts)
+  return c.Provider().LogStream(name, out, opts)
 }
 
 

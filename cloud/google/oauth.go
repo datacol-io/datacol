@@ -23,10 +23,12 @@ const (
 )
 
 var gauthConfig goauth2.Config
+var projectId string
 
 type authPacket struct {
   Cred []byte
   Err  error
+  ProjectId string
 }
 
 func CreateCredential(rackName, projectId string) authPacket {
@@ -97,7 +99,7 @@ func (h callbackHandler) termOnError(err error) {
 }
 
 func (h callbackHandler) termOnSuccess(data []byte){
-  h.stop <- authPacket{Cred: data}
+  h.stop <- authPacket{Cred: data, ProjectId: projectId}
 }
 
 // https://developers.google.com/identity/protocols/OAuth2InstalledApp
@@ -132,10 +134,10 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
     return cred, fmt.Errorf("No Google cloud project exists. Please create new Google Cloud project from web console: https://console.cloud.google.com")
   }
 
-  var projectId string
+  projectId = ""
 
   for _, p := range presp.Projects {
-    if p.ProjectId ==  h.projectId || p.Name == h.rackName {
+    if p.ProjectId ==  h.projectId || p.Name == h.projectId {
       projectId = p.ProjectId
       break
     }
@@ -144,6 +146,8 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
   if projectId == "" {
     return cred, fmt.Errorf("failed to get %v", h.projectId)
   }
+
+  log.Debugf("Selected ProjectId: %s", projectId)
 
   if getUserEmail {
     if err := addToContactList(token.AccessToken); err != nil {
@@ -181,7 +185,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
       Bindings: []*crmgr.Binding{
         &crmgr.Binding{Role: "roles/viewer", Members: members},
         &crmgr.Binding{Role: "roles/deploymentmanager.editor", Members: members},
-        &crmgr.Binding{Role: "roles/storage.objectAdmin", Members: members},
+        &crmgr.Binding{Role: "roles/storage.admin", Members: members},
         &crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
         &crmgr.Binding{Role: "roles/container.developer", Members: members},
       },

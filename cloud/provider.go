@@ -8,7 +8,7 @@ import (
 )
 
 type Provider interface {
-  Initialize(string, int, string) error
+  Initialize(string, string, int, bool) error
   Teardown() error
 
   AppCreate(app *models.App) error
@@ -21,7 +21,7 @@ type Provider interface {
   EnvironmentGet(app string) (models.Environment, error)
   EnvironmentSet(app string, body io.Reader) error
 
-  LogStream(cfgpath, app string, w io.Writer, opts models.LogStreamOptions) error
+  LogStream(app string, w io.Writer, opts models.LogStreamOptions) error
 
   // BuildDelete(app, id string) (*client.Build, error)
   // BuildGet(app, id string) (*client.Build, error)

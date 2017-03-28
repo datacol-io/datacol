@@ -43,6 +43,7 @@ type DeployRequest struct {
     Name  string `json:"name"`
     Value string `json:"value"`
   } `json:"secrets"`
+  SSL  bool `json: "ssl"`
   Tags map[string]string `json:"tags"`
   Zone string            `json:"zone"`
 }
@@ -122,12 +123,14 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
       return false
     })
 
-    _, err = d.CreateOrUpdateIngress(newIngress(res), payload.Environment)
-    if err != nil {
-      return res, err
+    if payload.SSL {
+      _, err = d.CreateOrUpdateIngress(newIngress(res), payload.Environment)
+      if err != nil {
+        return res, err
+      }
     }
 
-    log.Debugf("Deployment completed: %+v", svc)
+    log.Debugf("Deployment completed: %+v", svc.ObjectMeta.Name)
     return res, nil
 }
 
@@ -141,7 +144,7 @@ func (r *Deployer) WatchLoop(w watch.Interface, fn func(watch.Event) bool) {
     select {
     case event, ok := <-w.ResultChan():
       if !ok {
-        log.Info("No more events")
+        log.Debugf("No more events")
         return
       }
       if stop := fn(event); stop {
@@ -176,14 +179,19 @@ func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Servi
     if err != nil {
       return nil, err
     }
-    log.Debugf("Service updated: %+v", svc)
+    log.Debugf("Service updated: %+v", svc.ObjectMeta.Name)
     return svc, nil
   }
-  log.Debugf("Service created: %+v", svc)
+  log.Debugf("Service created: %+v", svc.ObjectMeta.Name)
   return newsSvc, nil
 }
 
 func newService(payload *DeployRequest) *v1.Service {
+  serviceType := v1.ServiceTypeLoadBalancer
+  if payload.SSL {
+    serviceType = v1.ServiceTypeNodePort
+  }
+
   return &v1.Service{
     ObjectMeta: v1.ObjectMeta{
       Annotations: payload.Tags,
@@ -192,7 +200,7 @@ func newService(payload *DeployRequest) *v1.Service {
       Namespace:   payload.Environment,
     },
     Spec: v1.ServiceSpec{
-      Type: v1.ServiceTypeNodePort,
+      Type:  serviceType,
       Ports: []v1.ServicePort{{
         Port: payload.ContainerPort.IntVal,
       }},
@@ -224,11 +232,11 @@ func (r *Deployer) CreateOrUpdateDeployment(d *v1beta1.Deployment, env string) (
     if err != nil {
       return nil, err
     }
-    log.Debugf("Deployment updated: %+v", d)
+    log.Debugf("Deployment updated: %+v", d.ObjectMeta.Name)
     return d, nil
 
   }
-  log.Debugf("Deployment created: %+v", d)
+  log.Debugf("Deployment created: %+v", d.ObjectMeta.Name)
   return newD, nil
 }
 
@@ -299,10 +307,10 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
     if err != nil {
       return nil, err
     }
-    log.Debugf("Ingress updated: %+v", ingress)
+    log.Debugf("Ingress updated: %+v", ingress.ObjectMeta.Name)
     return ingress, nil
   }
-  log.Debugf("Ingress created: %+v", ingress)
+  log.Debugf("Ingress created: %+v", ingress.ObjectMeta.Name)
   return newIngress, nil
 }
 

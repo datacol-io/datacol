@@ -34,7 +34,9 @@ preferences: {}
 users:
 - name: {{.User}}
   user:
-    auth_provider:
+    auth-provider:
+      config:
+        access-token: {{ .Token }}
       name: gcp
 `
 
@@ -44,6 +46,7 @@ type ConfigOptions struct {
   Cluster string
   User    string
   Context string
+  Token   string
 }
 
 func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error {
@@ -81,6 +84,7 @@ func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error
     User:     rackName,
     Context:  rackName,
     Cluster:  rackName,
+    Token:    getCachedToken(rackName),
   }
 
   var kubeconfig bytes.Buffer

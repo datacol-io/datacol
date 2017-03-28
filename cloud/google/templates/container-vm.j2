@@ -12,6 +12,7 @@ resources:
       initialNodeCount: {{ properties['numNodes'] }}
       enableKubernetesAlpha: false
       nodeConfig:
+        preemptible: {{ properties['preemptible'] }}
         machineType: {{ properties['machineType'] }}
         imageType: CONTAINER_VM
         diskSizeGb: {{ properties['diskSize'] }}

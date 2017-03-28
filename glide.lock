@@ -1,5 +1,5 @@
-hash: a5750b75ce7e30de4e5504e2cb740e9f94c638af936d804e9c8585be6c94e43e
-updated: 2017-03-20T17:34:04.182351984+05:30
+hash: b88880950803bf1b095f5ad0ba78d9121a9e7bfe847f929fec92c14e87b95cef
+updated: 2017-03-26T18:56:51.888833696+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -108,8 +108,6 @@ imports:
   - libcontainer/user
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
-- name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
