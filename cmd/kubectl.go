@@ -20,21 +20,18 @@ func cmdKubectl(args []string) {
     log.Fatal(err)
   }
 
-  token, err := ct.Provider().CacheCredentials()
-  if err != nil { log.Fatal(err) }
-
-  excode := execute(ct.Stack.Name, token, args)
+  excode := execute(ct.Stack.Name, args)
   os.Exit(excode)
 }
 
-func execute(env, token string, args []string) int {
+func execute(env string, args []string) int {
   var (
     out, outErr bytes.Buffer
     exitcode int
   )
 
   cfgpath := filepath.Join(models.ConfigPath, env, "kubeconfig")
-  args = append([]string{"--kubeconfig", cfgpath, "-n", env, "--token", token}, args...)
+  args = append([]string{"--kubeconfig", cfgpath, "-n", env}, args...)
   c := exec.Command("kubectl", args...)
 
   c.Stdout = &out

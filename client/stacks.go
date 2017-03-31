@@ -3,6 +3,9 @@ package client
 import (
   "os"
   "errors"
+  "path/filepath"
+  "io/ioutil"
+  "github.com/dinesh/datacol/client/models"
   provider "github.com/dinesh/datacol/cloud/google"
 )
 
@@ -23,7 +26,11 @@ func (c *Client) CreateStack(project, zone, bucket string) (*Stack, error) {
     return nil, credNotFound
   }
 
-  err := os.MkdirAll(c.configRoot(), 0777); if err != nil {
+  if err := os.MkdirAll(c.configRoot(), 0777); err != nil {
+    return nil, err
+  }
+
+  if err := saveCredential(stackName, cred); err != nil {
     return nil, err
   }
 
@@ -88,4 +95,9 @@ func (c *Client) purgeStack() error {
   }
 
   return os.RemoveAll(c.configRoot())
+}
+
+func saveCredential(name string, data []byte) error {
+  path := filepath.Join(models.ConfigPath, name, models.SvaFilename)
+  return ioutil.WriteFile(path, data, 0777)
 }

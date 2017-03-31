@@ -11,7 +11,7 @@ import (
 func init(){
   stdcli.AddCommand(cli.Command{
     Name:       "init",
-    UsageText:  "create new stack",
+    Usage:      "create new stack",
     Action:     cmdStackCreate,
     Flags:      []cli.Flag{
       &cli.StringFlag{
@@ -100,7 +100,7 @@ func cmdStackCreate(c *cli.Context) error {
     return err 
   }
 
-  fmt.Println("DONE")
+  fmt.Printf("\nDONE\n")
   return nil
 }
 
@@ -109,7 +109,7 @@ func cmdStackDestroy(c *cli.Context) error {
   if err := client.DestroyStack(); err != nil {
     return err
   }
-  fmt.Println("DONE")
+  fmt.Printf("\nDONE\n")
   return nil
 }
 

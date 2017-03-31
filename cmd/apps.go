@@ -10,12 +10,18 @@ import (
 func init(){
   stdcli.AddCommand(cli.Command{
     Name:       "apps",
-    UsageText:  "Manage your apps in a stack",
+    Usage:      "Manage your apps in a stack",
     Action:     cmdAppsList,
     Subcommands: []cli.Command{
       cli.Command{
         Name:   "create",
         Action: cmdAppCreate,
+        Flags: []cli.Flag{
+          cli.StringFlag{
+            Name: "name",
+            Usage: "name for an app",
+          },
+        },
       },
       cli.Command{
         Name:    "delete",

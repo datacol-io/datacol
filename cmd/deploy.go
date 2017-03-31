@@ -10,7 +10,7 @@ import (
 func init(){
   stdcli.AddCommand(cli.Command{
     Name: "deploy",
-    UsageText: "deploy an app",
+    Usage: "deploy an app in cluster",
     Action: cmdDeploy,
     Flags: []cli.Flag{
       cli.StringFlag{
@@ -20,6 +20,7 @@ func init(){
       cli.IntFlag{
         Name:   "port, p",
         Usage:  "service port",
+        Value:  8080,
       },
       cli.StringFlag{
         Name: "build, b",
@@ -27,7 +28,7 @@ func init(){
       },
       cli.BoolTFlag{
         Name: "wait, w",
-        Usage: "Wait for the service become available",
+        Usage: "Wait for the app become available",
       },
     },
   })
@@ -74,7 +75,7 @@ func cmdDeploy(c *cli.Context) error {
 
   app, _ = client.GetApp(name)
   if len(app.HostPort) > 0 {
-    fmt.Printf("Deployed at %s:%d\n", app.HostPort, port)
+    fmt.Printf("\nDeployed at %s\n", app.HostPort)
   } else {
     fmt.Println("DONE.")
   }

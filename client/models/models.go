@@ -10,10 +10,12 @@ import (
 var (
   ConfigPath string
   DbFilename string
+  SvaFilename string
 )
 
 func init(){
   DbFilename = "dcol.db"
+  SvaFilename = "sva.json"
 
   home, err := homedir.Dir()
   if err != nil {

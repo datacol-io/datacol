@@ -20,6 +20,10 @@ func kubecfgPath(name string) string {
   return filepath.Join(models.ConfigPath, name, "kubeconfig")
 }
 
+func getTokenFile(name string) string {
+  return filepath.Join(models.ConfigPath, name, models.SvaFilename)
+}
+
 func getCachedToken(name string) string {
   value, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "token"))
   if err != nil {

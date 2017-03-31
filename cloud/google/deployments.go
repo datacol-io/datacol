@@ -161,7 +161,7 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
 
     switch op.Status {
     case "PENDING", "RUNNING":
-      // fmt.Print(".")
+      fmt.Print(".")
       continue
     case "DONE":
       if op.Error != nil {

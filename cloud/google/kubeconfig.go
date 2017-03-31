@@ -33,20 +33,19 @@ kind: Config
 preferences: {}
 users:
 - name: {{.User}}
+  tokenFile: {{.TokenFile}}
   user:
     auth-provider:
-      config:
-        access-token: {{ .Token }}
       name: gcp
 `
 
-type ConfigOptions struct {
+type configOptions struct {
   CA      string
   Server  string
   Cluster string
   User    string
   Context string
-  Token   string
+  TokenFile string
 }
 
 func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error {
@@ -78,17 +77,17 @@ func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error
     return err
   }
 
-  configOptions := &ConfigOptions {
+  copts := &configOptions {
     CA:       caDecodedPath,
     Server:   "https://" + c.Endpoint,
     User:     rackName,
     Context:  rackName,
     Cluster:  rackName,
-    Token:    getCachedToken(rackName),
+    TokenFile:  getTokenFile(rackName),
   }
 
   var kubeconfig bytes.Buffer
-  if err = tmpl.Execute(&kubeconfig, configOptions); err != nil { 
+  if err = tmpl.Execute(&kubeconfig, copts); err != nil { 
     return err 
   }
 

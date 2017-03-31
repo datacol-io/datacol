@@ -4,6 +4,7 @@ import (
   "context"
   "net/http"
   "fmt"
+  "os"
   "io"
   "time"
   "math"
@@ -22,6 +23,8 @@ import (
   iam "google.golang.org/api/iam/v1"
   "k8s.io/client-go/tools/clientcmd"
   "k8s.io/client-go/kubernetes"
+  _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
   kerrors "k8s.io/client-go/pkg/api/errors"
   kapi "k8s.io/client-go/pkg/api/v1"
   klabels "k8s.io/client-go/pkg/labels"
@@ -60,7 +63,11 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
     if len(ing.Hostname) > 0 {
       app.HostPort = ing.Hostname
     } else {
-      app.HostPort = ing.IP
+      port := 80
+      if len(svc.Spec.Ports) > 0 {
+        port = int(svc.Spec.Ports[0].Port)
+      }
+      app.HostPort = fmt.Sprintf("%s:%d", ing.IP, port)
     }
   }
 
@@ -117,15 +124,20 @@ func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
   return g.gsPut(g.BucketName, gskey, body)
 }
 
-func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOptions) error {
+
+func (g *GCPCloud) GetRunningPods(app string) (string, error) {
   ns := g.DeploymentName
   c, err := getKubeClientset(ns)
-  if err != nil { return err }
+  if err != nil { return "", err }
   
+  return runningPods(ns, app, c)
+}
+
+func runningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
   selector := klabels.Set(map[string]string{"name": app}).AsSelector()
   res, err := c.Core().Pods(ns).List(kapi.ListOptions{LabelSelector: selector.String()})
   if err != nil {
-    return err
+    return "", err
   }
 
   var podNames []string
@@ -134,12 +146,23 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOpt
   }
   
   if len(podNames) < 1 {
-    return fmt.Errorf("No pod running for %s", app)
+    return "", fmt.Errorf("No pod running for %s", app)
   }
+
+  return podNames[0], nil
+}
+
+func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOptions) error {
+  ns := g.DeploymentName
+  c, err := getKubeClientset(ns)
+  if err != nil { return err }
+  
+  pod, err := runningPods(ns, app, c)
+  if err != nil { return err }
 
   req := c.Core().RESTClient().Get().
     Namespace(g.DeploymentName).
-    Name(podNames[0]).
+    Name(pod).
     Resource("pods").
     SubResource("log").
     Param("follow", strconv.FormatBool(opts.Follow))
@@ -282,12 +305,16 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 }
 
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {
+  svapath := filepath.Join(models.ConfigPath, name, models.SvaFilename)
+  
+  if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", svapath); err != nil {
+    return nil, err
+  }
+
   config, err := clientcmd.BuildConfigFromFlags("", kubecfgPath(name))
   if err != nil {
     return nil, err
   }
-
-  config.BearerToken = getCachedToken(name)
 
   c, err := kubernetes.NewForConfig(config)
   if err != nil {

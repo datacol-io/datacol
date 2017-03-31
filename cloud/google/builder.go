@@ -106,7 +106,8 @@ func waitForOp(svc *cloudbuild.Service, projectId string, id string) (string, er
     status = b.Status
 
     if b.Status != "WORKING" && b.Status != "QUEUED" {
-      log.Infof("\nBuild status: %v", b.Status)
+      fmt.Printf("\n")
+      log.Infof("Build status: %s", b.Status)
       break
     } else {
       fmt.Print(".")

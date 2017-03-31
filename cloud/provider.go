@@ -31,6 +31,7 @@ type Provider interface {
   // BuildSave(*client.Build) error
 
   CacheCredentials() (string, error)
+  GetRunningPods(string) (string, error)
 }
 
 
