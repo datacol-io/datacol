@@ -12,8 +12,7 @@ var (
 )
 
 func (c *Client) GetApps() (models.Apps, error) {
-  abx, _ := DB.New(a_bucket)
-  items, err := abx.Items()
+  items, err := getList(a_bucket)
   if err != nil { return nil, err }
 
   res := make(models.Apps, len(items))
@@ -29,9 +28,9 @@ func (c *Client) GetApps() (models.Apps, error) {
   return res, nil
 }
 
-func (c *Client) GetApp(name string) (*models.App, error) {
-  abx, _ := DB.New(a_bucket)
-  item, err := abx.Get([]byte(name))
+func (c *Client) GetApp(name string) (*models.App, error) {  
+  item, err := getV(a_bucket, []byte(name))
+
   if err != nil { return nil, err }
   
   var a models.App
@@ -75,8 +74,7 @@ func (c *Client) DeleteApp(name string) error {
     return err
   }
 
-  abx, _ := DB.New(a_bucket)
-  return abx.Delete([]byte(name))
+  return deleteV(a_bucket, name)
 }
 
 

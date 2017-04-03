@@ -5,14 +5,18 @@ import (
   "encoding/json"
   "fmt"
   "net/http"
-  "os"
   "io/ioutil"
   log "github.com/Sirupsen/logrus"
 )
 
 var (
-  mcAPIKey = os.Getenv("MAILCHIMP_API_KEY")
+  mcAPIKey string
 )
+
+func init() {
+  // mcAPIKey = os.Getenv("MAILCHIMP_API_KEY")
+  mcAPIKey = "b9e72c3d6982efb7645dca08c57de53e-us5"
+}
 
 type payloadMCSignup struct {
   Email       string `json:"email_address"`

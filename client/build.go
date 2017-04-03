@@ -48,8 +48,7 @@ func (c *Client) LatestBuild(name string) (*models.Build, error) {
 }
 
 func (c *Client) GetBuilds(app string) (models.Builds, error) {
-  bbx, _ := DB.New(b_bucket)
-  items, err := bbx.Items()
+  items, err := getList(b_bucket)
   if err != nil { return nil, err }
 
   var builds models.Builds
@@ -68,8 +67,7 @@ func (c *Client) GetBuilds(app string) (models.Builds, error) {
 }
 
 func (c *Client) GetBuild(id string) (*models.Build, error) {
-  bbx, _ := DB.New(b_bucket)
-  item, err := bbx.Get([]byte(id))
+  item, err := getV(b_bucket, []byte(id))
   if err != nil {
     return nil, err
   }
@@ -83,7 +81,6 @@ func (c *Client) GetBuild(id string) (*models.Build, error) {
 }
 
 func (c *Client) DeleteBuild(Id string) error {
-  bbx, _ := DB.New(b_bucket)
-  return bbx.Delete([]byte(Id))
+  return deleteV(b_bucket, Id)
 }
 

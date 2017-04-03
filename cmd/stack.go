@@ -35,7 +35,7 @@ func init(){
       &cli.IntFlag{
         Name: "nodes",
         Usage: "number of nodes in container cluster",
-        Value: 3,
+        Value: 2,
       },
       &cli.StringFlag{
         Name: "cluster",
@@ -81,6 +81,7 @@ func cmdStackCreate(c *cli.Context) error {
   st, err := client.FindStack(stackName)
 
   if err != nil {
+    //todo: handler err better, 1. formatting error 2) no stack found
     ac.StackName = stackName
     if st, err = ac.CreateStack(project, zone, bucket); err != nil {
       return err
@@ -91,10 +92,6 @@ func cmdStackCreate(c *cli.Context) error {
   
   // sleep for IAM permissons to resolve before getting token
   time.Sleep(time.Second * 2)
-
-  if _, err = ac.Provider().CacheCredentials(); err != nil {
-    return err
-  }
   
   if err = ac.DeployStack(st, cluster, machineType, nodes, preemptible); err != nil {
     return err 

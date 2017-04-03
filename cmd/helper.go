@@ -6,7 +6,6 @@ import (
   "errors"
   "strings"
   "github.com/dinesh/datacol/cmd/stdcli"
-  "github.com/dinesh/datacol/client"
 )
 
 var (
@@ -26,12 +25,6 @@ func handlePanic(){
 
     stdcli.HandlePanicErr(err)
     os.Exit(1)
-  }
-}
-
-func closeDb(){
-  if client.DB != nil {
-    client.DB.Close()
   }
 }
 

@@ -116,6 +116,7 @@ func HandlePanicErr(err error) {
 
 func rollbar(err error, level string) {
   if os.Getenv("TESTING") == "1" {
+    panic(err)
     return
   }
 

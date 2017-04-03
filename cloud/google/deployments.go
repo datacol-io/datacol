@@ -36,7 +36,7 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
   }
 
   resp, err := g.csmanager().Projects.Get(g.Project).Do()
-  if err != nil { return err }
+  if err != nil { return fmt.Errorf("fetching project: %v", err) }
 
   if len(machineType) == 0 {
     machineType = ditermineMachineType(nodes)

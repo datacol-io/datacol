@@ -4,6 +4,7 @@ import (
   "path/filepath"
   "os"
   "fmt"
+  "log"
   "errors"
   "encoding/json"
 
@@ -30,19 +31,52 @@ func init() {
       }
     }
   }
+}
 
-  dbpath := filepath.Join(root, models.DbFilename)
+func DBkv() *buckets.DB {
+  dbpath := filepath.Join(models.ConfigPath, models.DbFilename)
   db, err := buckets.Open(dbpath)
   if err != nil {
     stdcli.Error(fmt.Errorf("creating database file: %v", err))
-    return
+    return nil
   }
-  
-  DB = db
+
+  return db
+}
+
+func getV(bk, key []byte) ([]byte, error) {
+  store := DBkv()
+  defer store.Close()
+
+  getter, err := store.New(bk)
+  if err != nil {
+    return nil, err
+  }
+
+  return getter.Get(key)
+}
+
+func deleteV(bk []byte, key string) error {
+  store := DBkv()
+  defer store.Close()
+
+  bx, _ := store.New(bk)
+  return bx.Delete([]byte(key))
+}
+
+func getList(bk []byte) ([]buckets.Item, error) {
+  store := DBkv()
+  defer store.Close()
+
+  abx, _ := store.New(bk)
+  return abx.Items()
 }
 
 func Persist(b []byte, pk string, object interface {}) error {
-  bx, _ := DB.New(b)
+  store := DBkv()
+  defer store.Close()
+
+  bx, _ := store.New(b)
   encoded, err := json.Marshal(object)
   if err != nil { return err }
 
@@ -69,11 +103,13 @@ func (c *Client) SetStack(name string) error {
 }
 
 func (c *Client) Provider() cloud.Provider {
+  if c.Stack == nil { log.Fatal(stack404) }
+
   return cloud.Getgcp(
     c.Stack.Name,
     c.Stack.ProjectId, 
     c.Stack.Zone,
-    c.Stack.Bucket, 
+    c.Stack.Bucket,
     c.Stack.ServiceKey,
   )
 }

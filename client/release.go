@@ -2,6 +2,7 @@ package client
 
 import (
   "time"
+  "strconv"
   "fmt"
   "encoding/json"
   "k8s.io/client-go/pkg/util/intstr"
@@ -26,8 +27,7 @@ func (c *Client) NewRelease(b *models.Build) *models.Release {
 }
 
 func (c *Client) GetReleases(app string) (models.Releases, error) {
-  rbx, _ := DB.New(r_bucket)
-  items, err := rbx.Items()
+  items, err := getList(r_bucket)
   if err != nil { return nil, err }
 
   var rs models.Releases
@@ -46,8 +46,7 @@ func (c *Client) GetReleases(app string) (models.Releases, error) {
 }
 
 func (c *Client) DeleteRelease(Id string) error {
-  rbx, _ := DB.New(r_bucket)
-  return rbx.Delete([]byte(Id))
+  return deleteV(r_bucket, Id)
 }
 
 func (c *Client) DeployRelease(r *models.Release, port int, image, env string, wait bool) error {
@@ -68,6 +67,14 @@ func (c *Client) DeployRelease(r *models.Release, port int, image, env string, w
   deployer, err := google.NewDeployer(env)
   if err != nil { 
     return err
+  }
+
+  if pv, ok := envVars["PORT"]; ok {
+    p, err := strconv.Atoi(pv)
+    if err != nil {
+      return err
+    }
+    port = p
   }
 
   req := &google.DeployRequest{

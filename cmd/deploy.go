@@ -66,8 +66,6 @@ func cmdDeploy(c *cli.Context) error {
   r := client.NewRelease(build)
 
   port := c.Int("port")
-  if port == 0 { port = 80 }
-
   wait := c.BoolT("wait")
   if err = client.DeployRelease(r, port, c.String("image"), c.String("env"), wait); err != nil {
     return err

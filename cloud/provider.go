@@ -30,17 +30,16 @@ type Provider interface {
   // BuildRelease(*client.Build) (*client.Release, error)
   // BuildSave(*client.Build) error
 
-  CacheCredentials() (string, error)
   GetRunningPods(string) (string, error)
 }
 
 
 func Getgcp(name, project, zone, bucket string, serviceKey []byte) Provider {
   return &google.GCPCloud{
-    Project:  project,
-    Zone:     zone,
-    BucketName:   bucket,
+    Project:        project,
+    Zone:           zone,
+    BucketName:     bucket,
     DeploymentName: name,
-    ServiceKey: serviceKey,
+    ServiceKey:     serviceKey,
   }
 }

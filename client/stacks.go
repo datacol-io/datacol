@@ -36,13 +36,13 @@ func (c *Client) CreateStack(project, zone, bucket string) (*Stack, error) {
 
   st := &Stack{
     Name:       stackName,
-    ProjectId:  resp.ProjectId,
     Zone:       zone,
     Bucket:     bucket,
     ServiceKey: cred,
+    ProjectId:  resp.ProjectId,
   }
 
-  if err := st.Persist(true); err != nil { 
+  if err := st.Persist(); err != nil { 
     return nil, err
   }
   return st, nil
@@ -89,8 +89,7 @@ func (c *Client) purgeStack() error {
     c.DeleteApp(app.Name)
   }
 
-  sbx, _ := DB.New(stackBxName)
-  if err := sbx.Delete([]byte(name)); err != nil {
+  if err := deleteV(stackBxName, name); err != nil {
     return err
   }
 

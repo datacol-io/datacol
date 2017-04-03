@@ -43,8 +43,7 @@ type GCPCloud struct {
   ServiceKey     []byte
 }
 
-func (g *GCPCloud) AppCreate(app *models.App) error {
- 
+func (g *GCPCloud) AppCreate(app *models.App) error { 
   return nil
 }
 
@@ -256,18 +255,6 @@ func (g *GCPCloud) iam() *iam.Service {
   return svc
 }
 
-
-func (g *GCPCloud) projectNumber() (int64, error) {
-  service := g.csmanager()
-  op, err := service.Projects.Get(g.Project).Do()
-
-  if err != nil {
-    return 0, fmt.Errorf("fetching %s: %s",g.Project,err)
-  }
-
-  return op.ProjectNumber, nil
-}
-
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
   service := g.container()
   return service.Projects.Zones.Clusters.Get(g.Project, g.Zone, name).Do()
@@ -283,7 +270,7 @@ func jwtClient(sva []byte) *http.Client {
     log.Fatal(fmt.Errorf("JWT client %s", err))
   }
 
-  _jwtClient = jwtConfig.Client(context.Background())
+  _jwtClient = jwtConfig.Client(context.TODO())
   return _jwtClient
 }
 

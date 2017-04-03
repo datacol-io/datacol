@@ -34,7 +34,6 @@ func main(){
 
   app := stdcli.New()
   app.Run(os.Args)
-  defer closeDb()
 }
 
 func getClient(c *cli.Context) *client.Client {

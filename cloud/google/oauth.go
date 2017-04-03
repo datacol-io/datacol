@@ -19,7 +19,7 @@ const (
   googleOauth2ClientID     = "992213213700-ideosm7la1g4jf2rghn0n89achgstehb.apps.googleusercontent.com"
   googleOauth2ClientSecret = "JaJjVGA5c6tSdluQdfFqNau8"
   saName = "dcolctl"
-  getUserEmail = false
+  getUserEmail = true
 )
 
 var gauthConfig goauth2.Config
