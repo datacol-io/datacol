@@ -19,8 +19,10 @@ import (
   "google.golang.org/api/cloudbuild/v1"
   "google.golang.org/api/deploymentmanager/v2"
   "google.golang.org/api/container/v1"
+  "google.golang.org/api/sqladmin/v1beta4"
   csm "google.golang.org/api/cloudresourcemanager/v1"
   iam "google.golang.org/api/iam/v1"
+
   "k8s.io/client-go/tools/clientcmd"
   "k8s.io/client-go/kubernetes"
   _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -29,7 +31,6 @@ import (
   kapi "k8s.io/client-go/pkg/api/v1"
   klabels "k8s.io/client-go/pkg/labels"
   "google.golang.org/api/googleapi"
-
   "github.com/dinesh/datacol/client/models"
 )
 
@@ -247,6 +248,14 @@ func (g *GCPCloud) container() *container.Service {
   return svc
 }
 
+func (g *GCPCloud) sqlAdmin() *sqladmin.Service {
+  svc, err := sqladmin.New(jwtClient(g.ServiceKey))
+  if err != nil {
+    log.Fatal(fmt.Errorf("sqlAdmin client %s", err))
+  }
+
+  return svc
+}
 func (g *GCPCloud) iam() *iam.Service {
   svc, err := iam.New(jwtClient(g.ServiceKey))
   if err != nil {
@@ -266,7 +275,7 @@ func jwtClient(sva []byte) *http.Client {
     return _jwtClient
   }
 
-  jwtConfig, err := oauth2_google.JWTConfigFromJSON(sva, csm.CloudPlatformScope)
+  jwtConfig, err := oauth2_google.JWTConfigFromJSON(sva, csm.CloudPlatformScope, sqladmin.SqlserviceAdminScope)
   if err != nil {
     log.Fatal(fmt.Errorf("JWT client %s", err))
   }

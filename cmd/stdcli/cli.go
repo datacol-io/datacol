@@ -31,16 +31,6 @@ func New() *cli.App {
     Name:     Binary,
     Commands: Commands,
     Version:  Version,
-    Flags:    []cli.Flag{
-      cli.StringFlag{
-        Name:  "app, a",
-        Usage: "app name inferred from current directory if not specified",
-      },
-      cli.StringFlag{
-        Name:  "stack",
-        Usage: "stack name",
-      },
-    },
   }
 
   app.CommandNotFound = func(c *cli.Context, cmd string) {
@@ -112,6 +102,61 @@ func Error(err error){
 func HandlePanicErr(err error) {
   fmt.Println(err.Error())
   rollbar(err, "error")
+}
+
+// EnsureOnlyFlags ensures that every element in the args slice starts with --
+func EnsureOnlyFlags(c *cli.Context, args []string) {
+  for _, a := range args {
+    if !strings.HasPrefix(a, "--") {
+      Error(fmt.Errorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a))
+      Usage(c)
+    }
+  }
+}
+
+// FlagsToOptions converts a list of '--key=value'/'--bool' strings to 'key: value, bool: true'-style map
+func FlagsToOptions(c *cli.Context, args []string) map[string]string {
+  options := parseOpts(args)
+  for key, value := range options {
+    if value == "" {
+      options[key] = "true"
+    }
+  }
+  return options
+}
+
+
+func parseOpts(args []string) map[string]string {
+  options := make(map[string]string)
+  var key string
+
+  for _, token := range args {
+    isFlag := strings.HasPrefix(token, "-")
+    if isFlag {
+      key = strings.TrimLeft(token, "-")
+      value := ""
+      if strings.Contains(key, "=") {
+        pivot := strings.Index(key, "=")
+        value = key[pivot+1:]
+        key = key[0:pivot]
+      }
+
+      key = strings.Replace(key, "-", "_", -1)
+      options[key] = value
+    } else {
+      value := options[key]
+      key   = strings.Replace(key, "-", "_", -1)
+      options[key] = strings.TrimSpace(value + " " + token)
+    }
+  }
+
+  return options
+}
+
+// Usage prints help for the current command and exits
+func Usage(c *cli.Context) {
+  cli.ShowCommandHelp(c, c.Command.Name)
+  os.Exit(129)
 }
 
 func rollbar(err error, level string) {

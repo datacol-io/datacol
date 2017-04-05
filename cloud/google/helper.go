@@ -11,8 +11,11 @@ import (
   "html/template"
   "encoding/json"
   "path/filepath"
-  log "github.com/Sirupsen/logrus"
+  "encoding/hex"
+  "crypto/rand"
+  "crypto/sha256"
 
+  log "github.com/Sirupsen/logrus"
   "github.com/dinesh/datacol/client/models"
 )
 
@@ -32,7 +35,7 @@ func getCachedToken(name string) string {
   return strings.TrimSpace(string(value))
 }
 
-func loadTemplate(name string) string {
+func loadTmpl(name string) string {
   _, filename, _, _ := runtime.Caller(1)
   dir := path.Join(path.Dir(filename), "templates")
 
@@ -42,8 +45,8 @@ func loadTemplate(name string) string {
   return string(content)
 }
 
-func compileConfig(data string, opts *initOptions) string {
-  tmpl, err := template.New("ct").Parse(data)
+func compileTmpl(content string, opts interface{}) string {
+  tmpl, err := template.New("ct").Parse(content)
   if err != nil { log.Fatal(err) }
 
   var doc bytes.Buffer
@@ -82,4 +85,34 @@ func loadEnv(data []byte) models.Environment {
   }
 
   return e
+}
+
+func getGcpRegion(zone string) string {
+  return zone[0:len(zone)-2]
+}
+
+func generatePassword() (string, error) {
+  data := make([]byte, 1024)
+
+  if _, err := rand.Read(data); err != nil {
+    return "", err
+  }
+
+  hash := sha256.Sum256(data)
+  return hex.EncodeToString(hash[:])[0:30], nil
+}
+
+func dpToResourceType(dpname, name string) string {
+  kind := "unknown"
+
+  switch dpname {
+  case "storage.v1.bucket":
+    kind = "gs"
+  case "container.v1.cluster":
+    kind = "cluster"
+  case "sqladmin.v1beta4.instance":
+    kind = strings.Split(name, "-")[0]
+  }
+  
+  return kind
 }

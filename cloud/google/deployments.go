@@ -4,6 +4,7 @@ import (
   "fmt"
   "time"
   "os"
+  "strings"
   "os/signal"
   "path/filepath"
   "syscall"
@@ -11,6 +12,7 @@ import (
   log "github.com/Sirupsen/logrus"
   "google.golang.org/api/googleapi"
   dm "google.golang.org/api/deploymentmanager/v2"
+  sql "google.golang.org/api/sqladmin/v1beta4"
   "github.com/dinesh/datacol/client/models"
 )
 
@@ -72,7 +74,7 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
     Target: &dm.TargetConfiguration {
       Imports: imports,
       Config: &dm.ConfigFile {
-        Content: compileConfig(configYAML, &options),
+        Content: compileTmpl(configYAML, &options),
       },
     },
   }
@@ -134,6 +136,63 @@ func (g *GCPCloud) Teardown() error {
   return nil
 }
 
+func (g *GCPCloud) updateDeployment(
+  service *dm.Service, 
+  dp *dm.Deployment, 
+  manifest *dm.Manifest,
+  content string,
+) error {
+  dp.Target = &dm.TargetConfiguration{
+    Config: &dm.ConfigFile{Content: content},
+    Imports: manifest.Imports,
+  }
+
+  op, err := service.Deployments.Update(g.Project, g.DeploymentName, dp).Do()
+  if err != nil { 
+    if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 403 {
+      // TODO: better error message
+      return err
+    }
+    return err
+  }
+  
+  if err = g.waitForDpOp(service, op, false); err != nil {
+    return err
+  }
+  return err
+}
+
+func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
+  log.Debugf("Waiting on %s [%v]", op.OperationType, op.Name)
+
+  for {
+    time.Sleep(2 * time.Second)
+    op, err := svc.Operations.Get(project, op.Name).Do()
+    if err != nil { return err }
+
+    switch op.Status {
+    case "PENDING", "RUNNING":
+      fmt.Print(".")
+      continue
+    case "DONE":
+      if op.Error != nil {
+        var last error
+        for _, operr := range op.Error.Errors {
+          last = fmt.Errorf("%v", operr.Message)
+        }
+        // try to teardown if, just ignore error if any
+        log.Errorf("sqlAdmin Operation failed: %v, Canceling ..", last)
+        return last
+      }
+      return nil
+    default:
+      return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
+    }
+  }
+
+  return nil
+} 
+
 func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
   log.Infof("Waiting on %s [%v]", op.OperationType, op.Name)
   project := g.Project
@@ -169,8 +228,10 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
         // try to teardown if, just ignore error if any
         log.Errorf("Deployment failed: %v, Canceling ..", last)
 
-        if err := g.Teardown(); err != nil {
-          log.Debugf("deleting stack: %+v", err)
+        if interrupt {
+          if err := g.Teardown(); err != nil {
+            log.Debugf("deleting stack: %+v", err)
+          }
         }
         return last
       }
@@ -180,6 +241,27 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
     }
   }
 }
+
+func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *dm.Manifest, error) {
+  dp, err := service.Deployments.Get(project, stack).Do()
+  if err != nil { return nil, nil, err }
+
+  parts := strings.Split(dp.Manifest, "/")
+  mname := parts[len(parts)-1]
+  m, err := service.Manifests.Get(project, stack, mname).Do()
+
+  return dp, m, err
+}
+
+func resourceFromStack(service *dm.Service, project, stack, name string) (*models.Resource, error) {
+  exports := map[string]string{}
+
+  return &models.Resource{
+    Name:       name,
+    Exports:    exports,
+  }, nil
+}
+
 
 var registryYAML = `
 resources:
@@ -238,4 +320,27 @@ resources:
     machineType: {{ .MachineType }}
     preemptible: {{ .Preemptible }}
 {{ end }}
+`
+
+var mysqlInstanceYAML = `
+- type: sqladmin.v1beta4.instance
+  name: '{{ .name }}'
+  properties:
+    region: '{{ .region }}'
+    databaseVersion: '{{ .db_version }}'
+    instanceType: CLOUD_SQL_INSTANCE
+    backendType: SECOND_GEN
+    settings:
+      tier: '{{ .tier }}'
+      backupConfiguration:
+        enabled: true
+        binaryLogEnabled: true
+      ipConfiguration:
+        ipv4Enabled: true
+        requireSsl: true
+      dataDiskSizeGb: 25
+      dataDiskType: PD_SSD
+      activationPolicy: '{{ .activation_policy }}'
+      locationPreference:
+        zone: {{ .zone }}
 `

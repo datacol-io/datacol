@@ -30,6 +30,14 @@ type Provider interface {
   // BuildRelease(*client.Build) (*client.Release, error)
   // BuildSave(*client.Build) error
 
+  ResourceCreate(name, kind string, params map[string]string) (*models.Resource, error)
+  ResourceDelete(name string) error
+  // ResourceGet(name string) (*structs.Resource, error)
+  // ResourceLink(name, app, process string) (*structs.Resource, error)
+  ResourceList() (models.Resources, error)
+  // ResourceUnlink(name, app, process string) (*structs.Resource, error)
+  // ResourceUpdate(name string, params map[string]string) (*structs.Resource, error)
+
   GetRunningPods(string) (string, error)
 }
 

@@ -10,10 +10,25 @@ import (
   "gopkg.in/urfave/cli.v2"
 )
 
-var verbose = false
+var ( 
+  verbose = false
+  stackFlag cli.StringFlag
+  appFlag   cli.StringFlag
+)
 
 func init(){
   verbose = os.Getenv("DEBUG") == "1" || os.Getenv("DEBUG") == "true"
+
+  stackFlag = cli.StringFlag{
+    Name:   "stack",
+    Usage:  "stack name",
+    EnvVar: "DATACOL_STACK,STACK",
+  }
+
+  appFlag = cli.StringFlag{
+    Name:  "app, a",
+    Usage: "app name inferred from current directory if not specified",
+  }
 }
 
 func main(){

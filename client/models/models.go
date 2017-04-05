@@ -74,3 +74,19 @@ type LogStreamOptions struct {
   Follow bool
   Since  time.Duration
 }
+
+
+type Resource struct {
+  Name    string     `json: "name"`
+  Status  string     `json: "status"`
+  Kind    string     `json: "kind"`
+  URL     string     `json: "url"`
+
+  Apps    []string            `json: "apps"`
+  Exports map[string]string  `json:"exports"`
+
+  Parameters map[string]string  `json:"-"`
+  Outputs    map[string]string  `json:"-"`
+}
+
+type Resources []Resource

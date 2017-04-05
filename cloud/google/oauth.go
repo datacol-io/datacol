@@ -44,6 +44,7 @@ func CreateCredential(rackName, projectId string) authPacket {
   scopes := []string{
     "https://www.googleapis.com/auth/iam",
     "https://www.googleapis.com/auth/cloudplatformprojects",
+    "https://www.googleapis.com/auth/sqlservice.admin",
   }
 
   if getUserEmail {
@@ -191,6 +192,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
         &crmgr.Binding{Role: "roles/storage.admin", Members: members},
         &crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
         &crmgr.Binding{Role: "roles/container.developer", Members: members},
+        &crmgr.Binding{Role: "roles/cloudsql.admin", Members: members},
       },
   }
 

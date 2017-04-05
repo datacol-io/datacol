@@ -41,3 +41,4 @@ import:
   version: ^0.11.5
 - package: github.com/stvp/rollbar
   version: ^0.4.0
+- package: gopkg.in/yaml.v2
