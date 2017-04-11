@@ -1,7 +1,7 @@
 package main
 
 import (
-  "time"
+  // "time"
   "fmt"
   "gopkg.in/urfave/cli.v2"
   "github.com/dinesh/datacol/cmd/stdcli"
@@ -90,11 +90,15 @@ func cmdStackCreate(c *cli.Context) error {
   
   ac.SetStack(st.Name)
   
+  fmt.Printf("Please ENABLE following apis in your Google Account: \n")
+  confirm(fmt.Sprintf("[Deployment Manager V2]: Open follwoing link in browser\n %s", consoleURL("deploymentmanager", st.ProjectId)), 2)
+  confirm(fmt.Sprintf("\n[Container Builder]: Open follwoing link in browser\n %s", consoleURL("cloudbuild.googleapis.com", st.ProjectId)), 2)
+
   // sleep for IAM permissons to resolve before getting token
-  time.Sleep(time.Second * 2)
-  
+  // time.Sleep(time.Second * 2)  
+
   if err = ac.DeployStack(st, cluster, machineType, nodes, preemptible); err != nil {
-    return err 
+    return err
   }
 
   fmt.Printf("\nDONE\n")

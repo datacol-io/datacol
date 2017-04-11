@@ -33,10 +33,10 @@ type Provider interface {
   GetRunningPods(string) (string, error)
 }
 
-
-func Getgcp(name, project, zone, bucket string, serviceKey []byte) Provider {
+func Getgcp(name, project string, pnumber int64, zone, bucket string, serviceKey []byte) Provider {
   return &google.GCPCloud{
     Project:        project,
+    ProjectNumber:  pnumber,
     Zone:           zone,
     BucketName:     bucket,
     DeploymentName: name,

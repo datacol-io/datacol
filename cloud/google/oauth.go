@@ -24,11 +24,13 @@ const (
 
 var gauthConfig goauth2.Config
 var projectId string
+var pNumber int64
 
 type authPacket struct {
   Cred []byte
   Err  error
   ProjectId string
+  PNumber   int64
 }
 
 func CreateCredential(rackName, projectId string) authPacket {
@@ -88,9 +90,10 @@ func(h callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
   if err != nil {
     h.termOnError(err)
     w.Write([]byte("Failed to authenticate. Please try again."))
+    w.Write([]byte(fmt.Sprintf("\nError: %v", err)))
   } else {
     h.termOnSuccess(data)
-    w.Write([]byte("Successfully authenticated. You can close this tab now."))
+    w.Write([]byte("Successfully authenticated. Please go to your terminal."))
   }
 }
 
@@ -99,7 +102,7 @@ func (h callbackHandler) termOnError(err error) {
 }
 
 func (h callbackHandler) termOnSuccess(data []byte){
-  h.stop <- authPacket{Cred: data, ProjectId: projectId}
+  h.stop <- authPacket{Cred: data, ProjectId: projectId, PNumber: pNumber}
 }
 
 // https://developers.google.com/identity/protocols/OAuth2InstalledApp
@@ -135,16 +138,16 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
   }
 
   projectId = ""
-
   for _, p := range presp.Projects {
     if p.ProjectId ==  h.projectId || p.Name == h.projectId {
       projectId = p.ProjectId
+      pNumber   = p.ProjectNumber
       break
     }
   }
 
   if projectId == "" {
-    return cred, fmt.Errorf("failed to get %v", h.projectId)
+    return cred, fmt.Errorf("failed to get project %v", h.projectId)
   }
 
   log.Debugf("Selected ProjectId: %s", projectId)

@@ -40,6 +40,7 @@ func (c *Client) CreateStack(project, zone, bucket string) (*Stack, error) {
     Bucket:     bucket,
     ServiceKey: cred,
     ProjectId:  resp.ProjectId,
+    PNumber:    resp.PNumber,
   }
 
   if err := st.Persist(); err != nil { 

@@ -108,6 +108,7 @@ func (c *Client) Provider() cloud.Provider {
   return cloud.Getgcp(
     c.Stack.Name,
     c.Stack.ProjectId, 
+    c.Stack.PNumber,
     c.Stack.Zone,
     c.Stack.Bucket,
     c.Stack.ServiceKey,

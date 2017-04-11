@@ -2,15 +2,15 @@ package google
 
 import (
   "fmt"
-  "runtime"
   "path"
+  "bytes"
+  "bufio"
+  "strings"
+  "runtime"
   "io/ioutil"
   "html/template"
   "encoding/json"
   "path/filepath"
-  "bytes"
-  "bufio"
-  "strings"
   log "github.com/Sirupsen/logrus"
 
   "github.com/dinesh/datacol/client/models"

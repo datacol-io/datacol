@@ -15,11 +15,12 @@ func init(){
 }
 
 type Stack struct {
-  Name      string
-  Bucket    string
-  Zone      string
-  ServiceKey []byte
-  ProjectId     string
+  Name      string      `json: "name"`
+  Bucket    string      `json: "bucket"`
+  Zone      string      `json: "zone"`
+  ServiceKey []byte     `json: "service_key"`
+  ProjectId  string     `json: "project_id"`
+  PNumber    int64      `json: "project_number"`
 }
 
 func (st *Stack) Persist() error {

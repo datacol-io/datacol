@@ -37,6 +37,7 @@ var _jwtClient *http.Client
 
 type GCPCloud struct {
   Project        string
+  ProjectNumber  int64
   DeploymentName string
   BucketName     string
   Zone           string
@@ -179,7 +180,7 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOpt
   return err
 }
 
-func (g *GCPCloud) CacheCredentials() (string, error) {
+func (g *GCPCloud) cacheCredentials() (string, error) {
   setting := "token"
   cfgpath := filepath.Join(models.ConfigPath, g.DeploymentName, setting)
   value, err := ioutil.ReadFile(cfgpath)
