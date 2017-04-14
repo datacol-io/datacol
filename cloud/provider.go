@@ -12,8 +12,9 @@ type Provider interface {
   Teardown() error
 
   AppCreate(app *models.App) error
-  AppGet(name string) (*models.App, error)
-  AppDelete(name string) error
+  AppGet(string) (*models.App, error)
+  AppDelete(string) error
+  AppRestart(string) error
 
   BuildImport(key string, source []byte) error
   BuildCreate(app, source string, opts *models.BuildOptions) error
@@ -33,9 +34,9 @@ type Provider interface {
   ResourceCreate(name, kind string, params map[string]string) (*models.Resource, error)
   ResourceDelete(name string) error
   // ResourceGet(name string) (*structs.Resource, error)
-  // ResourceLink(name, app, process string) (*structs.Resource, error)
+  ResourceLink(app string, resource *models.Resource) (*models.Resource, error)
   ResourceList() (models.Resources, error)
-  // ResourceUnlink(name, app, process string) (*structs.Resource, error)
+  ResourceUnlink(string, *models.Resource) (*models.Resource, error)
   // ResourceUpdate(name string, params map[string]string) (*structs.Resource, error)
 
   GetRunningPods(string) (string, error)

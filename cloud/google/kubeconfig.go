@@ -62,12 +62,7 @@ func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error
   certsDir := baseDir
 
   // Base64 encoded ca
-  caPath := filepath.Join(certsDir, "ca.pem")
-  if err := ioutil.WriteFile(caPath, []byte(c.MasterAuth.ClusterCaCertificate), 0700); err != nil {
-    return err
-  }
-
-  caDecodedPath := filepath.Join(certsDir, "ca-decoded.pem")
+  caDecodedPath := filepath.Join(certsDir, "ca.pem")
   caDecoded, err := base64.StdEncoding.DecodeString(c.MasterAuth.ClusterCaCertificate)
   if err != nil {
     return fmt.Errorf("error decoding ca file for kubeconfig: %v", err)
@@ -78,11 +73,11 @@ func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error
   }
 
   copts := &configOptions {
-    CA:       caDecodedPath,
-    Server:   "https://" + c.Endpoint,
-    User:     rackName,
-    Context:  rackName,
-    Cluster:  rackName,
+    CA:         caDecodedPath,
+    Server:     "https://" + c.Endpoint,
+    User:       rackName,
+    Context:    rackName,
+    Cluster:    rackName,
     TokenFile:  getTokenFile(rackName),
   }
 

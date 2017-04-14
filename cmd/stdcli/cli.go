@@ -48,7 +48,7 @@ func GetStack() string {
   }
 
   if stack == "" {
-    Error(fmt.Errorf("no stack found, Please run $] dtcol init"))
+    Error(fmt.Errorf("no stack found, Please run $] datacol init"))
   }
   return stack
 }

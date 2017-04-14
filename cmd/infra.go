@@ -55,6 +55,18 @@ func init(){
         Action:     cmdResourceInfo,
         Flags:      []cli.Flag{stackFlag},
       },
+      {
+        Name:       "link",
+        Usage:      "link an app to resource and setting it up.",
+        Action:     cmdLinkCreate,
+        Flags:      []cli.Flag{appFlag},
+      },
+      {
+        Name:       "unlink",
+        Usage:      "unlink an resource from an app.",
+        Action:     cmdLinkDelete,
+        Flags:      []cli.Flag{appFlag},
+      },
     },
   })
 }
@@ -71,7 +83,9 @@ func cmdResourceList(c *cli.Context) error {
   fmt.Println("\nResource:")
 
   for _, r := range resp {
-    fmt.Printf("%s:%s\n", r.Kind, r.Name)
+    if _, err := checkResourceType(r.Kind); err == nil {
+      fmt.Printf("%s:%s\n", r.Kind, r.Name)
+    }
   }
 
   return nil
@@ -136,6 +150,7 @@ func cmdResourceCreate(c *cli.Context) error {
     fmt.Printf(": %s", strings.Join(optionsList, " "))
   }
   fmt.Printf(")... ")
+  fmt.Printf("\n")
 
   rs, err := getClient(c).CreateResource(t.name, options)
   if err != nil {
@@ -143,7 +158,31 @@ func cmdResourceCreate(c *cli.Context) error {
   }
 
   log.Debugf("Resource: %+v", rs)
-  fmt.Println("CREATED")
+  fmt.Println("\nCREATED")
+  return nil
+}
+
+func cmdLinkCreate(c *cli.Context) error {
+  _, app, err := getDirApp(".")
+  if err != nil {return err }
+  name := c.Args()[0]
+
+  err = getClient(c).CreateResourceLink(app, name)
+  if err != nil {return err }
+
+  fmt.Printf("Linked %s to %s\n", name, app)
+  return nil
+}
+
+func cmdLinkDelete(c *cli.Context) error {
+  _, app, err := getDirApp(".")
+  if err != nil {return err }
+  name := c.Args()[0]
+
+  err = getClient(c).DeleteResourceLink(app, name)
+  if err != nil { return err }
+
+  fmt.Printf("Deleted link %s from %s\n", name, app)
   return nil
 }
 
@@ -156,3 +195,4 @@ func checkResourceType(t string) (*ResourceType, error) {
 
   return nil, fmt.Errorf("unsupported resource type %s; see 'datacol resources create --help'", t)
 }
+

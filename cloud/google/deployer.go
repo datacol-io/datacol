@@ -2,6 +2,10 @@ package google
 
 import (
   "fmt"
+  "time"
+  "strings"
+  "sort"
+  "github.com/golang/glog"
   log "github.com/Sirupsen/logrus"
 
   "k8s.io/client-go/kubernetes"
@@ -9,10 +13,8 @@ import (
   "k8s.io/client-go/pkg/api/unversioned"
   "k8s.io/client-go/pkg/util/intstr"
   "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-  "k8s.io/client-go/pkg/watch"
-  "k8s.io/client-go/pkg/labels"
-  "k8s.io/client-go/pkg/selection"
-  apierrs "k8s.io/client-go/pkg/api/errors"
+  kerrors "k8s.io/client-go/pkg/api/errors"
+  klabels "k8s.io/client-go/pkg/labels"
 )
 
 const (
@@ -71,7 +73,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 
     // create namespace if needed
     if _, err := d.Client.Core().Namespaces().Create(newNamespace(payload)); err != nil {
-      if !apierrs.IsAlreadyExists(err) {
+      if !kerrors.IsAlreadyExists(err) {
         return nil, fmt.Errorf("creating namespace %v err: %v", payload.Environment, err)
       }
     }
@@ -87,41 +89,10 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
     }
 
     // create deployment
-    deployment, err := d.CreateOrUpdateDeployment(newDeployment(payload), payload.Environment)
+    _, err = d.CreateOrUpdateDeployment(payload)
     if err != nil {
       return res, fmt.Errorf("failed to create deployment %v", err)
     }
-
-    // get deployment status
-    r, err := labels.NewRequirement("name", selection.Equals, []string{payload.ServiceID})
-    if err != nil {
-      return res, err
-    }
-
-    watcher, err := d.Client.Deployments(payload.Environment).Watch(v1.ListOptions{
-      LabelSelector:  r.String(),
-      ResourceVersion: deployment.ResourceVersion,
-    })
-
-    if err != nil {
-      return res, err
-    }
-
-    // TODO: timeout?
-    d.WatchLoop(watcher, func(e watch.Event) bool {
-      switch e.Type {
-      case watch.Modified:
-        d, err := d.Client.Deployments(payload.Environment).Get(payload.ServiceID)
-        if err != nil {
-          log.Errorf("Error getting deployment: %+v", err)
-          return true
-        }
-        if d.Spec.Replicas != nil && d.Status.Replicas == *d.Spec.Replicas {
-          return true
-        }
-      }
-      return false
-    })
 
     if payload.SSL {
       _, err = d.CreateOrUpdateIngress(newIngress(res), payload.Environment)
@@ -129,29 +100,18 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
         return res, err
       }
     }
+    
+    dpname := svc.ObjectMeta.Name
 
-    log.Debugf("Deployment completed: %+v", svc.ObjectMeta.Name)
+    waitUntilUpdated(d.Client, payload.Environment, dpname)
+    waitUntilReady(d.Client, payload.Environment, dpname)
+
+    glog.V(2).Infof("Deployment completed: %+v", svc.ObjectMeta.Name)
     return res, nil
 }
 
 func (d *Deployer) Remove(r *DeployRequest) error {
   return nil
-}
-
-// WatchLoop loops, passing events in w to fn.
-func (r *Deployer) WatchLoop(w watch.Interface, fn func(watch.Event) bool) {
-  for {
-    select {
-    case event, ok := <-w.ResultChan():
-      if !ok {
-        log.Debugf("No more events")
-        return
-      }
-      if stop := fn(event); stop {
-        w.Stop()
-      }
-    }
-  }
 }
 
 func newNamespace(payload *DeployRequest) *v1.Namespace {
@@ -165,7 +125,7 @@ func newNamespace(payload *DeployRequest) *v1.Namespace {
 func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Service, error) {
   newsSvc, err := r.Client.Services(env).Create(svc)
   if err != nil {
-    if !apierrs.IsAlreadyExists(err) {
+    if !kerrors.IsAlreadyExists(err) {
       return nil, err
     }
     oldSvc, err := r.Client.Services(env).Get(svc.ObjectMeta.Name)
@@ -219,35 +179,59 @@ func newMetadata(payload *DeployRequest) v1.ObjectMeta {
   }
 }
 
-// CreateOrUpdateDeployment creates or updates a service
-func (r *Deployer) CreateOrUpdateDeployment(d *v1beta1.Deployment, env string) (*v1beta1.Deployment, error) {
-  log.WithField("image", d.Spec.Template.Spec.Containers[0].Image).Info("Deployment")
+func findContainer(dp *v1beta1.Deployment, name string) (int, *v1.Container) {
+  for i, c := range dp.Spec.Template.Spec.Containers {
+    if c.Name == name {
+      return i, &c
+    }
+  }
+  return -1, nil
+}
 
-  newD, err := r.Client.Deployments(env).Create(d)
-  if err != nil {
-    if !apierrs.IsAlreadyExists(err) {
+// CreateOrUpdateDeployment creates or updates a service
+func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.Deployment, error) {
+  env := payload.Environment
+  var d *v1beta1.Deployment
+
+  found := false
+  d, err := r.Client.Deployments(env).Get(payload.ServiceID)
+
+  if err == nil {
+    found = true
+
+    i, _ := findContainer(d, payload.ServiceID)
+    if i >= 0 {
+      d.Spec.Template.Spec.Containers[i] = newContainer(payload)
+    }
+  } else {
+    d = newDeployment(payload)
+  }
+
+  if !found {
+    d, err := r.Client.Deployments(env).Create(d)
+    if err != nil {
       return nil, err
     }
+
+    log.Debugf("Deployment created: %+v", d.ObjectMeta.Name)
+  } else {
     d, err = r.Client.Deployments(env).Update(d)
     if err != nil {
       return nil, err
     }
+    
     log.Debugf("Deployment updated: %+v", d.ObjectMeta.Name)
-    return d, nil
-
   }
-  log.Debugf("Deployment created: %+v", d.ObjectMeta.Name)
-  return newD, nil
+
+  log.WithField("image", d.Spec.Template.Spec.Containers[0].Image).Info("Deployment")
+  log.Debugf("Deployment:\n %s", toJson(d))
+
+  return d, nil
 }
 
 func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
-  envVars := []v1.EnvVar{}
-  for k, v := range payload.EnvVars {
-    envVars = append(envVars, v1.EnvVar{Name: k, Value: v})
-  }
-
-  maxunavailable := intstr.FromString("10%")
-  maxsurge := intstr.FromString("10%")
+  maxunavailable := intstr.FromString("25%")
+  maxsurge := intstr.FromString("25%")
 
   return &v1beta1.Deployment{
     ObjectMeta: newMetadata(payload),
@@ -265,17 +249,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
         ObjectMeta: newMetadata(payload),
         Spec: v1.PodSpec{
           Containers: []v1.Container{
-            {
-              Args:  payload.Args,
-              Name:  payload.ServiceID,
-              Image: payload.Image,
-              ImagePullPolicy: "IfNotPresent",
-              Ports: []v1.ContainerPort{{
-                Name:          "http",
-                ContainerPort: int32(payload.ContainerPort.IntVal),
-              }},
-              Env: envVars,
-            },
+            newContainer(payload),
           },
           RestartPolicy: "Always",
         },
@@ -296,11 +270,30 @@ func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
   }
 }
 
+func newContainer(payload *DeployRequest) v1.Container {
+  envVars := []v1.EnvVar{}
+  for k, v := range payload.EnvVars {
+    envVars = append(envVars, v1.EnvVar{Name: k, Value: v})
+  }
+
+  return v1.Container{
+    Args:  payload.Args,
+    Name:  payload.ServiceID,
+    Image: payload.Image,
+    ImagePullPolicy: "Always",
+    Ports: []v1.ContainerPort{{
+      Name:          "http",
+      ContainerPort: int32(payload.ContainerPort.IntVal),
+    }},
+    Env: envVars,
+  }
+}
+
 // CreateOrUpdateIngress creates or updates an ingress rule
 func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (*v1beta1.Ingress, error) {
   newIngress, err := r.Client.Extensions().Ingresses(env).Create(ingress)
   if err != nil {
-    if !apierrs.IsAlreadyExists(err) {
+    if !kerrors.IsAlreadyExists(err) {
       return nil, err
     }
     ingress, err = r.Client.Extensions().Ingresses(env).Update(ingress)
@@ -332,3 +325,301 @@ func newIngress(payload *DeployResponse) *v1beta1.Ingress {
     TypeMeta: unversioned.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Ingress"},
   }
 }
+
+var (
+  sqlContainerName        = "cloudsql-instance-credentials"
+  cloudsqlContainerName   = "cloudsql-proxy"
+  cloudsqlImage           = "gcr.io/cloudsql-docker/gce-proxy:1.09"
+  sqlCredVolName          = "cloudsql-instance-credentials"
+)
+
+func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
+  // if err := c.Core().Secrets(ns).Delete(sqlContainerName); err != nil {
+  //   return nil
+  // }
+
+  dp, err := c.Extensions().Deployments(ns).Get(name)
+  if err != nil {
+    return err
+  }
+
+  found := false
+  for i, ctnr := range dp.Spec.Template.Spec.Containers {
+    for ctnr.Name == cloudsqlContainerName {
+      containers := dp.Spec.Template.Spec.Containers
+      dp.Spec.Template.Spec.Containers = append(containers[:i], containers[i+1:]...)
+      found = true
+      break
+    }
+  }
+
+  if !found {
+    return fmt.Errorf("resource %s not liked with %s", process, name)
+  }
+
+  if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
+    return err
+  }
+  return nil
+}
+
+func setupCloudProxy(c *kubernetes.Clientset, ns, name string, options map[string]string, cred []byte) error {
+  dp, err := c.Extensions().Deployments(ns).Get(name)
+  if err != nil {
+    return err
+  }
+
+  if _, err := c.Core().Secrets(ns).Create(&v1.Secret{
+    ObjectMeta: v1.ObjectMeta{
+      Name: sqlContainerName,
+    },
+    Data: map[string][]byte{
+      "credentials.json": cred,
+    },
+  }); err != nil {
+    if !kerrors.IsAlreadyExists(err) {
+      return err
+    }
+  }
+
+  dp = mergeSqlManifest(dp, options)
+  if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
+    return err
+  }
+  return nil
+}
+
+func mergeSqlManifest(dp *v1beta1.Deployment, options map[string]string) *v1beta1.Deployment {
+  containers := dp.Spec.Template.Spec.Containers
+  parts := strings.Split(options["DATABASE_URL"], "://")
+  port  := getDefaultPort(parts[0])
+
+  sqlContainer := v1.Container{
+    Command: []string{"/cloud_sql_proxy", "--dir=/cloudsql",
+                      fmt.Sprintf("-instances=%s=tcp:%d", options["INSTANCE_NAME"], port),
+                      "-credential_file=/secrets/cloudsql/credentials.json"},
+    Name:  cloudsqlContainerName,
+    Image: cloudsqlImage,
+    ImagePullPolicy: "IfNotPresent",
+    VolumeMounts: []v1.VolumeMount{
+      v1.VolumeMount{
+        Name: "cloudsql-instance-credentials",
+        MountPath: "/secrets/cloudsql",
+        ReadOnly: true,
+      },
+      v1.VolumeMount{
+        Name: "cloudsql",
+        MountPath: "/cloudsql",
+      },
+    },
+  }
+
+  found := false
+  for i, c := range containers {
+    if c.Name == cloudsqlContainerName {
+      containers[i] = sqlContainer
+      found = true
+    }
+  }
+
+  if !found {
+    containers = append(containers, sqlContainer)
+  }
+
+  dp.Spec.Template.Spec.Containers = containers
+
+  if !found {
+    volfound := false
+    dpvolumes := dp.Spec.Template.Spec.Volumes
+
+    for _, v := range dpvolumes {
+      if v.Name == sqlCredVolName {
+        volfound = true
+      }
+    }
+
+    if !volfound {
+      volumes := []v1.Volume{
+        v1.Volume{
+          Name: sqlCredVolName,
+          VolumeSource: v1.VolumeSource{
+            Secret: &v1.SecretVolumeSource{
+              SecretName: "cloudsql-instance-credentials",
+            },
+          },
+        },
+        v1.Volume{
+          Name: "cloudsql",
+          VolumeSource: v1.VolumeSource{
+            EmptyDir: &v1.EmptyDirVolumeSource{},
+          },
+        },
+      }
+
+      dp.Spec.Template.Spec.Volumes = append(dpvolumes, volumes...)
+    }
+  }
+
+  return dp
+}
+
+func waitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
+  log.Debugf("waiting for Deployment %s to get a newer generation (30s timeout)", name)
+  for i := 0; i < 30; i++ {
+    dp, err := c.Extensions().Deployments(ns).Get(name)
+    if err != nil { 
+      if kerrors.IsNotFound(err) {
+        time.Sleep(1 * time.Second)
+        continue
+      }
+      log.Fatal(err)
+    }
+
+    if dp.Status.ObservedGeneration >= dp.ObjectMeta.Generation {
+      log.Debugf("A newer generation was found for Deployment %s", name)
+      break
+    }
+    time.Sleep(1 * time.Second)
+  }
+}
+
+func waitUntilReady(c *kubernetes.Clientset, ns, name string) {
+  dp, err := c.Extensions().Deployments(ns).Get(name)
+  if err != nil { log.Fatal(err) }
+
+  labels := dp.Spec.Template.ObjectMeta.Labels
+  checkforFailedEvents(c, ns, labels)
+
+  timeout := 120
+  waited  := 0
+
+  log.Debugf("waiting for pods to get ready in Deployment %s (%ds timeout)", name, timeout)
+
+  for {
+    time.Sleep(1 * time.Second)
+
+    if waited >= timeout { break }
+
+    ready, availablePods := areReplicaReady(c, ns, name, labels)
+    if ready { break }
+
+    if waited > 0 && (waited % 10) == 0 {
+      log.Debugf("waited %ds and %d pods", waited, availablePods)
+    }
+
+    waited += 1
+  }
+
+  ready, _ := areReplicaReady(c, ns, name, labels)
+  if !ready {
+    handleNotReadyPods(c, ns, labels)
+  }
+}
+
+func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]string) {
+  selector := klabels.Set(labels).AsSelector()
+  res, err := c.Core().Pods(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+  if err != nil { log.Fatal(err) }
+
+  for _, pod := range res.Items {
+    if pod.Status.Phase != v1.PodRunning {
+      continue
+    }
+
+    name, ok := labels["name"]
+    if !ok { log.Fatal(fmt.Errorf("name not found in %+v", labels)) }
+
+    cstatus := v1.ContainerStatus{}
+    for _, cs := range pod.Status.ContainerStatuses {
+      if cs.Name == name {
+        cstatus = cs
+        break
+      }
+    }
+
+    log.Debugf("status: %s", toJson(cstatus))
+    if cstatus.Ready { continue }
+
+    res, err := podEvents(c, ns, &pod)
+    if err != nil { log.Fatal(err) }
+
+    for _, ev := range res.Items {
+      if ev.Reason == "Unhealthy" || ev.Reason == "Failed" {
+        log.Fatal(fmt.Errorf(ev.Message))
+      }
+    }
+  }
+}
+
+func podEvents(c *kubernetes.Clientset, ns string, pod *v1.Pod) (*v1.EventList, error) {
+  fields := map[string]string{
+    "involvedObject.name":      pod.ObjectMeta.Name,
+    "involvedObject.namespace": ns,
+    "involvedObject.uid":       string(pod.ObjectMeta.UID),
+  }
+
+  res, err := c.Core().Events(ns).List(v1.ListOptions{
+    FieldSelector: klabels.Set(fields).AsSelector().String(),
+    ResourceVersion: pod.ObjectMeta.ResourceVersion,
+  })
+  if err != nil { return res, err }
+
+  sort.Slice(res.Items, func(i, j int) bool {
+    return res.Items[j].LastTimestamp.Before(res.Items[i].LastTimestamp)
+  })
+
+  return res, err
+}
+
+func areReplicaReady(c *kubernetes.Clientset, ns,name string, labels map[string]string) (bool, int32) {
+  dp, err := c.Extensions().Deployments(ns).Get(name)
+  if err != nil { log.Fatal(err) }
+
+  desired := dp.Spec.Replicas
+  if desired == nil { return true, 0 }
+
+  status  := dp.Status
+  pods    := status.UpdatedReplicas
+
+  if status.UnavailableReplicas > 0 ||
+     status.Replicas != *desired || 
+     status.UpdatedReplicas != *desired ||
+     status.AvailableReplicas != *desired {
+      return false, pods
+  }
+
+  return true, pods
+}
+
+func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]string) {
+  selector := klabels.Set(labels).AsSelector()
+  res, err := c.Extensions().ReplicaSets(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+  if err != nil { log.Fatal(err) }
+
+  fields := map[string]string{
+    "involvedObject.kind":      "ReplicaSet",
+    "involvedObject.name" :     res.Items[0].ObjectMeta.Name,
+    "involvedObject.namespace": ns,
+    "involvedObject.uid":       string(res.Items[0].ObjectMeta.UID),
+  }
+
+  selector = klabels.Set(fields).AsSelector()
+  response, err := c.Core().Events(ns).List(v1.ListOptions{FieldSelector: selector.String()})
+
+  for _, event := range response.Items {
+    log.Debugf("event %s reason:%s", event.Message, event.Reason)
+
+    if event.Reason == "FailedCreate" {
+      log.Fatal(fmt.Errorf(
+        "Message:%s lastTimestamp:%v reason:%s count:%d", 
+        event.Message, event.LastTimestamp,
+        event.Reason, event.Count,
+      ))
+    }
+  }
+}
+
+
+
+
+

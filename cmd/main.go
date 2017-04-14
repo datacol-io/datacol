@@ -42,11 +42,6 @@ func main(){
     log.SetLevel(log.DebugLevel)
   }
 
-  if len(os.Args) > 0 && os.Args[1] == "kubectl" {
-    cmdKubectl(os.Args[2:])
-    return
-  }
-
   app := stdcli.New()
   app.Run(os.Args)
 }

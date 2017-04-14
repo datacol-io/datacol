@@ -9,18 +9,29 @@ import (
   "path/filepath"
   log "github.com/Sirupsen/logrus"
 
+  "gopkg.in/urfave/cli.v2"
+
   "github.com/dinesh/datacol/client"
   "github.com/dinesh/datacol/client/models"
   "github.com/dinesh/datacol/cmd/stdcli"
 )
 
-func cmdKubectl(args []string) {
+func init(){
+  stdcli.AddCommand(cli.Command{
+    Name:       "kubectl",
+    Usage:      "kubectl wrapper for datacol",
+    Action:     cmdKubectl,
+    SkipFlagParsing: true,
+  })
+}
+
+func cmdKubectl(c *cli.Context) {
   ct := client.Client{}
   if err := ct.SetStack(stdcli.GetStack()); err != nil {
     log.Fatal(err)
   }
 
-  excode := execute(ct.Stack.Name, args)
+  excode := execute(ct.Stack.Name, c.Args())
   os.Exit(excode)
 }
 

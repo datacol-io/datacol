@@ -15,7 +15,7 @@ import (
 )
 
 var (
-  stack404 = errors.New("Please create a stack with: $ dcol init")
+  stack404 = errors.New("stack not found. To create a new stack run `datacol init`")
 )
 
 func init() {

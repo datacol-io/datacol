@@ -16,6 +16,10 @@ import (
   "github.com/dinesh/datacol/client/models"
 )
 
+var (
+  databaseName = "app"
+)
+
 type initOptions struct {
   ClusterName   string
   MachineType   string
@@ -343,4 +347,10 @@ var mysqlInstanceYAML = `
       activationPolicy: '{{ .activation_policy }}'
       locationPreference:
         zone: {{ .zone }}
+- type: sqladmin.v1beta4.database
+  name: {{ .database }}
+  properties:
+    instance: $(ref.{{ .name }}.name)
+    charset: utf8mb4
+    collation: utf8mb4_general_ci
 `

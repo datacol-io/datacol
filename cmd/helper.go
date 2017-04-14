@@ -52,6 +52,7 @@ func confirm(s string, tries int) bool {
 
   return false
 }
+
 func slug(s string) string {
   return strings.Trim(re.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }

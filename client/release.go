@@ -51,8 +51,11 @@ func (c *Client) DeleteRelease(Id string) error {
 
 func (c *Client) DeployRelease(r *models.Release, port int, image, env string, wait bool) error {
   if image == "" {
-    image = fmt.Sprintf("gcr.io/%v/%v:%v", c.Stack.ProjectId, r.App, r.BuildId)
+    tag := r.BuildId
+    image = fmt.Sprintf("gcr.io/%v/%v:%v", c.Stack.ProjectId, r.App, tag)
   }
+
+  log.Debugf("---- Docker Image: %s", image)
 
   if env == "" {
     env = c.Stack.Name

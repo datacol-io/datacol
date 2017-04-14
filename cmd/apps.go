@@ -1,10 +1,13 @@
 package main
 
 import (
+  "os"
   "fmt"
   "errors"
   "gopkg.in/urfave/cli.v2"
+  log "github.com/Sirupsen/logrus"
   "github.com/dinesh/datacol/cmd/stdcli"
+  "k8s.io/client-go/pkg/util/validation"
 )
 
 func init(){
@@ -16,12 +19,7 @@ func init(){
       cli.Command{
         Name:   "create",
         Action: cmdAppCreate,
-        Flags: []cli.Flag{
-          cli.StringFlag{
-            Name: "name",
-            Usage: "name for an app",
-          },
-        },
+        Flags: []cli.Flag{appFlag},
       },
       cli.Command{
         Name:    "delete",
@@ -39,6 +37,25 @@ func init(){
       },
     },
   })
+
+  stdcli.AddCommand(cli.Command{
+    Name:     "restart",
+    Usage:    "restart an app",
+    Action:   cmdAppRestart,
+    Flags:    []cli.Flag{appFlag},
+  })
+}
+
+func cmdAppRestart(c *cli.Context) error {
+    _, app, err := getDirApp(".")
+  if err != nil { return err }
+
+  if err := getClient(c).Provider().AppRestart(app); err != nil {
+    return err
+  }
+
+  fmt.Println("Restarted")
+  return nil
 }
 
 func cmdAppsList(c *cli.Context) error {
@@ -55,16 +72,36 @@ func cmdAppsList(c *cli.Context) error {
 }
 
 func cmdAppCreate(c *cli.Context) error {
-  _, name, err := getDirApp(".")
-  if err != nil { return err }
+  name := c.String("app")
+  if len(name) == 0 {
+    _, n, err := getDirApp(".")
+    if err != nil { return err }
+    name = n
+  }
+
+  errs := validation.IsDNS1123Label(name)
+  if len(errs) > 0 {
+    fmt.Printf("Invalid app name: %s\n", name)
+    for _, e := range errs {
+      log.Errorf(e)
+    }
+    os.Exit(1)
+  }
+
   client := getClient(c)
-  
   app, err := client.CreateApp(name)
   if err != nil { return err }
 
-  fmt.Printf("%s is created.\n", app.Name)
+  if err = stdcli.WriteSetting("app", name); err != nil {
+    return err
+  }
 
-  return stdcli.WriteSetting("stack", client.Stack.Name)
+  if err = stdcli.WriteSetting("stack", client.Stack.Name); err != nil {
+    return err
+  }
+
+  fmt.Printf("%s is created.\n", app.Name)
+  return nil
 }
 
 func cmdAppInfo(c *cli.Context) error {
@@ -98,5 +135,5 @@ func cmdAppDelete(c *cli.Context) error {
 }
 
 func app404Err(name string) error {
-  return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running $ dcol apps create", name))
+  return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running $ datacol apps create", name))
 }

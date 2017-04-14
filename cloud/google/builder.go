@@ -5,12 +5,13 @@ import (
   "bytes"
   "encoding/json"
   "time"
+  "io/ioutil"
+  "strings"
 
   log "github.com/Sirupsen/logrus"
   "google.golang.org/api/storage/v1"
   "google.golang.org/api/cloudbuild/v1"
   "google.golang.org/api/googleapi"
-  "github.com/skratchdot/open-golang/open"
 
   "github.com/dinesh/datacol/client/models"
 )
@@ -75,9 +76,10 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
   logURL := fmt.Sprintf("https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
   log.Infof("Logs at %s", logURL)
 
-  status, err := waitForOp(service, g.Project, remoteId)
-  if status == "FAILED" {
-    open.Start(logURL)
+  storageService := g.storage()
+  status, err := waitForOp(service, storageService, g.Project, bucket, remoteId)
+  if status != "SUCCESS" {
+    return fmt.Errorf("build failed. Please try again.")
   }
   return err
 }
@@ -95,9 +97,28 @@ func getBuildID(op *cloudbuild.Operation) (string, error) {
   return bm.Build.Id, nil
 }
 
-func waitForOp(svc *cloudbuild.Service, projectId string, id string) (string, error) {
+func showBuildLogs(service *storage.Service, bucket, key string, index int) int {
+  resp, err := service.Objects.Get(bucket, key).Download()
+  if err != nil { log.Fatal(err) }
+  defer resp.Body.Close()
+
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil { log.Fatal(err) }
+
+  parts := strings.Split(string(body), "\n")
+  for _, line := range parts[index:] {
+    if len(line) > 0 && line != "\n" {
+      fmt.Println(line)
+    }
+  }
+
+  return len(parts)-1
+}
+
+func waitForOp(svc *cloudbuild.Service, stsvc *storage.Service, projectId, bucket, id string) (string, error) {
   log.Infof("Waiting on build %s", id)
   status := "PENDING"
+  index  := 0
 
   for {
     time.Sleep(2 * time.Second)
@@ -105,13 +126,14 @@ func waitForOp(svc *cloudbuild.Service, projectId string, id string) (string, er
     if err != nil { log.Fatal(err) }
     status = b.Status
 
+    logKey := fmt.Sprintf("log-%s.txt", id)
+    index = showBuildLogs(stsvc, bucket, logKey, index)
+
     if b.Status != "WORKING" && b.Status != "QUEUED" {
       fmt.Printf("\n")
       log.Infof("Build status: %s", b.Status)
       break
-    } else {
-      fmt.Print(".")
-    }
+    } 
   }
 
   return status, nil

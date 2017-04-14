@@ -27,9 +27,9 @@ import (
   "k8s.io/client-go/kubernetes"
   _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-  kerrors "k8s.io/client-go/pkg/api/errors"
   kapi "k8s.io/client-go/pkg/api/v1"
   klabels "k8s.io/client-go/pkg/labels"
+
   "google.golang.org/api/googleapi"
   "github.com/dinesh/datacol/client/models"
 )
@@ -43,68 +43,6 @@ type GCPCloud struct {
   BucketName     string
   Zone           string
   ServiceKey     []byte
-}
-
-func (g *GCPCloud) AppCreate(app *models.App) error { 
-  return nil
-}
-
-func (g *GCPCloud) AppGet(name string) (*models.App, error) {
-  app := &models.App{Name: name}
-
-  ns := g.DeploymentName
-  kube, err := getKubeClientset(ns)
-  if err != nil { return app, err }
-
-  svc, err := kube.Core().Services(ns).Get(name)
-  if err != nil { return app, err }
-
-  if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
-    ing := svc.Status.LoadBalancer.Ingress[0]
-    if len(ing.Hostname) > 0 {
-      app.HostPort = ing.Hostname
-    } else {
-      port := 80
-      if len(svc.Spec.Ports) > 0 {
-        port = int(svc.Spec.Ports[0].Port)
-      }
-      app.HostPort = fmt.Sprintf("%s:%d", ing.IP, port)
-    }
-  }
-
-  return app, nil
-}
-
-func (g *GCPCloud) AppDelete(name string) error {
-  ns := g.DeploymentName
-  kube, err := getKubeClientset(ns)
-  if err != nil { return err }
-
-  if _, err := kube.Core().Services(ns).Get(name); err != nil {
-    if !kerrors.IsNotFound(err) {
-      return err
-    }
-  } else if err := kube.Core().Services(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-    return err
-  }
-
-  if _, err = kube.Extensions().Deployments(ns).Get(name); err != nil {
-    if !kerrors.IsNotFound(err) {
-      return err
-    }
-  } else if err = kube.Extensions().Deployments(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-    return err
-  }
-
-  if _, err = kube.Extensions().Ingresses(ns).Get(name); err != nil {
-    if !kerrors.IsNotFound(err) {
-      return err
-    }
-  } else if err = kube.Extensions().Ingresses(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-    return err
-  }
-
-  return nil
 }
 
 func (g *GCPCloud) EnvironmentGet(name string) (models.Environment, error) {
@@ -124,7 +62,6 @@ func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
   gskey := fmt.Sprintf("%s.env", name)
   return g.gsPut(g.BucketName, gskey, body)
 }
-
 
 func (g *GCPCloud) GetRunningPods(app string) (string, error) {
   ns := g.DeploymentName
@@ -161,11 +98,14 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOpt
   pod, err := runningPods(ns, app, c)
   if err != nil { return err }
 
+  log.Debugf("Getting logs from pod %s", pod)
+  
   req := c.Core().RESTClient().Get().
-    Namespace(g.DeploymentName).
+    Namespace(ns).
     Name(pod).
     Resource("pods").
     SubResource("log").
+    Param("container", app).
     Param("follow", strconv.FormatBool(opts.Follow))
 
   if opts.Since > 0 {

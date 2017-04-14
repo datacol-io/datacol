@@ -2,6 +2,7 @@ package google
 
 import (
   "fmt"
+  "strings"
 
   "gopkg.in/yaml.v2"
   log "github.com/Sirupsen/logrus"
@@ -79,9 +80,12 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
   }
 
   switch kind {
-  case "mysql", "postgres":
-    params["region"] = getGcpRegion(g.Zone)
-    params["zone"]   = g.Zone
+  case "mysql", "_postgres":
+    params["region"]    = getGcpRegion(g.Zone)
+    params["zone"]      = g.Zone
+    params["database"]  = "app"
+  default:
+    log.Fatal("%s is not supported yet.", kind)
   }
 
   sqlj2 := compileTmpl(mysqlInstanceYAML, params)
@@ -97,16 +101,16 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
   switch kind {
   case "mysql", "postgres":
-    user := g.DeploymentName
     passwd, err := generatePassword()
     if err != nil { return nil, err }
-    if err := g.createSqlUser(user, passwd, name); err != nil {
+    if err := g.createSqlUser(kind, passwd, name); err != nil {
       return nil, err
     }
 
     instName := fmt.Sprintf("%s:%s:%s", g.Project, params["region"], name)
     exports["INSTANCE_NAME"] = instName
-    exports["INSTANCE_AUTH"] = fmt.Sprintf("%s:%s", user, passwd)
+    hostName := fmt.Sprintf("127.0.0.1:%d", getDefaultPort(kind))
+    exports["DATABASE_URL"]  = fmt.Sprintf("%s://%s:%s@%s/%s", kind, kind, passwd, hostName, databaseName)
   }
 
   rs.Exports    = exports
@@ -114,3 +118,76 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
   return rs, nil
 }
+
+func (g *GCPCloud) ResourceLink(app string, rs *models.Resource) (*models.Resource, error) {
+  switch rs.Kind {
+  case "postgres", "mysql":
+    // setup cloud-sql proxy
+    ns := g.DeploymentName
+    kube, err := getKubeClientset(ns)
+    if err != nil { return nil, err }
+
+    if err = setupCloudProxy(kube, ns, app, rs.Exports, g.ServiceKey); err != nil {
+      return nil, err
+    }
+
+    // todo refactor env setting
+    env, err := g.EnvironmentGet(app)
+    if err != nil { return nil, err }
+
+    env["DATABASE_URL"]  = rs.Exports["DATABASE_URL"]
+    env["INSTANCE_NAME"] = rs.Exports["INSTANCE_NAME"]
+
+    data := ""
+    for key, value := range env {
+      data += fmt.Sprintf("%s=%s\n", key, value)
+    }
+
+    if err = g.EnvironmentSet(app, strings.NewReader(data)); err != nil {
+      return nil, err 
+    }
+
+    if err = g.AppRestart(app); err != nil {
+      log.Debugf("error: %+v", err)
+    }
+
+  default:
+    return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
+  }
+
+  return rs, nil
+}
+
+func (g *GCPCloud) ResourceUnlink(app string, rs *models.Resource) (*models.Resource, error) {
+  switch rs.Kind {
+  case "postgres", "mysql":
+    // setup cloud-sql proxy
+    ns := g.DeploymentName
+    kube, err := getKubeClientset(ns)
+    if err != nil { return nil, err }
+
+    if err = tearCloudProxy(kube, ns, app, rs.Name); err != nil {
+      return nil, err
+    }
+
+  default:
+    return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
+  }
+
+  return rs, nil
+}
+
+func getDefaultPort(kind string) int {
+  var port int
+  switch kind {
+  case "mysql":
+    port = 3306
+  case "postgres":
+    port = 5432
+  default:
+    log.Fatal(fmt.Errorf("No default port defined for %s", kind))
+  }
+
+  return port
+}
+

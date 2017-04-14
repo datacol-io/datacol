@@ -28,7 +28,7 @@ func (c *Client) GetApps() (models.Apps, error) {
   return res, nil
 }
 
-func (c *Client) GetApp(name string) (*models.App, error) {  
+func (c *Client) GetApp(name string) (*models.App, error) {
   item, err := getV(a_bucket, []byte(name))
 
   if err != nil { return nil, err }

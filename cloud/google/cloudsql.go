@@ -28,3 +28,15 @@ func (g *GCPCloud) createSqlUser(user, password, instance string) error {
 func (g *GCPCloud) getSqlInstance(name string) (*sql.DatabaseInstance, error) {
   return g.sqlAdmin().Instances.Get(g.Project, name).Do()
 }
+
+func (g *GCPCloud) createSqlDatabase(name, instance string) error {
+  if _, err := g.sqlAdmin().Databases.Insert(g.Project, instance, &sql.Database{
+    Name:     name,
+    Project:  g.Project,
+    Instance: instance,
+  }).Do(); err != nil {
+    return err
+  }
+
+  return nil
+}

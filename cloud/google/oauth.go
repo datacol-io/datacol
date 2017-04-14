@@ -155,7 +155,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
   if getUserEmail {
     if err := addToContactList(token.AccessToken); err != nil {
-      log.WithFields(log.Fields{"project": projectId}).Warn(err)
+      log.WithFields(log.Fields{"project": projectId}).Debugf(err.Error())
     }
   }
 
@@ -193,6 +193,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
         &crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
         &crmgr.Binding{Role: "roles/container.developer", Members: members},
         &crmgr.Binding{Role: "roles/cloudsql.admin", Members: members},
+        &crmgr.Binding{Role: "roles/cloudsql.client", Members: members},
       },
   }
 
