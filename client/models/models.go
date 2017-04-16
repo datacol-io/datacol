@@ -1,92 +1,91 @@
 package models
 
 import (
-  "time"
-  "log"
-  "path/filepath"
-  homedir "github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
+	"log"
+	"path/filepath"
+	"time"
 )
 
 var (
-  ConfigPath string
-  DbFilename string
-  SvaFilename string
+	ConfigPath  string
+	DbFilename  string
+	SvaFilename string
 )
 
-func init(){
-  DbFilename = "dcol.db"
-  SvaFilename = "sva.json"
+func init() {
+	DbFilename = "dcol.db"
+	SvaFilename = "sva.json"
 
-  home, err := homedir.Dir()
-  if err != nil {
-    log.Fatal(err)
-  }
-  ConfigPath = filepath.Join(home, ".datacol")
+	home, err := homedir.Dir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	ConfigPath = filepath.Join(home, ".datacol")
 }
 
 type Stack struct {
-  Name      string
-  ProjectId string
-  Bucket    string
-  Zone      string
-  ServiceKey []byte
+	Name       string
+	ProjectId  string
+	Bucket     string
+	Zone       string
+	ServiceKey []byte
 }
 
 type App struct {
-  Name      string    `json: "name"`
-  Status    string    `json: "status"`
-  Release   string    `json: "release"`
-  HostPort  string    `json: "host_port"`
-  Stack     string    `json: "stack"`
+	Name     string `json: "name"`
+	Status   string `json: "status"`
+	Release  string `json: "release"`
+	HostPort string `json: "host_port"`
+	Stack    string `json: "stack"`
 }
 
 type Apps []*App
 
 type Build struct {
-  Id        string      `json: "id"`
-  App       string      `json: "app"`
-  Status    string      `json: "status"`
-  Stack     string      `json: "stack"`
-  CreatedAt time.Time   `json: "created_at"`
+	Id        string    `json: "id"`
+	App       string    `json: "app"`
+	Status    string    `json: "status"`
+	Stack     string    `json: "stack"`
+	CreatedAt time.Time `json: "created_at"`
 }
 
 type Builds []*Build
 
 type Release struct {
-  Id      string      `json: "id"`
-  App     string      `json: "app"`
-  Stack   string      `json: "stack"`
-  BuildId string      `json: "buildId"`
-  Status  string      `json: "status"`
-  CreatedAt time.Time `json: "created_at"`
+	Id        string    `json: "id"`
+	App       string    `json: "app"`
+	Stack     string    `json: "stack"`
+	BuildId   string    `json: "buildId"`
+	Status    string    `json: "status"`
+	CreatedAt time.Time `json: "created_at"`
 }
 
 type Releases []*Release
 
 type BuildOptions struct {
-  Id  string
-  Key string
+	Id  string
+	Key string
 }
 
 type Environment map[string]string
 
 type LogStreamOptions struct {
-  Follow bool
-  Since  time.Duration
+	Follow bool
+	Since  time.Duration
 }
 
-
 type Resource struct {
-  Name    string     `json: "name"`
-  Status  string     `json: "status"`
-  Kind    string     `json: "kind"`
-  URL     string     `json: "url"`
+	Name   string `json: "name"`
+	Status string `json: "status"`
+	Kind   string `json: "kind"`
+	URL    string `json: "url"`
 
-  Apps    []string            `json: "apps"`
-  Exports map[string]string  `json:"exports"`
+	Apps    []string          `json: "apps"`
+	Exports map[string]string `json:"exports"`
 
-  Parameters map[string]string  `json:"-"`
-  Outputs    map[string]string  `json:"-"`
+	Parameters map[string]string `json:"-"`
+	Outputs    map[string]string `json:"-"`
 }
 
 type Resources []Resource
