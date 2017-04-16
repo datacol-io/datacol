@@ -1,7 +1,6 @@
 package main
 
 import (
-  // "time"
   "fmt"
   "gopkg.in/urfave/cli.v2"
   "github.com/dinesh/datacol/cmd/stdcli"
@@ -47,8 +46,12 @@ func init(){
         Value: "n1-standard-1",
       },
       &cli.BoolTFlag{
-        Name: "preemptible",
+        Name:  "preemptible",
         Usage: "use preemptible vm",
+      },
+      &cli.BoolFlag{
+        Name:   "opt-out",
+        Usage:  "Opt-out from getting updates by email by `datacol`",
       },
     },
   })
@@ -83,7 +86,8 @@ func cmdStackCreate(c *cli.Context) error {
   if err != nil {
     //todo: handler err better, 1. formatting error 2) no stack found
     ac.StackName = stackName
-    if st, err = ac.CreateStack(project, zone, bucket); err != nil {
+
+    if st, err = ac.CreateStack(project, zone, bucket, c.BoolT("opt-out")); err != nil {
       return err
     }
   }

@@ -19,12 +19,14 @@ const (
   googleOauth2ClientID     = "992213213700-ideosm7la1g4jf2rghn0n89achgstehb.apps.googleusercontent.com"
   googleOauth2ClientSecret = "JaJjVGA5c6tSdluQdfFqNau8"
   saName = "dcolctl"
-  getUserEmail = true
 )
 
-var gauthConfig goauth2.Config
-var projectId string
-var pNumber int64
+var (
+  gauthConfig goauth2.Config
+  projectId string
+  pNumber int64
+  emailOptin = true
+)
 
 type authPacket struct {
   Cred []byte
@@ -33,7 +35,9 @@ type authPacket struct {
   PNumber   int64
 }
 
-func CreateCredential(rackName, projectId string) authPacket {
+func CreateCredential(rackName, projectId string, optout bool) authPacket {
+  emailOptin = !optout
+
   listener, err := net.Listen("tcp", "127.0.0.1:0")
   if err != nil {
     return authPacket{Err: err}
@@ -47,7 +51,7 @@ func CreateCredential(rackName, projectId string) authPacket {
     "https://www.googleapis.com/auth/sqlservice.admin",
   }
 
-  if getUserEmail {
+  if emailOptin {
     scopes = append(scopes, "https://www.googleapis.com/auth/userinfo.email")
   }
 
@@ -153,10 +157,8 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
   log.Debugf("Selected ProjectId: %s", projectId)
 
-  if getUserEmail {
-    if err := addToContactList(token.AccessToken); err != nil {
-      log.WithFields(log.Fields{"project": projectId}).Debugf(err.Error())
-    }
+  if emailOptin {
+    go subscribeMe(token.AccessToken)
   }
 
   iamClient, err := iam.New(client)
@@ -269,4 +271,10 @@ func mergeBindings(bindings []*crmgr.Binding) []*crmgr.Binding {
   }
 
   return rb
+}
+
+func subscribeMe(accessToken string){
+  if err := addToContactList(accessToken); err != nil {
+    log.WithFields(log.Fields{"project": projectId}).Debugf(err.Error())
+  } 
 }

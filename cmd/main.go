@@ -17,7 +17,7 @@ var (
 )
 
 func init(){
-  verbose = os.Getenv("DEBUG") == "1" || os.Getenv("DEBUG") == "true"
+  verbose = os.Getenv("DATACOL_DEBUG") == "1" || os.Getenv("DATACOL_DEBUG") == "true"
 
   stackFlag = cli.StringFlag{
     Name:   "stack",

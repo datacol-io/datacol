@@ -13,10 +13,10 @@ var (
   credNotFound = errors.New("Invalid credentials")
 )
 
-func (c *Client) CreateStack(project, zone, bucket string) (*Stack, error) {
+func (c *Client) CreateStack(project, zone, bucket string, optout bool) (*Stack, error) {
   stackName := c.StackName
 
-  resp := provider.CreateCredential(stackName, project)
+  resp := provider.CreateCredential(stackName, project, optout)
   if resp.Err != nil {
     return nil, resp.Err
   }
