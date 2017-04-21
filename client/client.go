@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,9 +13,6 @@ import (
 	"github.com/joyrexus/buckets"
 )
 
-var (
-	stack404 = errors.New("stack not found. To create a new stack run `datacol init`")
-)
 
 func init() {
 	root := models.ConfigPath
@@ -99,7 +95,7 @@ func (c *Client) SetStack(name string) error {
 	c.StackName = name
 	st, err := FindStack(name)
 	if err != nil {
-		return stack404
+		return stdcli.Stack404
 	}
 
 	c.Stack = st
@@ -108,7 +104,7 @@ func (c *Client) SetStack(name string) error {
 
 func (c *Client) Provider() cloud.Provider {
 	if c.Stack == nil {
-		log.Fatal(stack404)
+		log.Fatal(stdcli.Stack404)
 	}
 
 	return cloud.Getgcp(

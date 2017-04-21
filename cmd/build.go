@@ -20,7 +20,7 @@ import (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:      "build",
-		UsageText: "build an app",
+		Usage:     "build an app from Dockerfile",
 		Action:    cmdBuild,
 	})
 }

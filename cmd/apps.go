@@ -24,6 +24,7 @@ func init() {
 			cli.Command{
 				Name:   "delete",
 				Action: cmdAppDelete,
+				Flags:  []cli.Flag{appFlag},
 			},
 			cli.Command{
 				Name:   "info",

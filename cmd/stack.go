@@ -58,7 +58,7 @@ func init() {
 
 	stdcli.AddCommand(cli.Command{
 		Name:      "destroy",
-		UsageText: "destroy current stack",
+		Usage:     "destroy a stack from GCP",
 		Action:    cmdStackDestroy,
 	})
 }

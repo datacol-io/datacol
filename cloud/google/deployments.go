@@ -361,3 +361,31 @@ var mysqlInstanceYAML = `
     charset: utf8mb4
     collation: utf8mb4_general_ci
 `
+
+var pgsqlInstanceYAML = `
+- type: sqladmin.v1beta4.instance
+  name: '{{ .name }}'
+  properties:
+    region: '{{ .region }}'
+    databaseVersion: '{{ .db_version }}'
+    settings:
+      memory: '{{ .memory }}'
+      cpu: '{{ .cpu }}'
+      backupConfiguration:
+        enabled: true
+        binaryLogEnabled: true
+      ipConfiguration:
+        ipv4Enabled: true
+        requireSsl: true
+      dataDiskSizeGb: 10
+      dataDiskType: PD_SSD
+      activationPolicy: '{{ .activation_policy }}'
+      locationPreference:
+        zone: {{ .zone }}
+- type: sqladmin.v1beta4.database
+  name: {{ .database }}
+  properties:
+    instance: $(ref.{{ .name }}.name)
+    charset: utf8mb4
+    collation: utf8mb4_general_ci
+`

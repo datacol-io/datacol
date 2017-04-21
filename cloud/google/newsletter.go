@@ -16,7 +16,7 @@ var (
 
 func init() {
 	listName = "datacol"
-	apiHost = "https://datacol-api-oafhasvseh.now.sh"
+	apiHost = "http://cli-analytics.datacol.io"
 }
 
 type gprofile struct {

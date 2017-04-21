@@ -17,7 +17,7 @@ import (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:      "run",
-		UsageText: "execute a command in an app",
+		Usage: 		 "execute a command in an app",
 		Action:    cmdAppRun,
 	})
 }

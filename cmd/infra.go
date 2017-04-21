@@ -21,8 +21,8 @@ var resourceTypes = []ResourceType{
 		"--tier=db-n1-standard-1,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
 	},
 	{
-		"postgres",
-		"--tier=db-n1-standard-1,--activation-policy=ALWAYS,--db-version=POSTGRES_9_6",
+		"_postgres",
+		"--cpu=1,--memory=3840MiB,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
 	},
 }
 

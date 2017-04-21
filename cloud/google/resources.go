@@ -87,18 +87,23 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		Kind: kind,
 	}
 
+	var sqlj2 string
 	switch kind {
-	case "mysql", "_postgres":
-		params["region"] = getGcpRegion(g.Zone)
-		params["zone"] = g.Zone
+	case "mysql":
+		params["region"] 	 = getGcpRegion(g.Zone)
+		params["zone"] 		 = g.Zone
 		params["database"] = "app"
+  	sqlj2 = compileTmpl(mysqlInstanceYAML, params)
+	case "postgres":
+		params["region"] 	 = getGcpRegion(g.Zone)
+		params["zone"] 		 = g.Zone
+		params["database"] = "app"
+  	sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
 	default:
 		log.Fatal("%s is not supported yet.", kind)
 	}
 
-	sqlj2 := compileTmpl(mysqlInstanceYAML, params)
 	content := manifest.ExpandedConfig + sqlj2
-
 	log.Debugf("\nDM config: %+v", content)
 
 	if err = g.updateDeployment(service, dp, manifest, content); err != nil {
