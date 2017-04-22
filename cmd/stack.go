@@ -83,6 +83,13 @@ func cmdStackCreate(c *cli.Context) error {
 	ac := getAnonClient(c)
 	st, err := client.FindStack(stackName)
 
+	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account.
+It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to automate
+all away to give you a better deployment experience.
+`
+
+  fmt.Printf(message)
+
 	if err != nil {
 		//todo: handler err better, 1. formatting error 2) no stack found
 		ac.StackName = stackName
@@ -94,7 +101,7 @@ func cmdStackCreate(c *cli.Context) error {
 
 	ac.SetStack(st.Name)
 
-	fmt.Printf("Please ENABLE following apis in your Google Account: \n")
+	fmt.Printf("Please ENABLE following apis in your Google account: \n")
 	confirm(fmt.Sprintf("[Deployment Manager V2]: Open follwoing link in browser\n %s", consoleURL("deploymentmanager", st.ProjectId)), 2)
 	confirm(fmt.Sprintf("\n[Container Builder]: Open follwoing link in browser\n %s", consoleURL("cloudbuild.googleapis.com", st.ProjectId)), 2)
 
