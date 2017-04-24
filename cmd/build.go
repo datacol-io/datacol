@@ -42,7 +42,7 @@ func cmdBuild(c *cli.Context) error {
 	return executeBuildDir(c, build, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
+func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {	
 	fmt.Print("Creating tarball ...")
 
 	tar, err := createTarball(dir)
@@ -75,6 +75,16 @@ func createTarball(base string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if _, err := os.Stat("Dockerfile"); os.IsNotExist(err) {
+		if _, err = os.Stat("app.yaml"); err == nil {
+			fmt.Println("Generating Dockerfile from app.yaml")
+			if err = gaeTodocker(); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 
 	var includes = []string{"."}
 	var excludes []string
