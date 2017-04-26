@@ -102,8 +102,8 @@ all away to give you a better deployment experience.
 	ac.SetStack(st.Name)
 
 	fmt.Printf("\nPlease ENABLE following APIs in your Google account: \n")
-	confirm(fmt.Sprintf("\n[Deployment Manager V2]: Open follwoing link in browser and click ENABLE\n %s", consoleURL("deploymentmanager", st.ProjectId)), 2)
-	confirm(fmt.Sprintf("\n[Container Builder]: Open follwoing link in browser and click ENABLE\n %s", consoleURL("cloudbuild.googleapis.com", st.ProjectId)), 2)
+	confirm(fmt.Sprintf("\n[Deployment Manager V2]: Open following link in browser and click ENABLE\n %s", consoleURL("deploymentmanager", st.ProjectId)), 2)
+	confirm(fmt.Sprintf("\n[Container Builder]: Open following link in browser and click ENABLE\n %s", consoleURL("cloudbuild.googleapis.com", st.ProjectId)), 2)
 
 	if err = ac.DeployStack(st, cluster, machineType, nodes, preemptible); err != nil {
 		return err
