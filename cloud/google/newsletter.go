@@ -38,7 +38,8 @@ func subscribe(pf *gprofile) error {
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("invalid response code:%d", response.StatusCode)
+		b, _ := ioutil.ReadAll(response.Body)
+		return fmt.Errorf("invalid response code:%d body: %s", response.StatusCode, string(b))
 	}
 
 	return nil

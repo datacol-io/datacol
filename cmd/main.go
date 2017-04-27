@@ -65,7 +65,10 @@ func getDirApp(path string) (string, string, error) {
 		return abs, "", err
 	}
 
-	app := filepath.Base(abs)
+	app := stdcli.GetSetting("app")
+	if len(app) == 0 {
+		app = filepath.Base(abs)
+	}
 	return abs, app, nil
 }
 

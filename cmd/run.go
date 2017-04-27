@@ -23,10 +23,6 @@ func init() {
 }
 
 func cmdAppRun(c *cli.Context) error {
-	if err := gaeTodocker(); err != nil {
-		return err
-	}
-
 	return fmt.Errorf("testing")
 
 	_, name, err := getDirApp(".")
