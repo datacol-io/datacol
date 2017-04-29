@@ -85,7 +85,11 @@ func cmdStackCreate(c *cli.Context) error {
 
 	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account.
 It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to automate
-all away to give you a better deployment experience.
+all away to give you a better deployment experience. 
+
+It will need GCP credentials to install/uninstall the Datacol platform into your GCP account. These credentials will only 
+be used to communicate between this installer running on your computer and the AWS API.
+
 `
 
   fmt.Printf(message)
