@@ -1,19 +1,43 @@
 package main
 
 import (
-	"bufio"
-	"errors"
-	"fmt"
-	"github.com/dinesh/datacol/cmd/stdcli"
-	"log"
 	"os"
+	"fmt"
+	"log"
+	"bufio"
+	"bytes"
+	"errors"
 	"regexp"
 	"strings"
+	"io/ioutil"
+	"text/template"
+  "gopkg.in/yaml.v2"
+
+	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
 var (
 	crashing = false
 	re       = regexp.MustCompile("[^a-z0-9]+")
+	dkrYAML  = `FROM gcr.io/google-appengine/{{ .Runtime }}
+
+{{- range .RuntimeSteps}}
+{{.}}
+{{- end }}
+
+ENV PORT 8080
+{{- range $key, $value := .EnvVariables }}
+ENV {{ $key }} {{ $value }}
+{{- end }}
+
+{{- range .Network.Ports }}
+EXPOSE {{.}}
+{{- end }}
+EXPOSE 8080
+
+ADD . /app
+CMD {{ .Entrypoint }}
+`
 )
 
 func handlePanic() {
@@ -61,4 +85,90 @@ func slug(s string) string {
 
 func consoleURL(api, pid string) string {
 	return fmt.Sprintf("https://console.developers.google.com/apis/api/%s/overview?project=%s", api, pid)
+}
+
+type appYAMLConfig struct {
+	Runtime 			string 	`yaml:"runtime"`
+	Env     			string 	`yaml:"env"`
+	Entrypoint  	string  `yaml:"entrypoint"`
+	EnvVariables 	map[string]string `yaml:"env_variables"`
+	RuntimeConfig struct {
+		PythonVersion string `yaml:"python_version"`
+	} `yaml:"runtime_config"`
+	Network struct {
+		Ports []string `yaml:"forwarded_ports"`
+	} `yaml:"network"`
+	Resources struct {
+		CPU 			string `yaml:"cpu"`
+		Memory 		string `yaml:"memory_gb"`
+		Disksize 	string `yaml:"disk_size_gb"`
+	} `yaml:"resources`
+	HealthCheck struct {
+		EnableCheck 	bool 	`yaml:"enable_health_check"`
+		CheckInternal int32 `yaml:"check_interval_sec"`
+		Timeout 			int32 `yaml:"timeout_sec"`
+	} `yaml:"health_check"`
+	RuntimeSteps []string
+}
+
+func gnDockerFromGAE(filename string) error {
+	data, err := ioutil.ReadFile("app.yaml")
+	if err != nil { return err }
+
+	var appyaml appYAMLConfig
+  if err := yaml.Unmarshal(data, &appyaml); err != nil {
+		return err
+	}
+
+	if !(appyaml.Env == "flex" || appyaml.Env == "custom") {
+		fmt.Printf("\nignoring %s env", appyaml.Env)
+		return nil
+	}
+
+	if len(appyaml.Entrypoint) > 0 {
+		appyaml.Entrypoint = entrypoint(appyaml.Entrypoint)
+	} else {
+		appyaml.Entrypoint = "/bin/sh -c"
+	}
+	
+	appyaml.RuntimeSteps = getruntimeSteps(&appyaml)
+
+	fmt.Printf("%+v\n", appyaml)
+  tmpl, err := template.New("ct").Parse(dkrYAML)
+	if err != nil { return err }
+
+	var doc bytes.Buffer
+	if err := tmpl.Execute(&doc, appyaml); err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filename, doc.Bytes(), 0700)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func entrypoint(cmd string) string {
+	parts := strings.Split(cmd, " ")
+	return `["` + strings.Join(parts, `", "`) + `"]`
+}
+
+func getruntimeSteps(spec *appYAMLConfig) []string {
+	steps := []string{}
+	switch spec.Runtime {
+	case "python":
+		steps = append(steps, []string{
+			"RUN virtualenv /env",
+			"ENV VIRTUAL_ENV /env",
+			"ENV PATH /env/bin:$PATH",
+			"ADD requirements.txt /app/requirements.txt",
+			"RUN pip install -r /app/requirements.txt",
+		}...)
+	default:
+		log.Fatal(fmt.Errorf("unsupported runtime %s", spec.Runtime))
+	}
+
+	return steps
 }

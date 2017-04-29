@@ -1,7 +1,7 @@
 
-BUILD_CMD = go build -i cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go cmd/helper.go cmd/run.go cmd/infra.go
+BUILD_CMD = go build -i cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go
 
-all: clean osx linux sync
+all: osx linux sync
 
 osx: dist
 	env GOOS=darwin GOARCH=386 $(BUILD_CMD)
@@ -20,6 +20,3 @@ dist:
 
 sync:
 	gsutil cp -a public-read dist/* gs://datacol-distros
-
-clean:
-	rm -rf dist

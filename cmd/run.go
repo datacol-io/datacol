@@ -1,15 +1,15 @@
 package main
 
 import (
-	"bytes"
+	"os"
 	"fmt"
+	"bytes"
+	"os/exec"
+	"syscall"
+	"path/filepath"
+
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"syscall"
-
 	"github.com/dinesh/datacol/client/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
@@ -23,6 +23,8 @@ func init() {
 }
 
 func cmdAppRun(c *cli.Context) error {
+	return fmt.Errorf("testing")
+
 	_, name, err := getDirApp(".")
 	if err != nil {
 		return err

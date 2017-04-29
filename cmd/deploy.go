@@ -30,6 +30,10 @@ func init() {
 				Name:  "wait, w",
 				Usage: "Wait for the app become available",
 			},
+			cli.StringFlag{
+				Name:  "file, f",
+				Usage: "path of Dockerfile or app.yml",
+			},
 		},
 	})
 }

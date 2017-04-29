@@ -12,6 +12,8 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 	"gopkg.in/urfave/cli.v2"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/client/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -42,14 +44,12 @@ func cmdBuild(c *cli.Context) error {
 	return executeBuildDir(c, build, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
-	fmt.Print("Creating tarball ...")
-
+func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {	
 	tar, err := createTarball(dir)
 	if err != nil {
 		return err
 	}
-
+	
 	fmt.Println("OK")
 
 	objectName, err := uploadBuildSource(c, b, tar)
@@ -75,6 +75,24 @@ func createTarball(base string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	dockerfileName := "Dockerfile"
+
+	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
+  	filename := "Dockerfile"
+		if _, err = os.Stat("app.yaml"); err == nil {
+			fmt.Printf("Trying to generate %s from app.yaml ...", filename)
+			if err = gnDockerFromGAE(filename); err != nil {
+				fmt.Println(" failed")
+				log.Warn(err)
+			} else {
+				fmt.Println(" done")
+				dockerfileName = filename
+			}
+		}
+	}
+
+	fmt.Print("Creating tarball ...")
 
 	var includes = []string{"."}
 	var excludes []string

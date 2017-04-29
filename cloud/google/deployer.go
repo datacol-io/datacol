@@ -3,7 +3,6 @@ package google
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/golang/glog"
 	"sort"
 	"strings"
 	"time"
@@ -106,7 +105,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 	waitUntilUpdated(d.Client, payload.Environment, dpname)
 	waitUntilReady(d.Client, payload.Environment, dpname)
 
-	glog.V(2).Infof("Deployment completed: %+v", svc.ObjectMeta.Name)
+	log.Infof("Deployment completed: %+v", svc.ObjectMeta.Name)
 	return res, nil
 }
 
@@ -495,7 +494,7 @@ func waitUntilReady(c *kubernetes.Clientset, ns, name string) {
 	timeout := 120
 	waited := 0
 
-	log.Debugf("waiting for pods to get ready in Deployment %s (%ds timeout)", name, timeout)
+	log.Infof("waiting for pods to get ready in Deployment %s (%ds timeout)", name, timeout)
 
 	for {
 		time.Sleep(1 * time.Second)
@@ -510,7 +509,7 @@ func waitUntilReady(c *kubernetes.Clientset, ns, name string) {
 		}
 
 		if waited > 0 && (waited%10) == 0 {
-			log.Debugf("waited %ds and %d pods", waited, availablePods)
+			log.Infof("waited %ds and %d pods", waited, availablePods)
 		}
 
 		waited += 1
