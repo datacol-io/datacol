@@ -20,8 +20,8 @@ func init() {
 }
 
 type gprofile struct {
-	Name  string `json: "name"`
-	Email string `json: "email"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 // subscribe for datacol newsletter
@@ -75,5 +75,4 @@ func addToContactList(token string) error {
 		log.Debugf("user profile: %+v", gp)
 		return subscribe(&gp)
 	}
-	return nil
 }

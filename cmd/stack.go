@@ -57,9 +57,9 @@ func init() {
 	})
 
 	stdcli.AddCommand(cli.Command{
-		Name:      "destroy",
-		Usage:     "destroy a stack from GCP",
-		Action:    cmdStackDestroy,
+		Name:   "destroy",
+		Usage:  "destroy a stack from GCP",
+		Action: cmdStackDestroy,
 	})
 }
 
@@ -92,7 +92,7 @@ be used to communicate between this installer running on your computer and the A
 
 `
 
-  fmt.Printf(message)
+	fmt.Printf(message)
 
 	if err != nil {
 		//todo: handler err better, 1. formatting error 2) no stack found

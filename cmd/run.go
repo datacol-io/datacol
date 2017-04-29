@@ -1,30 +1,28 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"bytes"
+	"fmt"
+	"os"
 	"os/exec"
-	"syscall"
 	"path/filepath"
+	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"gopkg.in/urfave/cli.v2"
 	"github.com/dinesh/datacol/client/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
 	stdcli.AddCommand(cli.Command{
-		Name:      "run",
-		Usage: 		 "execute a command in an app",
-		Action:    cmdAppRun,
+		Name:   "run",
+		Usage:  "execute a command in an app",
+		Action: cmdAppRun,
 	})
 }
 
 func cmdAppRun(c *cli.Context) error {
-	return fmt.Errorf("testing")
-
 	_, name, err := getDirApp(".")
 	if err != nil {
 		return err

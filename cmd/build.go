@@ -21,9 +21,9 @@ import (
 
 func init() {
 	stdcli.AddCommand(cli.Command{
-		Name:      "build",
-		Usage:     "build an app from Dockerfile",
-		Action:    cmdBuild,
+		Name:   "build",
+		Usage:  "build an app from Dockerfile",
+		Action: cmdBuild,
 	})
 }
 
@@ -44,12 +44,12 @@ func cmdBuild(c *cli.Context) error {
 	return executeBuildDir(c, build, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {	
+func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
 	tar, err := createTarball(dir)
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Println("OK")
 
 	objectName, err := uploadBuildSource(c, b, tar)
@@ -79,7 +79,7 @@ func createTarball(base string) ([]byte, error) {
 	dockerfileName := "Dockerfile"
 
 	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
-  	filename := "Dockerfile"
+		filename := "Dockerfile"
 		if _, err = os.Stat("app.yaml"); err == nil {
 			fmt.Printf("Trying to generate %s from app.yaml ...", filename)
 			if err = gnDockerFromGAE(filename); err != nil {

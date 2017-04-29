@@ -11,10 +11,10 @@ import (
 
 type manifestConfig struct {
 	Resources []struct {
-		Name       string                 `yaml: "name"`
-		Type       string                 `yaml: "type"`
-		Properties map[string]interface{} `yaml: "properties"`
-	} `yaml: "resources"`
+		Name       string                 `yaml:"name"`
+		Type       string                 `yaml:"type"`
+		Properties map[string]interface{} `yaml:"properties"`
+	} `yaml:"resources"`
 }
 
 func (g *GCPCloud) ResourceDelete(name string) error {
@@ -90,17 +90,17 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 	var sqlj2 string
 	switch kind {
 	case "mysql":
-		params["region"] 	 = getGcpRegion(g.Zone)
-		params["zone"] 		 = g.Zone
+		params["region"] = getGcpRegion(g.Zone)
+		params["zone"] = g.Zone
 		params["database"] = "app"
-  	sqlj2 = compileTmpl(mysqlInstanceYAML, params)
+		sqlj2 = compileTmpl(mysqlInstanceYAML, params)
 	case "postgres":
-		params["region"] 	 = getGcpRegion(g.Zone)
-		params["zone"] 		 = g.Zone
+		params["region"] = getGcpRegion(g.Zone)
+		params["zone"] = g.Zone
 		params["database"] = "app"
-  	sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
+		sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
 	default:
-		log.Fatal("%s is not supported yet.", kind)
+		log.Fatal(fmt.Errorf("%s is not supported yet.", kind))
 	}
 
 	content := manifest.ExpandedConfig + sqlj2

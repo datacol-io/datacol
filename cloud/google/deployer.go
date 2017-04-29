@@ -44,7 +44,7 @@ type DeployRequest struct {
 		Name  string `json:"name"`
 		Value string `json:"value"`
 	} `json:"secrets"`
-	SSL  bool              `json: "ssl"`
+	SSL  bool              `json:"ssl"`
 	Tags map[string]string `json:"tags"`
 	Zone string            `json:"zone"`
 }
@@ -197,7 +197,6 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 
 	if err == nil {
 		found = true
-
 		i, _ := findContainer(d, payload.ServiceID)
 		if i >= 0 {
 			d.Spec.Template.Spec.Containers[i] = newContainer(payload)

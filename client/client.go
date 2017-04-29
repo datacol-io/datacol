@@ -13,7 +13,6 @@ import (
 	"github.com/joyrexus/buckets"
 )
 
-
 func init() {
 	root := models.ConfigPath
 	if _, err := os.Stat(root); err != nil {

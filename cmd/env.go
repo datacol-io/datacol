@@ -10,9 +10,9 @@ import (
 
 func init() {
 	stdcli.AddCommand(cli.Command{
-		Name:      "env",
-		Usage:     "manage environment variables for an app",
-		Action:    cmdConfigList,
+		Name:   "env",
+		Usage:  "manage environment variables for an app",
+		Action: cmdConfigList,
 		Subcommands: []cli.Command{
 			{
 				Name:      "set",

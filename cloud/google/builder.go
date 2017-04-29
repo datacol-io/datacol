@@ -37,7 +37,7 @@ func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
 
 func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptions) error {
 	service := g.cloudbuilder()
-	bucket  := g.BucketName
+	bucket := g.BucketName
 
 	log.Infof("Building from gs://%s/%s", bucket, gskey)
 	tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, opts.Id)

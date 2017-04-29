@@ -192,13 +192,10 @@ func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
 				log.Errorf("sqlAdmin Operation failed: %v, Canceling ..", last)
 				return last
 			}
-			return nil
 		default:
 			return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
 		}
 	}
-
-	return nil
 }
 
 func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {

@@ -1,17 +1,18 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"log"
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
-	"io/ioutil"
 	"text/template"
-  "gopkg.in/yaml.v2"
 
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
@@ -88,10 +89,10 @@ func consoleURL(api, pid string) string {
 }
 
 type appYAMLConfig struct {
-	Runtime 			string 	`yaml:"runtime"`
-	Env     			string 	`yaml:"env"`
-	Entrypoint  	string  `yaml:"entrypoint"`
-	EnvVariables 	map[string]string `yaml:"env_variables"`
+	Runtime       string            `yaml:"runtime"`
+	Env           string            `yaml:"env"`
+	Entrypoint    string            `yaml:"entrypoint"`
+	EnvVariables  map[string]string `yaml:"env_variables"`
 	RuntimeConfig struct {
 		PythonVersion string `yaml:"python_version"`
 	} `yaml:"runtime_config"`
@@ -99,30 +100,51 @@ type appYAMLConfig struct {
 		Ports []string `yaml:"forwarded_ports"`
 	} `yaml:"network"`
 	Resources struct {
-		CPU 			string `yaml:"cpu"`
-		Memory 		string `yaml:"memory_gb"`
-		Disksize 	string `yaml:"disk_size_gb"`
-	} `yaml:"resources`
+		CPU      string `yaml:"cpu"`
+		Memory   string `yaml:"memory_gb"`
+		Disksize string `yaml:"disk_size_gb"`
+	} `yaml:"resources"`
 	HealthCheck struct {
-		EnableCheck 	bool 	`yaml:"enable_health_check"`
+		EnableCheck   bool  `yaml:"enable_health_check"`
 		CheckInternal int32 `yaml:"check_interval_sec"`
-		Timeout 			int32 `yaml:"timeout_sec"`
+		TimeoutTh     int32 `yaml:"timeout_sec"`
+		HealthyTh     int32 `yaml:"healthy_threshold"`
+		UnhealthyTh   int32 `yaml:"unhealthy_threshold"`
+		RestartTh     int32 `yaml:"restart_threshold"`
 	} `yaml:"health_check"`
+	AutomaticScalinng struct {
+		MinInstances int32 `yaml:"min_num_instances"`
+		MaxInstances int32 `yaml:"max_num_instances"`
+	} `yaml:"automatic_scaling"`
+	ManualScaling struct {
+		Instances int32 `yaml:"instances"`
+	} `yaml:"manual_scaling"`
 	RuntimeSteps []string
 }
 
-func gnDockerFromGAE(filename string) error {
+func parseAppYAML() (*appYAMLConfig, error) {
 	data, err := ioutil.ReadFile("app.yaml")
-	if err != nil { return err }
+	if err != nil {
+		return nil, err
+	}
 
 	var appyaml appYAMLConfig
-  if err := yaml.Unmarshal(data, &appyaml); err != nil {
-		return err
+	if err := yaml.Unmarshal(data, &appyaml); err != nil {
+		return nil, err
 	}
 
 	if !(appyaml.Env == "flex" || appyaml.Env == "custom") {
 		fmt.Printf("\nignoring %s env", appyaml.Env)
-		return nil
+		return &appyaml, nil
+	}
+
+	return nil, fmt.Errorf("invalid app.yaml file.")
+}
+
+func gnDockerFromGAE(filename string) error {
+	appyaml, err := parseAppYAML()
+	if err != nil {
+		return err
 	}
 
 	if len(appyaml.Entrypoint) > 0 {
@@ -130,12 +152,14 @@ func gnDockerFromGAE(filename string) error {
 	} else {
 		appyaml.Entrypoint = "/bin/sh -c"
 	}
-	
-	appyaml.RuntimeSteps = getruntimeSteps(&appyaml)
 
-	fmt.Printf("%+v\n", appyaml)
-  tmpl, err := template.New("ct").Parse(dkrYAML)
-	if err != nil { return err }
+	appyaml.RuntimeSteps = getruntimeSteps(appyaml)
+
+	log.Debugf(toJson(appyaml))
+	tmpl, err := template.New("ct").Parse(dkrYAML)
+	if err != nil {
+		return err
+	}
 
 	var doc bytes.Buffer
 	if err := tmpl.Execute(&doc, appyaml); err != nil {
@@ -171,4 +195,12 @@ func getruntimeSteps(spec *appYAMLConfig) []string {
 	}
 
 	return steps
+}
+
+func toJson(object interface{}) string {
+	dump, err := json.MarshalIndent(object, " ", "  ")
+	if err != nil {
+		log.Fatal(fmt.Errorf("dumping json: %v", err))
+	}
+	return string(dump)
 }

@@ -79,8 +79,6 @@ func CreateCredential(rackName, projectId string, optout bool) authPacket {
 		listener.Close()
 		return msg
 	}
-
-	return authPacket{Err: fmt.Errorf("create credentials")}
 }
 
 type callbackHandler struct {

@@ -28,6 +28,7 @@ def build_all
 end
 
 def push_all
+  build_all
   binary_dir = "#{$bucket_prefix}/binaries"
   latest_txt_path = "#{binary_dir}/latest.txt"
   version_dir = "dist/#{$version}"
@@ -43,7 +44,7 @@ end
 def push_zip
   version_dir = "dist/#{$version}"
 
-  { darwin: 'darwin-386', linux: 'linux-amd64' }.each do |zipbin, name|
+  { osx: 'darwin-386', linux: 'linux-amd64' }.each do |zipbin, name|
     with_cmd("pushd #{version_dir} && \
              cp #{$cmd_name}-#{name} datacol && \
              zip #{zipbin}.zip datacol && \
@@ -66,6 +67,5 @@ end
 if ARGV.size > 0
   send(ARGV[0])
 else
-  build_all
   push_all
 end

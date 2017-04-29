@@ -9,9 +9,9 @@ import (
 
 func init() {
 	stdcli.AddCommand(cli.Command{
-		Name:      "logs",
-		Usage:     "streams logs for an app",
-		Action:    cmdAppLogStream,
+		Name:   "logs",
+		Usage:  "streams logs for an app",
+		Action: cmdAppLogStream,
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  "follow, f",
