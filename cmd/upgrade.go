@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "upgrade",
 		Usage:  "upgrade datacol to latest version",
 		Action: cmdUpgrade,

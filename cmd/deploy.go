@@ -2,37 +2,39 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/client/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "deploy",
-		Usage:  "deploy an app in cluster",
+		Usage:  "deploy an app",
 		Action: cmdDeploy,
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "image, i",
 				Usage: "docker image to use",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "port, p",
 				Usage: "service port",
 				Value: 8080,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "build, b",
 				Usage: "Build id to use",
 			},
-			cli.BoolTFlag{
+			&cli.BoolFlag{
 				Name:  "wait, w",
 				Usage: "Wait for the app become available",
+				Value: true,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "file, f",
-				Usage: "path of Dockerfile or app.yml",
+				Usage: "path of Dockerfile or app.yaml",
 			},
 		},
 	})
@@ -47,6 +49,7 @@ func cmdDeploy(c *cli.Context) error {
 	client := getClient(c)
 	app, err := client.GetApp(name)
 	if err != nil {
+		log.Warn(err)
 		return app404Err(name)
 	}
 
@@ -59,7 +62,7 @@ func cmdDeploy(c *cli.Context) error {
 			return err
 		}
 	} else {
-		b, err := client.GetBuild(buildId)
+		b, err := client.GetBuild(name, buildId)
 		if err != nil {
 			return err
 		}
@@ -71,13 +74,7 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	fmt.Printf("Deploying build %s\n", build.Id)
-	r := client.NewRelease(build)
-
-	port := c.Int("port")
-	wait := c.BoolT("wait")
-	if err = client.DeployRelease(r, port, c.String("image"), c.String("env"), wait); err != nil {
-		return err
-	}
+	_, err = client.BuildRelease(build, c.Bool("wait"))
 
 	app, _ = client.GetApp(name)
 	if len(app.HostPort) > 0 {

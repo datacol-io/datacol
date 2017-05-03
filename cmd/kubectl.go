@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:            "kubectl",
 		Usage:           "kubectl wrapper for datacol",
 		Action:          cmdKubectl,
@@ -25,14 +24,13 @@ func init() {
 	})
 }
 
-func cmdKubectl(c *cli.Context) {
+func cmdKubectl(c *cli.Context) error {
 	ct := client.Client{}
-	if err := ct.SetStack(stdcli.GetStack()); err != nil {
-		log.Fatal(err)
-	}
+	ct.SetFromEnv()
 
-	excode := execute(ct.Stack.Name, c.Args())
+	excode := execute(ct.StackName, c.Args().Slice())
 	os.Exit(excode)
+	return nil
 }
 
 func execute(env string, args []string) int {

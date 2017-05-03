@@ -1,6 +1,7 @@
 package google
 
 import (
+	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/deploymentmanager/v2"
 	iam "google.golang.org/api/iam/v1"
+	"google.golang.org/api/option"
 	"google.golang.org/api/sqladmin/v1beta4"
 	"google.golang.org/api/storage/v1"
 
@@ -32,6 +34,7 @@ import (
 
 	"github.com/dinesh/datacol/client/models"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/grpc"
 )
 
 var _jwtClient *http.Client
@@ -46,6 +49,8 @@ type GCPCloud struct {
 }
 
 func (g *GCPCloud) EnvironmentGet(name string) (models.Environment, error) {
+	g.fetchStack()
+
 	gskey := fmt.Sprintf("%s.env", name)
 	data, err := g.gsGet(g.BucketName, gskey)
 	if err != nil {
@@ -59,6 +64,8 @@ func (g *GCPCloud) EnvironmentGet(name string) (models.Environment, error) {
 }
 
 func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
+	g.fetchStack()
+
 	gskey := fmt.Sprintf("%s.env", name)
 	return g.gsPut(g.BucketName, gskey, body)
 }
@@ -215,6 +222,25 @@ func (g *GCPCloud) iam() *iam.Service {
 	}
 
 	return svc
+}
+
+func (g *GCPCloud) datastore() *datastore.Client {
+	os.Unsetenv("DATASTORE_EMULATOR_HOST")
+	svapath := filepath.Join(models.ConfigPath, g.DeploymentName, models.SvaFilename)
+
+	client, err := datastore.NewClient(
+		context.TODO(), g.Project,
+		option.WithServiceAccountFile(svapath),
+		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5*time.Second)),
+		option.WithGRPCDialOption(grpc.WithBlock()),
+		option.WithGRPCDialOption(grpc.WithTimeout(30*time.Second)),
+	)
+
+	if err != nil {
+		log.Fatal(fmt.Errorf("datastore client %s", err))
+	}
+
+	return client
 }
 
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {

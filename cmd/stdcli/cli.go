@@ -16,7 +16,7 @@ import (
 var (
 	Binary      string
 	Version     string
-	Commands    []cli.Command
+	Commands    []*cli.Command
 	localappdir string
 	Stack404 		error
 )
@@ -25,7 +25,7 @@ func init() {
 	Version = "1.0.0-alpha.3"
 	localappdir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
-	Commands = []cli.Command{}
+	Commands = []*cli.Command{}
   Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")
 }
 
@@ -52,12 +52,11 @@ func GetStack() string {
 
 	if stack == "" {
 		Error(Stack404)
-		// Error(fmt.Errorf("no stack found, Please run $] datacol init"))
 	}
 	return stack
 }
 
-func AddCommand(cmd cli.Command) {
+func AddCommand(cmd *cli.Command) {
 	Commands = append(Commands, cmd)
 }
 

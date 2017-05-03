@@ -54,7 +54,7 @@ type DeployResponse struct {
 	NodePort int           `json:"nodePort"`
 }
 
-func NewDeployer(name string) (*Deployer, error) {
+func newDeployer(name string) (*Deployer, error) {
 	c, err := getKubeClientset(name)
 	if err != nil {
 		return nil, err

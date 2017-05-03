@@ -12,20 +12,20 @@ import (
 
 var (
 	verbose   = false
-	stackFlag cli.StringFlag
-	appFlag   cli.StringFlag
+	stackFlag *cli.StringFlag
+	appFlag   *cli.StringFlag
 )
 
 func init() {
 	verbose = os.Getenv("DATACOL_DEBUG") == "1" || os.Getenv("DATACOL_DEBUG") == "true"
 
-	stackFlag = cli.StringFlag{
-		Name:   "stack",
-		Usage:  "stack name",
-		EnvVar: "DATACOL_STACK,STACK",
+	stackFlag = &cli.StringFlag{
+		Name:    "stack",
+		Usage:   "stack name",
+		EnvVars: []string{"DATACOL_STACK", "STACK"},
 	}
 
-	appFlag = cli.StringFlag{
+	appFlag = &cli.StringFlag{
 		Name:  "app, a",
 		Usage: "app name inferred from current directory if not specified",
 	}
@@ -47,15 +47,11 @@ func main() {
 }
 
 func getClient(c *cli.Context) *client.Client {
-	stack := stdcli.GetStack()
 	conn := &client.Client{
 		Version: c.App.Version,
 	}
 
-	if err := conn.SetStack(stack); err != nil {
-		log.Fatal(err)
-	}
-
+	conn.SetFromEnv()
 	return conn
 }
 
@@ -72,6 +68,9 @@ func getDirApp(path string) (string, string, error) {
 	return abs, app, nil
 }
 
-func getAnonClient(c *cli.Context) *client.Client {
-	return &client.Client{}
+func getAnonClient(c *cli.Context, name, pid string) *client.Client {
+	return &client.Client{
+		StackName: name,
+		ProjectId: pid,
+	}
 }

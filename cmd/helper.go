@@ -80,6 +80,15 @@ func confirm(s string, tries int) bool {
 	return false
 }
 
+func prompt(s string) {
+	r := bufio.NewReader(os.Stdin)
+
+	fmt.Printf("%s\nPress any key to continue ", s)
+	if _, err := r.ReadString('\n'); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func slug(s string) string {
 	return strings.Trim(re.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }

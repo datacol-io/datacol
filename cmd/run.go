@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "run",
 		Usage:  "execute a command in an app",
 		Action: cmdAppRun,
@@ -38,7 +38,7 @@ func cmdAppRun(c *cli.Context) error {
 		return err
 	}
 
-	excode := execute_exec(ctl.Stack.Name, pod, c.Args())
+	excode := execute_exec(ctl.StackName, pod, c.Args().Slice())
 	os.Exit(excode)
 	return nil
 }

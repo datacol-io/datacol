@@ -9,11 +9,11 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "env",
 		Usage:  "manage environment variables for an app",
 		Action: cmdConfigList,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:      "set",
 				UsageText: "set env variables",
@@ -36,7 +36,7 @@ func cmdConfigList(c *cli.Context) error {
 
 	ct := getClient(c)
 	if _, err = ct.GetApp(name); err != nil {
-		return err
+		return fmt.Errorf("failed to fetch app: %v", err)
 	}
 
 	env, err := ct.Provider().EnvironmentGet(name)
@@ -71,7 +71,7 @@ func cmdConfigSet(c *cli.Context) error {
 	}
 
 	// handle args
-	for _, value := range c.Args() {
+	for _, value := range c.Args().Slice() {
 		data += fmt.Sprintf("%s\n", value)
 	}
 
@@ -90,7 +90,7 @@ func cmdConfigUnset(c *cli.Context) error {
 		return err
 	}
 
-	keyvar := c.Args()[0]
+	keyvar := c.Args().First()
 	data := ""
 	for key, value := range env {
 		if key != keyvar {

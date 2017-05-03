@@ -8,16 +8,16 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "logs",
 		Usage:  "streams logs for an app",
 		Action: cmdAppLogStream,
 		Flags: []cli.Flag{
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "follow, f",
 				Usage: "keep streaming new log output (default)",
 			},
-			cli.DurationFlag{
+			&cli.DurationFlag{
 				Name:  "since",
 				Usage: "show logs since a duration (e.g. 10m or 1h2m10s)",
 				Value: 2 * time.Minute,

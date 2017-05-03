@@ -25,43 +25,48 @@ func init() {
 }
 
 type Stack struct {
-	Name       string
-	ProjectId  string
-	Bucket     string
-	Zone       string
-	ServiceKey []byte
+	Name       string `datastore:"name"`
+	Bucket     string `datastore:"bucket,noindex"`
+	Zone       string `datastore:"zone,noindex"`
+	ServiceKey []byte `datastore:"service_key,noindex"`
+	ProjectId  string `datastore:"project_id"`
+	PNumber    int64  `datastore:"project_number"`
 }
 
 type App struct {
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	Release  string `json:"release"`
-	HostPort string `json:"host_port"`
-	Stack    string `json:"stack"`
+	Name     		string `datastore:"name"`
+	Status   		string `datastore:"status"`
+	ReleaseId  	string `datastore:"release_id"`
+	HostPort 		string `datastore:"host_port"`
 }
 
 type Apps []*App
 
 type Build struct {
-	Id        string    `json:"id"`
-	App       string    `json:"app"`
-	Status    string    `json:"status"`
-	Stack     string    `json:"stack"`
-	CreatedAt time.Time `json:"created_at"`
+	Id        string    `datastore:"id"`
+	App       string    `datastore:"app"`
+	RemoteId  string    `datastore:"remote_id,noindex"`
+	Status    string    `datastore:"status,noindex"`
+	CreatedAt time.Time `datastore:"created_at,noindex"`
 }
 
 type Builds []*Build
 
 type Release struct {
-	Id        string    `json:"id"`
-	App       string    `json:"app"`
-	Stack     string    `json:"stack"`
-	BuildId   string    `json:"buildId"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	Id        string    `datastore:"id"`
+	App       string    `datastore:"app"`
+	BuildId   string    `datastore:"buildId"`
+	Status    string    `datastore:"status"`
+	CreatedAt time.Time `datastore:"created_at"`
 }
 
 type Releases []*Release
+
+type ReleaseOptions struct {
+	Port int
+	Env string
+	Wait bool
+}
 
 type BuildOptions struct {
 	Id  string
@@ -76,16 +81,16 @@ type LogStreamOptions struct {
 }
 
 type Resource struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	Kind   string `json:"kind"`
-	URL    string `json:"url"`
+	Name   string `datastore:"name"`
+	Status string `datastore:"status,noindex"`
+	Kind   string `datastore:"kind,noindex"`
+	URL    string `datastore:"url,noindex"`
 
-	Apps    []string          `json:"apps"`
-	Exports map[string]string `json:"exports"`
+	Apps    []string          `datastore:"apps,noindex"`
+	Exports map[string]string `datastore:"exports,noindex"`
 
-	Parameters map[string]string `json:"-"`
-	Outputs    map[string]string `json:"-"`
+	Parameters map[string]string `datastore:"-"`
+	Outputs    map[string]string `datastore:"-"`
 }
 
 type Resources []Resource

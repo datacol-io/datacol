@@ -18,7 +18,7 @@ type ResourceType struct {
 var resourceTypes = []ResourceType{
 	{
 		"mysql",
-		"--tier=db-n1-standard-1,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
+		"--tier=db-g1-small,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
 	},
 	{
 		"_postgres",
@@ -29,11 +29,11 @@ var resourceTypes = []ResourceType{
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "infra",
 		Usage:  "Managed GCP stack resources and infrastructure",
 		Action: cmdResourceList,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:            "create",
 				Usage:           "create a new resource",
@@ -78,10 +78,8 @@ func cmdResourceList(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Name: %s\n", client.Stack.Name)
-	fmt.Printf("GCP Project: %s\n", client.Stack.ProjectId)
-	fmt.Printf("Zone: %s\n", client.Stack.Zone)
-	fmt.Printf("Bucket: %s\n", client.Stack.Bucket)
+	fmt.Printf("Name: %s\n", client.StackName)
+	fmt.Printf("GCP Project: %s\n", client.ProjectId)
 	fmt.Println("\nResource:")
 
 	for _, r := range resp {
@@ -131,12 +129,12 @@ func cmdResourceDelete(c *cli.Context) error {
 }
 
 func cmdResourceCreate(c *cli.Context) error {
-	t, err := checkResourceType(c.Args()[0])
+	t, err := checkResourceType(c.Args().First())
 	if err != nil {
 		return err
 	}
 
-	args := append(strings.Split(t.args, ","), c.Args()[1:]...)
+	args := append(strings.Split(t.args, ","), c.Args().Tail()...)
 	stdcli.EnsureOnlyFlags(c, args)
 	options := stdcli.FlagsToOptions(c, args)
 
@@ -172,7 +170,7 @@ func cmdLinkCreate(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	name := c.Args()[0]
+	name := c.Args().First()
 
 	err = getClient(c).CreateResourceLink(app, name)
 	if err != nil {
@@ -188,7 +186,7 @@ func cmdLinkDelete(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	name := c.Args()[0]
+	name := c.Args().First()
 
 	err = getClient(c).DeleteResourceLink(app, name)
 	if err != nil {

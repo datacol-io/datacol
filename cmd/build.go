@@ -14,15 +14,14 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/client/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "build",
-		Usage:  "build an app from Dockerfile",
+		Usage:  "build an app from Dockerfile or app.yaml(App-Engine)",
 		Action: cmdBuild,
 	})
 }
@@ -155,13 +154,11 @@ func finishBuild(c *cli.Context, b *models.Build, objectName string) error {
 	bopts := &models.BuildOptions{Key: objectName, Id: b.Id}
 
 	err := getClient(c).Provider().BuildCreate(b.App, objectName, bopts)
+
 	if err != nil {
 		b.Status = "failed"
 	} else {
 		b.Status = "success"
-		if err := client.Persist([]byte("builds"), b.Id, b); err != nil {
-			return err
-		}
 	}
 
 	return err

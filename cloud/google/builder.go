@@ -2,9 +2,12 @@ package google
 
 import (
 	"bytes"
+	"cloud.google.com/go/datastore"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,15 +15,63 @@ import (
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
+	"k8s.io/client-go/pkg/util/intstr"
 
 	"github.com/dinesh/datacol/client/models"
 )
 
+const (
+	buildKind   = "Build"
+	releaseKind = "Release"
+)
+
+func (g *GCPCloud) BuildGet(app, id string) (*models.Build, error) {
+	var b models.Build
+	if err := g.datastore().Get(context.TODO(), g.nestedKey(buildKind, id), &b); err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+func (g *GCPCloud) BuildDelete(app, id string) error {
+	return g.datastore().Delete(context.TODO(), g.nestedKey(buildKind, id))
+}
+
+func (g *GCPCloud) BuildList(app string, limit int) (models.Builds, error) {
+	q := datastore.NewQuery(buildKind).
+		Ancestor(g.stackKey()).
+		Filter("app = ", app).
+		Limit(limit)
+
+	var builds models.Builds
+	_, err := g.datastore().GetAll(context.TODO(), q, &builds)
+
+	return builds, err
+}
+
+func (g *GCPCloud) ReleaseList(app string, limit int) (models.Releases, error) {
+	q := datastore.NewQuery(releaseKind).
+		Ancestor(g.stackKey()).
+		Filter("app = ", app).
+		Limit(limit)
+
+	var rs models.Releases
+	_, err := g.datastore().GetAll(context.TODO(), q, &rs)
+
+	return rs, err
+}
+
+func (g *GCPCloud) ReleaseDelete(app, id string) error {
+	return g.datastore().Delete(context.TODO(), g.nestedKey(releaseKind, id))
+}
+
 func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
+	g.fetchStack()
+
 	service := g.storage()
 	bucket := g.BucketName
 
-	log.Infof("Pushing code to gs://%s/%s", g.BucketName, gskey)
+	log.Infof("Pushing code to gs://%s/%s", bucket, gskey)
 
 	object := &storage.Object{
 		Bucket:      bucket,
@@ -36,6 +87,8 @@ func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
 }
 
 func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptions) error {
+	g.fetchStack()
+
 	service := g.cloudbuilder()
 	bucket := g.BucketName
 
@@ -73,6 +126,18 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
 		return fmt.Errorf("failed to get Id for build %v", err)
 	}
 
+	build := &models.Build{
+		App:       app,
+		Id:        opts.Id,
+		RemoteId:  remoteId,
+		Status:    "created",
+		CreatedAt: time.Now(),
+	}
+
+	if _, err := g.datastore().Put(context.TODO(), g.nestedKey(buildKind, build.Id), build); err != nil {
+		return err
+	}
+
 	logURL := fmt.Sprintf("https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
 	log.Infof("Logs at %s", logURL)
 
@@ -82,6 +147,55 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
 		return fmt.Errorf("build failed. Please try again.")
 	}
 	return err
+}
+
+func (g *GCPCloud) BuildRelease(b *models.Build) (*models.Release, error) {
+	image := fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, b.App, b.Id)
+	log.Debugf("---- Docker Image: %s", image)
+	g.fetchStack()
+
+	envVars, err := g.EnvironmentGet(b.App)
+	if err != nil {
+		return nil, err
+	}
+
+	deployer, err := newDeployer(g.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
+
+	port := 8080
+	if pv, ok := envVars["PORT"]; ok {
+		p, err := strconv.Atoi(pv)
+		if err != nil {
+			return nil, err
+		}
+		port = p
+	}
+
+	if _, err := deployer.Run(&DeployRequest{
+		ServiceID:     b.App,
+		Image:         image,
+		Replicas:      1,
+		Environment:   g.DeploymentName,
+		Zone:          g.Zone,
+		ContainerPort: intstr.FromInt(port),
+		EnvVars:       envVars,
+	}); err != nil {
+		return nil, err
+	}
+
+	r := &models.Release{
+		Id:        generateId("R", 5),
+		App:       b.App,
+		BuildId:   b.Id,
+		Status:    "created",
+		CreatedAt: time.Now(),
+	}
+
+	_, err = g.datastore().Put(context.TODO(), g.nestedKey(releaseKind, r.Id), r)
+
+	return r, err
 }
 
 func getBuildID(op *cloudbuild.Operation) (string, error) {

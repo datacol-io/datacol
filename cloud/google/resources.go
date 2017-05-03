@@ -1,12 +1,19 @@
 package google
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/client/models"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	databaseName = "app"
+	resourceKind = "Resource"
 )
 
 type manifestConfig struct {
@@ -17,7 +24,19 @@ type manifestConfig struct {
 	} `yaml:"resources"`
 }
 
+func (g *GCPCloud) ResourceGet(name string) (*models.Resource, error) {
+	rs := new(models.Resource)
+	err := g.datastore().Get(
+		context.TODO(),
+		g.nestedKey(resourceKind, name),
+		&rs,
+	)
+	return rs, err
+}
+
 func (g *GCPCloud) ResourceDelete(name string) error {
+	g.fetchStack()
+
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
 	if err != nil {
@@ -49,10 +68,28 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 	}
 
 	log.Debugf("content: %+v", content)
-	return g.updateDeployment(service, dp, manifest, content)
+	if err := g.updateDeployment(service, dp, manifest, content); err != nil {
+		return err
+	}
+
+	return g.datastore().Delete(context.TODO(), g.nestedKey(resourceKind, name))
 }
 
 func (g *GCPCloud) ResourceList() (models.Resources, error) {
+	g.fetchStack()
+
+	var rs models.Resources
+
+	q := datastore.NewQuery(resourceKind).Ancestor(g.stackKey())
+	if _, err := g.datastore().GetAll(context.TODO(), q, &rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
+func (g *GCPCloud) resourceListFromStack() (models.Resources, error) {
+
 	resp := models.Resources{}
 	service := g.deploymentmanager()
 	_, manifest, err := getManifest(service, g.Project, g.DeploymentName)
@@ -76,6 +113,8 @@ func (g *GCPCloud) ResourceList() (models.Resources, error) {
 }
 
 func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*models.Resource, error) {
+	g.fetchStack()
+
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
 	if err != nil {
@@ -131,10 +170,25 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 	rs.Exports = exports
 	rs.Parameters = params
 
+	if _, err := g.datastore().Put(
+		context.TODO(),
+		g.nestedKey(resourceKind, name),
+		rs,
+	); err != nil {
+		return nil, err
+	}
+
 	return rs, nil
 }
 
-func (g *GCPCloud) ResourceLink(app string, rs *models.Resource) (*models.Resource, error) {
+func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
+	g.fetchStack()
+
+	rs, err := g.ResourceGet(name)
+	if err != nil {
+		return nil, err
+	}
+
 	switch rs.Kind {
 	case "postgres", "mysql":
 		// setup cloud-sql proxy
@@ -174,10 +228,25 @@ func (g *GCPCloud) ResourceLink(app string, rs *models.Resource) (*models.Resour
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
 
+	if _, err := g.datastore().Put(
+		context.TODO(),
+		g.nestedKey(resourceKind, rs.Name),
+		rs,
+	); err != nil {
+		return nil, err
+	}
+
 	return rs, nil
 }
 
-func (g *GCPCloud) ResourceUnlink(app string, rs *models.Resource) (*models.Resource, error) {
+func (g *GCPCloud) ResourceUnlink(app, name string) (*models.Resource, error) {
+	g.fetchStack()
+
+	rs, err := g.ResourceGet(name)
+	if err != nil {
+		return nil, err
+	}
+
 	switch rs.Kind {
 	case "postgres", "mysql":
 		// setup cloud-sql proxy
@@ -193,6 +262,14 @@ func (g *GCPCloud) ResourceUnlink(app string, rs *models.Resource) (*models.Reso
 
 	default:
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
+	}
+
+	if _, err := g.datastore().Put(
+		context.TODO(),
+		g.nestedKey(resourceKind, rs.Name),
+		rs,
+	); err != nil {
+		return nil, err
 	}
 
 	return rs, nil

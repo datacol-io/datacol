@@ -1,6 +1,7 @@
 package google
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/client/models"
 	dm "google.golang.org/api/deploymentmanager/v2"
@@ -16,9 +18,7 @@ import (
 	sql "google.golang.org/api/sqladmin/v1beta4"
 )
 
-var (
-	databaseName = "app"
-)
+const stackKind = "Stack"
 
 type initOptions struct {
 	ClusterName                   string
@@ -30,9 +30,43 @@ type initOptions struct {
 	ClusterNotExists, Preemptible bool
 }
 
+func (g *GCPCloud) StackSave(s *models.Stack) error {
+	key := datastore.NameKey(stackKind, s.Name, nil)
+	_, err := g.datastore().Put(context.TODO(), key, s)
+
+	return err
+}
+
+func (g *GCPCloud) fetchStack() {
+	if len(g.BucketName) > 0 {
+		return
+	}
+
+	log.Debugf("fetching stack details(%s) from datastore", g.DeploymentName)
+
+	st := new(models.Stack)
+	store := g.datastore()
+	defer store.Close()
+
+	if err := store.Get(context.TODO(), g.stackKey(), st); err != nil {
+		if err.Error() == datastore.ErrNoSuchEntity.Error() {
+			log.Fatal(fmt.Errorf("Unable to find stack by name: %s", g.DeploymentName))
+		} else {
+			log.Fatal(err)
+		}
+	}
+
+	g.BucketName = st.Bucket
+	g.Zone = st.Zone
+	g.ProjectNumber = st.PNumber
+	g.ServiceKey = st.ServiceKey
+}
+
 func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt bool) error {
 	name := g.DeploymentName
 	log.Infof("creating new stack %s", name)
+
+	g.fetchStack()
 	cnexists := true
 
 	if len(cluster) == 0 {
@@ -104,6 +138,8 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
 }
 
 func (g *GCPCloud) Teardown() error {
+	g.fetchStack()
+
 	name := g.DeploymentName
 	dmService := g.deploymentmanager()
 
@@ -139,7 +175,7 @@ func (g *GCPCloud) Teardown() error {
 		return fmt.Errorf("deleting stack %v", err)
 	}
 
-	return nil
+	return g.resetDatabase()
 }
 
 func (g *GCPCloud) updateDeployment(
@@ -169,7 +205,7 @@ func (g *GCPCloud) updateDeployment(
 }
 
 func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
-	log.Debugf("Waiting on %s [%v]", op.OperationType, op.Name)
+	log.Debugf("Waiting for %s [%v]", op.OperationType, op.Name)
 
 	for {
 		time.Sleep(2 * time.Second)
@@ -196,6 +232,14 @@ func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
 			return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
 		}
 	}
+}
+
+func (g *GCPCloud) stackKey() *datastore.Key {
+	return datastore.NameKey(stackKind, g.DeploymentName, nil)
+}
+
+func (g *GCPCloud) nestedKey(kind, key string) *datastore.Key {
+	return datastore.NameKey(kind, key, g.stackKey())
 }
 
 func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
@@ -249,6 +293,58 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
 	}
 }
 
+func (g *GCPCloud) resetDatabase() error {
+	apps, err := g.AppList()
+	if err != nil {
+		return err
+	}
+
+	store := g.datastore()
+	ctx := context.TODO()
+
+	// delete apps, builds, releases
+	for _, app := range apps {
+		q := datastore.NewQuery(buildKind).Ancestor(g.stackKey()).
+			Filter("app =", app.Name).KeysOnly()
+		keys, err := store.GetAll(ctx, q, nil)
+		if err != nil {
+			return err
+		}
+		err = store.DeleteMulti(ctx, keys)
+		if err != nil {
+			return err
+		}
+
+		q = datastore.NewQuery(releaseKind).Ancestor(g.stackKey()).
+			Filter("app =", app.Name).KeysOnly()
+		keys, err = store.GetAll(ctx, q, nil)
+		if err != nil {
+			return err
+		}
+		err = store.DeleteMulti(ctx, keys)
+		if err != nil {
+			return err
+		}
+
+		if err = store.Delete(ctx, g.nestedKey(appKind, app.Name)); err != nil {
+			return err
+		}
+	}
+
+	// delete resources
+	q := datastore.NewQuery(resourceKind).Ancestor(g.stackKey()).KeysOnly()
+	keys, err := store.GetAll(ctx, q, nil)
+	if err != nil {
+		return err
+	}
+	if err = store.DeleteMulti(ctx, keys); err != nil {
+		return err
+	}
+
+	// delete stack
+	return store.Delete(ctx, g.stackKey())
+}
+
 func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *dm.Manifest, error) {
 	dp, err := service.Deployments.Get(project, stack).Do()
 	if err != nil {
@@ -271,7 +367,7 @@ func resourceFromStack(service *dm.Service, project, stack, name string) (*model
 	}, nil
 }
 
-var registryYAML = `
+const registryYAML = `
 resources:
 - name: {{ env['name'] }}
   type: storage.v1.bucket
@@ -280,7 +376,7 @@ resources:
     projectNumber: {{ properties['projectNumber'] }}
 `
 
-var vmYAML = `
+const vmYAML = `
 {% set CLUSTER_NAME = env['name'] %}
 {% set TYPE_NAME = CLUSTER_NAME + '-type' %}
 
@@ -310,7 +406,7 @@ outputs:
   value: {{ TYPE_NAME }}
 `
 
-var configYAML = `
+const configYAML = `
 resources:
 - type: registry.jinja
   name: {{ .Bucket }}
@@ -330,7 +426,7 @@ resources:
 {{ end }}
 `
 
-var mysqlInstanceYAML = `
+const mysqlInstanceYAML = `
 - type: sqladmin.v1beta4.instance
   name: '{{ .name }}'
   properties:
@@ -352,8 +448,9 @@ var mysqlInstanceYAML = `
       locationPreference:
         zone: {{ .zone }}
 - type: sqladmin.v1beta4.database
-  name: {{ .database }}
+  name: $(ref.{{ .name }}.name)-{{ .database }}
   properties:
+    name: {{ .database }}
     instance: $(ref.{{ .name }}.name)
     charset: utf8mb4
     collation: utf8mb4_general_ci
@@ -382,6 +479,7 @@ var pgsqlInstanceYAML = `
 - type: sqladmin.v1beta4.database
   name: {{ .database }}
   properties:
+    name: {{ .database }}
     instance: $(ref.{{ .name }}.name)
     charset: utf8mb4
     collation: utf8mb4_general_ci

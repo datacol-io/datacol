@@ -9,12 +9,14 @@ import (
 
 type Provider interface {
 	Initialize(string, string, int, bool) error
+	StackSave(*models.Stack) error
 	Teardown() error
 
-	AppCreate(app *models.App) error
+	AppCreate(string) (*models.App, error)
 	AppGet(string) (*models.App, error)
 	AppDelete(string) error
 	AppRestart(string) error
+	AppList() (models.Apps, error)
 
 	BuildImport(key string, source []byte) error
 	BuildCreate(app, source string, opts *models.BuildOptions) error
@@ -24,31 +26,30 @@ type Provider interface {
 
 	LogStream(app string, w io.Writer, opts models.LogStreamOptions) error
 
-	// BuildDelete(app, id string) (*client.Build, error)
-	// BuildGet(app, id string) (*client.Build, error)
-	// BuildLogs(app, id string, w io.Writer) error
-	// BuildList(app string, limit int64) (client.Builds, error)
-	// BuildRelease(*client.Build) (*client.Release, error)
+	BuildList(app string, limit int) (models.Builds, error)
+	BuildGet(app, id string) (*models.Build, error)
 	// BuildSave(*client.Build) error
+	BuildDelete(app, id string) error
+	// BuildLogs(app, id string, w io.Writer) error
+	BuildRelease(*models.Build) (*models.Release, error)
+
+	ReleaseList(string, int) (models.Releases, error)
+	ReleaseDelete(string, string) (error)
 
 	ResourceCreate(name, kind string, params map[string]string) (*models.Resource, error)
 	ResourceDelete(name string) error
-	// ResourceGet(name string) (*structs.Resource, error)
-	ResourceLink(app string, resource *models.Resource) (*models.Resource, error)
+	ResourceGet(name string) (*models.Resource, error)
+	ResourceLink(app, name string) (*models.Resource, error)
 	ResourceList() (models.Resources, error)
-	ResourceUnlink(string, *models.Resource) (*models.Resource, error)
+	ResourceUnlink(string, string) (*models.Resource, error)
 	// ResourceUpdate(name string, params map[string]string) (*structs.Resource, error)
 
 	GetRunningPods(string) (string, error)
 }
 
-func Getgcp(name, project string, pnumber int64, zone, bucket string, serviceKey []byte) Provider {
+func Getgcp(name, project string) Provider {
 	return &google.GCPCloud{
 		Project:        project,
-		ProjectNumber:  pnumber,
-		Zone:           zone,
-		BucketName:     bucket,
 		DeploymentName: name,
-		ServiceKey:     serviceKey,
 	}
 }

@@ -1,9 +1,11 @@
 package google
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	"k8s.io/client-go/pkg/api/v1"
 
@@ -14,8 +16,25 @@ import (
 	"github.com/dinesh/datacol/client/models"
 )
 
-func (g *GCPCloud) AppCreate(app *models.App) error {
-	return nil
+const appKind = "App"
+
+func (g *GCPCloud) AppList() (models.Apps, error) {
+	var apps models.Apps
+
+	q := datastore.NewQuery(appKind).Ancestor(g.stackKey())
+	if _, err := g.datastore().GetAll(context.TODO(), q, &apps); err != nil {
+		return nil, err
+	}
+
+	return apps, nil
+}
+
+func (g *GCPCloud) AppCreate(name string) (*models.App, error) {
+	app := &models.App{Name: name, Status: "created"}
+	key := g.nestedKey(appKind, name)
+	_, err := g.datastore().Put(context.TODO(), key, app)
+
+	return app, err
 }
 
 func (g *GCPCloud) AppRestart(app string) error {
@@ -65,7 +84,15 @@ func (g *GCPCloud) AppRestart(app string) error {
 }
 
 func (g *GCPCloud) AppGet(name string) (*models.App, error) {
-	app := &models.App{Name: name}
+	app := new(models.App)
+
+	if err := g.datastore().Get(context.TODO(), g.nestedKey(appKind, name), app); err != nil {
+		return nil, err
+	}
+
+	if len(app.HostPort) > 0 {
+		return app, nil
+	}
 
 	ns := g.DeploymentName
 	kube, err := getKubeClientset(ns)
@@ -75,7 +102,7 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
 
 	svc, err := kube.Core().Services(ns).Get(name)
 	if err != nil {
-		return app, err
+		return app, nil
 	}
 
 	if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
@@ -91,7 +118,8 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
 		}
 	}
 
-	return app, nil
+	_, err = g.datastore().Put(context.TODO(), g.nestedKey(appKind, name), app)
+	return app, err
 }
 
 func (g *GCPCloud) AppDelete(name string) error {
@@ -151,5 +179,5 @@ func (g *GCPCloud) AppDelete(name string) error {
 		return err
 	}
 
-	return nil
+	return g.datastore().Delete(context.TODO(), g.nestedKey(appKind, name))
 }

@@ -11,35 +11,30 @@ import (
 )
 
 func init() {
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "apps",
 		Usage:  "Manage your apps in a stack",
 		Action: cmdAppsList,
-		Subcommands: []cli.Command{
-			cli.Command{
+		Subcommands: []*cli.Command{
+			&cli.Command{
 				Name:   "create",
 				Action: cmdAppCreate,
 				Flags:  []cli.Flag{appFlag},
 			},
-			cli.Command{
+			&cli.Command{
 				Name:   "delete",
 				Action: cmdAppDelete,
 				Flags:  []cli.Flag{appFlag},
 			},
-			cli.Command{
+			&cli.Command{
 				Name:   "info",
 				Action: cmdAppInfo,
-				Flags: []cli.Flag{
-					cli.BoolFlag{
-						Name:  "wait, w",
-						Usage: "wait for GCP to allocate IP",
-					},
-				},
+				Flags:  []cli.Flag{},
 			},
 		},
 	})
 
-	stdcli.AddCommand(cli.Command{
+	stdcli.AddCommand(&cli.Command{
 		Name:   "restart",
 		Usage:  "restart an app",
 		Action: cmdAppRestart,
@@ -76,6 +71,7 @@ func cmdAppsList(c *cli.Context) error {
 
 func cmdAppCreate(c *cli.Context) error {
 	name := c.String("app")
+
 	if len(name) == 0 {
 		_, n, err := getDirApp(".")
 		if err != nil {
@@ -103,7 +99,8 @@ func cmdAppCreate(c *cli.Context) error {
 		return err
 	}
 
-	if err = stdcli.WriteSetting("stack", client.Stack.Name); err != nil {
+	stname := fmt.Sprintf("%s@%s", client.StackName, client.ProjectId)
+	if err = stdcli.WriteSetting("stack", stname); err != nil {
 		return err
 	}
 
@@ -122,11 +119,6 @@ func cmdAppInfo(c *cli.Context) error {
 		return err
 	}
 
-	wait := c.Bool("wait")
-	if err = getClient(c).SyncApp(app, wait); err != nil {
-		return err
-	}
-
 	fmt.Printf("%+v", app)
 	return nil
 }
@@ -137,12 +129,7 @@ func cmdAppDelete(c *cli.Context) error {
 		return err
 	}
 
-	app, err := getClient(c).GetApp(name)
-	if err != nil {
-		return err
-	}
-
-	if err = getClient(c).DeleteApp(app.Name); err != nil {
+	if err = getClient(c).DeleteApp(name); err != nil {
 		return err
 	}
 
@@ -150,5 +137,5 @@ func cmdAppDelete(c *cli.Context) error {
 }
 
 func app404Err(name string) error {
-	return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running $ datacol apps create", name))
+	return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running `datacol apps create`", name))
 }
