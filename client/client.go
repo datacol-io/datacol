@@ -2,7 +2,8 @@ package client
 
 import (
 	"fmt"
-	"log"
+	log "github.com/Sirupsen/logrus"
+
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +49,7 @@ func (c *Client) SetStack(name string) {
 	}
 
 	if len(c.ProjectId) == 0 {
-		log.Fatal(fmt.Errorf("project_id not found. Please set `PROJECT_ID` environment variable."))
+		log.Fatal(fmt.Errorf("GCP project-id not found. Please set `PROJECT_ID` environment variable."))
 	}
 }
 

@@ -46,7 +46,7 @@ func (g *GCPCloud) fetchStack() {
 
 	st := new(models.Stack)
 	store := g.datastore()
-	defer store.Close()
+  defer store.Close()
 
 	if err := store.Get(context.TODO(), g.stackKey(), st); err != nil {
 		if err.Error() == datastore.ErrNoSuchEntity.Error() {
@@ -227,7 +227,9 @@ func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
 				// try to teardown if, just ignore error if any
 				log.Errorf("sqlAdmin Operation failed: %v, Canceling ..", last)
 				return last
-			}
+			} else {
+        return nil
+      }
 		default:
 			return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
 		}
@@ -359,12 +361,7 @@ func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *d
 }
 
 func resourceFromStack(service *dm.Service, project, stack, name string) (*models.Resource, error) {
-	exports := map[string]string{}
-
-	return &models.Resource{
-		Name:    name,
-		Exports: exports,
-	}, nil
+	return &models.Resource{Name: name }, nil
 }
 
 const registryYAML = `
@@ -437,18 +434,18 @@ const mysqlInstanceYAML = `
     settings:
       tier: '{{ .tier }}'
       backupConfiguration:
-        enabled: true
-        binaryLogEnabled: true
+        enabled: false
+        binaryLogEnabled: false
       ipConfiguration:
         ipv4Enabled: true
         requireSsl: true
-      dataDiskSizeGb: 25
+      dataDiskSizeGb: 10
       dataDiskType: PD_SSD
       activationPolicy: '{{ .activation_policy }}'
       locationPreference:
         zone: {{ .zone }}
 - type: sqladmin.v1beta4.database
-  name: $(ref.{{ .name }}.name)-{{ .database }}
+  name: {{ .name }}-{{ .database }}
   properties:
     name: {{ .database }}
     instance: $(ref.{{ .name }}.name)
@@ -469,15 +466,15 @@ var pgsqlInstanceYAML = `
         enabled: true
         binaryLogEnabled: true
       ipConfiguration:
-        ipv4Enabled: true
-        requireSsl: true
+        ipv4Enabled: false
+        requireSsl: false
       dataDiskSizeGb: 10
       dataDiskType: PD_SSD
       activationPolicy: '{{ .activation_policy }}'
       locationPreference:
         zone: {{ .zone }}
 - type: sqladmin.v1beta4.database
-  name: {{ .database }}
+  name: {{ .name }}-{{ .database }}
   properties:
     name: {{ .database }}
     instance: $(ref.{{ .name }}.name)

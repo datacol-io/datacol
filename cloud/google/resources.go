@@ -26,6 +26,7 @@ type manifestConfig struct {
 
 func (g *GCPCloud) ResourceGet(name string) (*models.Resource, error) {
 	rs := new(models.Resource)
+
 	err := g.datastore().Get(
 		context.TODO(),
 		g.nestedKey(resourceKind, name),
@@ -49,8 +50,10 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 	}
 
 	found := false
+	rs_db := fmt.Sprintf("%s-%s", name, databaseName)
+
 	for i, r := range mc.Resources {
-		if r.Name == name {
+		if r.Name == name || r.Name == rs_db {
 			mc.Resources = append(mc.Resources[:i], mc.Resources[i+1:]...)
 			found = true
 			break
@@ -121,22 +124,19 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		return nil, err
 	}
 
-	rs := &models.Resource{
-		Name: name,
-		Kind: kind,
-	}
+	rs := &models.Resource{Name: name, Kind: kind}
 
 	var sqlj2 string
 	switch kind {
 	case "mysql":
 		params["region"] = getGcpRegion(g.Zone)
 		params["zone"] = g.Zone
-		params["database"] = "app"
+		params["database"] = databaseName
 		sqlj2 = compileTmpl(mysqlInstanceYAML, params)
 	case "postgres":
 		params["region"] = getGcpRegion(g.Zone)
 		params["zone"] = g.Zone
-		params["database"] = "app"
+		params["database"] = databaseName
 		sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
 	default:
 		log.Fatal(fmt.Errorf("%s is not supported yet.", kind))
@@ -167,10 +167,15 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		exports["DATABASE_URL"] = fmt.Sprintf("%s://%s:%s@%s/%s", kind, kind, passwd, hostName, databaseName)
 	}
 
-	rs.Exports = exports
-	rs.Parameters = params
+	for key, value := range exports {
+		rs.Exports = append(rs.Exports, models.ResourceVar{Name: key, Value: value })
+	}
 
-	if _, err := g.datastore().Put(
+	rs.Parameters = params
+	log.Debugf("storing resource details into datastore.")
+
+	store := g.datastore()
+	if _, err := store.Put(
 		context.TODO(),
 		g.nestedKey(resourceKind, name),
 		rs,
@@ -178,6 +183,7 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		return nil, err
 	}
 
+	defer store.Close()
 	return rs, nil
 }
 
@@ -198,7 +204,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 			return nil, err
 		}
 
-		if err = setupCloudProxy(kube, ns, app, rs.Exports, g.ServiceKey); err != nil {
+		rsvars := rsVarToMap(rs.Exports)
+		if err = setupCloudProxy(kube, ns, app, rsvars, g.ServiceKey); err != nil {
 			return nil, err
 		}
 
@@ -208,8 +215,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 			return nil, err
 		}
 
-		env["DATABASE_URL"] = rs.Exports["DATABASE_URL"]
-		env["INSTANCE_NAME"] = rs.Exports["INSTANCE_NAME"]
+		env["DATABASE_URL"] = rsvars["DATABASE_URL"]
+		env["INSTANCE_NAME"] = rsvars["INSTANCE_NAME"]
 
 		data := ""
 		for key, value := range env {
@@ -228,6 +235,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
 
+	append_app(app, rs)
+
 	if _, err := g.datastore().Put(
 		context.TODO(),
 		g.nestedKey(resourceKind, rs.Name),
@@ -237,6 +246,28 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 	}
 
 	return rs, nil
+}
+
+func append_app(app string, rs *models.Resource) {
+	found := false
+	for _, a := range rs.Apps {
+		if app == a {
+			found = true
+		}
+	}
+
+	if !found {
+		rs.Apps = append(rs.Apps, app)
+	}
+}
+
+func remove_app(app string, rs *models.Resource) {
+	for i, a := range rs.Apps {
+		if app == a {
+			rs.Apps = append(rs.Apps[:i], rs.Apps[i+1:]...)
+			break
+		}
+	}
 }
 
 func (g *GCPCloud) ResourceUnlink(app, name string) (*models.Resource, error) {
@@ -263,6 +294,8 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*models.Resource, error) {
 	default:
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
+
+	remove_app(app, rs)
 
 	if _, err := g.datastore().Put(
 		context.TODO(),

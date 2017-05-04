@@ -134,3 +134,13 @@ func dpToResourceType(dpname, name string) string {
 
 	return kind
 }
+
+
+func rsVarToMap(source []models.ResourceVar) map[string]string {
+	dst := make(map[string]string)
+	for _, r := range source {
+		dst[r.Name] = r.Value
+	}
+
+	return dst
+}

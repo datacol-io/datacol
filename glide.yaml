@@ -44,3 +44,4 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
+- package: github.com/googleapis/gax-go

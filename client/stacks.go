@@ -2,7 +2,6 @@ package client
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/client/models"
 	provider "github.com/dinesh/datacol/cloud/google"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -46,7 +45,6 @@ func (c *Client) CreateStack(project, zone, bucket string, optout bool) (*models
 		PNumber:    resp.PNumber,
 	}
 
-	log.Debugf("creating new stack %s", toJson(st))
 	time.Sleep(2 * time.Second)
 
 	if err := c.Provider().StackSave(st); err != nil {

@@ -2,7 +2,7 @@ hash: 7b8893b04b3c5bb337329f0bf226f6000a3afafc77b077c3584ca0790b6d69ce
 updated: 2017-05-01T15:14:23.925199175+05:30
 imports:
 - name: cloud.google.com/go
-  version: 26aa422484d457ff239d162eda2ecb99881e6b4c
+  version: 5aca3b7200b228d4b47e9e511f1d77ac270855ff
   subpackages:
   - compute/metadata
   - datastore
@@ -26,6 +26,7 @@ imports:
   - health
   - httputil
   - timeutil
+- name: github.com/googleapis/gax-go
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
@@ -177,7 +178,7 @@ imports:
   - unicode/norm
   - width
 - name: google.golang.org/api
-  version: fbbaff1827317122a8a0e1b24de25df8417ce87b
+  version: 16ab375f94503bfa0d19db78e96bffbe1a34354f
   subpackages:
   - cloudbuild/v1
   - cloudresourcemanager/v1

@@ -173,7 +173,7 @@ func (g *GCPCloud) BuildRelease(b *models.Build) (*models.Release, error) {
 		port = p
 	}
 
-	if _, err := deployer.Run(&DeployRequest{
+	ret, err := deployer.Run(&DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
 		Replicas:      1,
@@ -181,9 +181,13 @@ func (g *GCPCloud) BuildRelease(b *models.Build) (*models.Release, error) {
 		Zone:          g.Zone,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
-	}); err != nil {
+	})
+
+	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("Deploying %s with %s", b.App, toJson(ret.Request))
 
 	r := &models.Release{
 		Id:        generateId("R", 5),

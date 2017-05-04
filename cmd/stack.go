@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
-	"time"
+	log "github.com/Sirupsen/logrus"
 )
 
 func init() {
@@ -104,7 +104,8 @@ be used to communicate between this installer running on your computer and the G
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+
+	log.Debugf("creating new stack %s", toJson(st))
 
 	if err = ac.DeployStack(st, cluster, machineType, nodes, preemptible); err != nil {
 		return err

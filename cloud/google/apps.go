@@ -97,7 +97,7 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
 	ns := g.DeploymentName
 	kube, err := getKubeClientset(ns)
 	if err != nil {
-		return app, err
+		return app, nil
 	}
 
 	svc, err := kube.Core().Services(ns).Get(name)

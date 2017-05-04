@@ -36,6 +36,7 @@ func cmdBuild(c *cli.Context) error {
 
 	app, err := client.GetApp(name)
 	if err != nil {
+		log.Warn(err)
 		return app404Err(name)
 	}
 

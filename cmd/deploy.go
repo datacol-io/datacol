@@ -74,7 +74,10 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	fmt.Printf("Deploying build %s\n", build.Id)
-	_, err = client.BuildRelease(build, c.Bool("wait"))
+
+	if _, err = client.BuildRelease(build, c.Bool("wait")); err != nil {
+		return err
+	}
 
 	app, _ = client.GetApp(name)
 	if len(app.HostPort) > 0 {

@@ -208,6 +208,8 @@ func (g *GCPCloud) container() *container.Service {
 }
 
 func (g *GCPCloud) sqlAdmin() *sqladmin.Service {
+	g.fetchStack()
+	
 	svc, err := sqladmin.New(jwtClient(g.ServiceKey))
 	if err != nil {
 		log.Fatal(fmt.Errorf("sqlAdmin client %s", err))
@@ -215,6 +217,7 @@ func (g *GCPCloud) sqlAdmin() *sqladmin.Service {
 
 	return svc
 }
+
 func (g *GCPCloud) iam() *iam.Service {
 	svc, err := iam.New(jwtClient(g.ServiceKey))
 	if err != nil {
@@ -225,14 +228,12 @@ func (g *GCPCloud) iam() *iam.Service {
 }
 
 func (g *GCPCloud) datastore() *datastore.Client {
-	os.Unsetenv("DATASTORE_EMULATOR_HOST")
 	svapath := filepath.Join(models.ConfigPath, g.DeploymentName, models.SvaFilename)
 
 	client, err := datastore.NewClient(
 		context.TODO(), g.Project,
 		option.WithServiceAccountFile(svapath),
 		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5*time.Second)),
-		option.WithGRPCDialOption(grpc.WithBlock()),
 		option.WithGRPCDialOption(grpc.WithTimeout(30*time.Second)),
 	)
 

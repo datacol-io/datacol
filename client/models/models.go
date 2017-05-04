@@ -80,6 +80,11 @@ type LogStreamOptions struct {
 	Since  time.Duration
 }
 
+type ResourceVar struct{
+	Name  string  `datastore:"name,noindex"`
+	Value string 	`datastore:"value,noindex"`
+}
+
 type Resource struct {
 	Name   string `datastore:"name"`
 	Status string `datastore:"status,noindex"`
@@ -87,7 +92,7 @@ type Resource struct {
 	URL    string `datastore:"url,noindex"`
 
 	Apps    []string          `datastore:"apps,noindex"`
-	Exports map[string]string `datastore:"exports,noindex"`
+	Exports []ResourceVar 		`datastore:"exports,noindex"`
 
 	Parameters map[string]string `datastore:"-"`
 	Outputs    map[string]string `datastore:"-"`
