@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -53,7 +53,7 @@ func cmdDeploy(c *cli.Context) error {
 		return app404Err(name)
 	}
 
-	var build *models.Build
+	var build *pb.Build
 	buildId := c.String("build")
 
 	if len(buildId) == 0 {
@@ -80,8 +80,8 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	app, _ = client.GetApp(name)
-	if len(app.HostPort) > 0 {
-		fmt.Printf("\nDeployed at %s\n", app.HostPort)
+	if len(app.Endpoint) > 0 {
+		fmt.Printf("\nDeployed at %s\n", app.Endpoint)
 	} else {
 		fmt.Println("DONE.")
 	}

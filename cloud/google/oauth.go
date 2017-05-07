@@ -33,6 +33,7 @@ type authPacket struct {
 	Err       error
 	ProjectId string
 	PNumber   int64
+	SAEmail   string
 }
 
 func CreateCredential(rackName, projectId string, optout bool) authPacket {
@@ -105,7 +106,12 @@ func (h callbackHandler) termOnError(err error) {
 }
 
 func (h callbackHandler) termOnSuccess(data []byte) {
-	h.stop <- authPacket{Cred: data, ProjectId: projectId, PNumber: pNumber}
+	h.stop <- authPacket{
+		Cred: 			data, 
+		ProjectId: 	projectId,
+		PNumber: 		pNumber,
+		SAEmail: 	  service_account_email(),
+	}
 }
 
 // https://developers.google.com/identity/protocols/OAuth2InstalledApp
@@ -164,7 +170,9 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 		return cred, fmt.Errorf("failed to create iam client: %v", err)
 	}
 
-	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%v@%v.iam.gserviceaccount.com", projectId, saName, projectId)
+	svcName := service_account_email()
+
+	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%s", projectId, svcName)
 	_, err = iamClient.Projects.ServiceAccounts.Get(saFQN).Do()
 	if err != nil {
 		_, err = iamClient.Projects.ServiceAccounts.Create("projects/"+projectId, &iam.CreateServiceAccountRequest{
@@ -184,7 +192,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 		return cred, fmt.Errorf("failed to get iam policy for %q", projectId)
 	}
 
-	members := []string{fmt.Sprintf("serviceAccount:%v@%v.iam.gserviceaccount.com", saName, projectId)}
+	members := []string{fmt.Sprintf("serviceAccount:svcName", svcName)}
 	newPolicy := &crmgr.Policy{
 		Bindings: []*crmgr.Binding{
 			&crmgr.Binding{Role: "roles/viewer", Members: members},
@@ -276,4 +284,8 @@ func subscribeMe(accessToken string) {
 	if err := addToContactList(accessToken); err != nil {
 		log.WithFields(log.Fields{"project": projectId}).Debugf(err.Error())
 	}
+}
+
+func service_account_email() string {
+	return fmt.Sprintf("%v@%v.iam.gserviceaccount.com", saName, projectId)
 }

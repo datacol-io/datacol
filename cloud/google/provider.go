@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -32,7 +31,7 @@ import (
 	kapi "k8s.io/client-go/pkg/api/v1"
 	klabels "k8s.io/client-go/pkg/labels"
 
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc"
 )
@@ -48,14 +47,14 @@ type GCPCloud struct {
 	ServiceKey     []byte
 }
 
-func (g *GCPCloud) EnvironmentGet(name string) (models.Environment, error) {
+func (g *GCPCloud) EnvironmentGet(name string) (pb.Environment, error) {
 	g.fetchStack()
 
 	gskey := fmt.Sprintf("%s.env", name)
 	data, err := g.gsGet(g.BucketName, gskey)
 	if err != nil {
 		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 404 {
-			return models.Environment{}, nil
+			return pb.Environment{}, nil
 		}
 		return nil, err
 	}
@@ -99,7 +98,7 @@ func runningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
 	return podNames[0], nil
 }
 
-func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOptions) error {
+func (g *GCPCloud) LogStream(app string, out io.Writer, opts pb.LogStreamOptions) error {
 	ns := g.DeploymentName
 	c, err := getKubeClientset(ns)
 	if err != nil {
@@ -136,39 +135,17 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts models.LogStreamOpt
 	return err
 }
 
-func (g *GCPCloud) cacheCredentials() (string, error) {
-	setting := "token"
-	cfgpath := filepath.Join(models.ConfigPath, g.DeploymentName, setting)
-	value, err := ioutil.ReadFile(cfgpath)
-
-	if err != nil {
-		jwtConfig, err := oauth2_google.JWTConfigFromJSON(g.ServiceKey, csm.CloudPlatformScope)
-		if err != nil {
-			return "", err
-		}
-
-		source := jwtConfig.TokenSource(context.TODO())
-		tk, err := source.Token()
-		if err != nil {
-			return "", err
-		}
-		value = []byte(tk.AccessToken)
-		err = ioutil.WriteFile(cfgpath, value, 0777)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return strings.TrimSpace(string(value)), nil
+func (g *GCPCloud) storage() *storage.Service {
+	return storageService(g.ServiceKey)
 }
 
-func (g *GCPCloud) storage() *storage.Service {
-	svc, err := storage.New(jwtClient(g.ServiceKey))
+func storageService(cred []byte) *storage.Service {
+	svc, err := storage.New(jwtClient(cred))
 	if err != nil {
 		log.Fatal(fmt.Errorf("storage client %s", err))
 	}
 
-	return svc
+	return svc	
 }
 
 func (g *GCPCloud) cloudbuilder() *cloudbuild.Service {
@@ -190,7 +167,11 @@ func (g *GCPCloud) csmanager() *csm.Service {
 }
 
 func (g *GCPCloud) deploymentmanager() *deploymentmanager.Service {
-	svc, err := deploymentmanager.New(jwtClient(g.ServiceKey))
+	return dmService(g.ServiceKey)
+}
+
+func dmService(cred []byte) *deploymentmanager.Service {
+	svc, err := deploymentmanager.New(jwtClient(cred))
 	if err != nil {
 		log.Fatal(fmt.Errorf("deploymentmanager client %s", err))
 	}
@@ -228,11 +209,9 @@ func (g *GCPCloud) iam() *iam.Service {
 }
 
 func (g *GCPCloud) datastore() *datastore.Client {
-	svapath := filepath.Join(models.ConfigPath, g.DeploymentName, models.SvaFilename)
-
 	client, err := datastore.NewClient(
 		context.TODO(), g.Project,
-		option.WithServiceAccountFile(svapath),
+		option.WithServiceAccountFile(service_key_path(g.DeploymentName)),
 		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5*time.Second)),
 		option.WithGRPCDialOption(grpc.WithTimeout(30*time.Second)),
 	)
@@ -281,9 +260,7 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 }
 
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {
-	svapath := filepath.Join(models.ConfigPath, name, models.SvaFilename)
-
-	if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", svapath); err != nil {
+	if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", service_key_path(name)); err != nil {
 		return nil, err
 	}
 
@@ -298,4 +275,9 @@ func getKubeClientset(name string) (*kubernetes.Clientset, error) {
 	}
 
 	return c, nil
+}
+
+
+func service_key_path(name string) string {
+	return filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
 }

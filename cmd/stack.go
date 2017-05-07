@@ -1,10 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	log "github.com/Sirupsen/logrus"
+	"github.com/dinesh/datacol/cloud/google"
+)
+
+var (
+	credNotFound = errors.New("Invalid credentials")
 )
 
 func init() {
@@ -98,6 +104,19 @@ be used to communicate between this installer running on your computer and the G
 	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=datastore.googleapis.com,cloudbuild.googleapis.com,deploymentmanager&project=%s", project)
 	prompt(url)
 
+	options := &google.InitOptions{
+		ClusterName:      cluster,
+		DiskSize:         10,
+		NumNodes:         nodes,
+		MachineType:      machineType,
+		Zone:             zone,
+		Bucket:           bucket,
+		Preemptible:      preemptible,
+		Project:          project,
+	}
+
+	initialize(options, nodes, c.Bool("opt-out"))
+
 	//todo: handler err better, 1. formatting error 2) no stack found
 	st, err := ac.CreateStack(project, zone, bucket, c.Bool("opt-out"))
 	if err != nil {
@@ -127,3 +146,29 @@ func cmdStackDestroy(c *cli.Context) error {
 	fmt.Printf("\nDONE\n")
 	return nil
 }
+
+
+func initialize(opts *google.InitOptions, nodes int, optout bool) error {
+	resp := google.CreateCredential(opts.Name, opts.Project, optout)
+	if resp.Err != nil { return resp.Err }
+
+	cred := resp.Cred
+	if len(cred) == 0 { return credNotFound }
+
+	opts.Project  		 = resp.ProjectId
+	opts.ProjectNumber = resp.PNumber
+	opts.SAEmail 			 = resp.SAEmail
+
+	name := opts.Name
+	log.Infof("creating new stack %s", name)
+
+	if len(opts.ClusterName) == 0 {
+		opts.ClusterName = fmt.Sprintf("%v-cluster", name)
+	} else {
+		opts.ClusterNotExists = false
+	}
+
+	log.Debug(toJson(opts))
+	return google.InitializeStack(opts, cred)
+}
+

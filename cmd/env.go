@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	"strings"
@@ -62,7 +62,7 @@ func cmdConfigSet(c *cli.Context) error {
 	provider := getClient(c).Provider()
 	env, err := provider.EnvironmentGet(name)
 	if err != nil {
-		env = models.Environment{}
+		env = pb.Environment{}
 	}
 
 	data := ""

@@ -11,7 +11,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/dinesh/datacol/client"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
@@ -39,7 +39,7 @@ func execute(env string, args []string) int {
 		exitcode    int
 	)
 
-	cfgpath := filepath.Join(models.ConfigPath, env, "kubeconfig")
+	cfgpath := filepath.Join(pb.ConfigPath, env, "kubeconfig")
 	args = append([]string{"--kubeconfig", cfgpath, "-n", env}, args...)
 	c := exec.Command("kubectl", args...)
 

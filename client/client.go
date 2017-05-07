@@ -8,9 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/api/models"
+
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"google.golang.org/grpc"
 )
 
 func init() {
@@ -32,6 +35,15 @@ type Client struct {
 	Version   string
 	StackName string
 	ProjectId string
+}
+
+func (c *Client) Stack() (pb.StackServiceClient, func() error) {
+	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	if err != nil {
+		log.Fatal(fmt.Errorf("did not connect: %v", err))
+	}
+	
+	return pb.NewStackServiceClient(conn), conn.Close
 }
 
 func (c *Client) configRoot() string {

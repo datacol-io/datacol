@@ -1,10 +1,8 @@
 package client
 
 import (
-	"github.com/dinesh/datacol/client/models"
+	"github.com/dinesh/datacol/api/models"
 )
-
-var rs_bucket = []byte("resources")
 
 func (c *Client) GetResource(name string) (*models.Resource, error) {
 	return c.Provider().ResourceGet(name)

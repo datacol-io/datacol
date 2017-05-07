@@ -1,13 +1,9 @@
 package client
 
 import (
-	"github.com/dinesh/datacol/client/models"
+	models "github.com/dinesh/datacol/api/models"
 	"io"
 	"time"
-)
-
-var (
-	a_bucket = []byte("apps")
 )
 
 func (c *Client) GetApps() (models.Apps, error) {

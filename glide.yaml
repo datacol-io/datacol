@@ -1,7 +1,7 @@
 package: github.com/dinesh/datacol
 import:
 - package: cloud.google.com/go
-  version: 26aa422484d457ff239d162eda2ecb99881e6b4c
+  version: debdc0ca0113dd546ebebeb2000c9d938059f41d
   subpackages:
   - storage
   - datastore
@@ -45,3 +45,23 @@ import:
   subpackages:
   - context
 - package: github.com/googleapis/gax-go
+- package: github.com/grpc-ecosystem/grpc-gateway
+  version: ~1.1.0
+  subpackages:
+  - '...'
+- package: google.golang.org/grpc
+  version: ~1.0.1-GA
+  subpackages:
+  - '...'
+- package: github.com/golang/protobuf
+  version: 18c9bb3261723cd5401db4d0c9fbc5c3b6c70fe8
+  subpackages:
+  - '...'
+- package: github.com/gogo/protobuf
+  subpackages:
+  - '...'
+- package: github.com/grpc/grpc-go
+  version: ~1.0.1-GA
+  subpackages:
+  - '...'
+

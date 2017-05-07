@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"gopkg.in/yaml.v2"
 )
 
@@ -24,8 +24,8 @@ type manifestConfig struct {
 	} `yaml:"resources"`
 }
 
-func (g *GCPCloud) ResourceGet(name string) (*models.Resource, error) {
-	rs := new(models.Resource)
+func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
+	rs := new(pb.Resource)
 
 	err := g.datastore().Get(
 		context.TODO(),
@@ -78,10 +78,10 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 	return g.datastore().Delete(context.TODO(), g.nestedKey(resourceKind, name))
 }
 
-func (g *GCPCloud) ResourceList() (models.Resources, error) {
+func (g *GCPCloud) ResourceList() (pb.Resources, error) {
 	g.fetchStack()
 
-	var rs models.Resources
+	var rs pb.Resources
 
 	q := datastore.NewQuery(resourceKind).Ancestor(g.stackKey())
 	if _, err := g.datastore().GetAll(context.TODO(), q, &rs); err != nil {
@@ -91,9 +91,9 @@ func (g *GCPCloud) ResourceList() (models.Resources, error) {
 	return rs, nil
 }
 
-func (g *GCPCloud) resourceListFromStack() (models.Resources, error) {
+func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 
-	resp := models.Resources{}
+	resp := pb.Resources{}
 	service := g.deploymentmanager()
 	_, manifest, err := getManifest(service, g.Project, g.DeploymentName)
 	if err != nil {
@@ -106,16 +106,16 @@ func (g *GCPCloud) resourceListFromStack() (models.Resources, error) {
 	}
 
 	for _, r := range mc.Resources {
-		resp = append(resp, models.Resource{
+		resp = append(resp, &pb.Resource{
 			Name: r.Name,
-			Kind: dpToResourceType(r.Type, r.Name),
+			Kind: getResourceKind(dpToResourceType(r.Type, r.Name)),
 		})
 	}
 
 	return resp, nil
 }
 
-func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*models.Resource, error) {
+func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error) {
 	g.fetchStack()
 
 	service := g.deploymentmanager()
@@ -124,7 +124,7 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		return nil, err
 	}
 
-	rs := &models.Resource{Name: name, Kind: kind}
+	rs := &pb.Resource{Name: name, Kind: getResourceKind(kind)}
 
 	var sqlj2 string
 	switch kind {
@@ -168,7 +168,7 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 	}
 
 	for key, value := range exports {
-		rs.Exports = append(rs.Exports, models.ResourceVar{Name: key, Value: value })
+		rs.Exports = append(rs.Exports, &pb.ResourceVar{Key: key, Value: value})
 	}
 
 	rs.Parameters = params
@@ -187,7 +187,7 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 	return rs, nil
 }
 
-func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
+func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 	g.fetchStack()
 
 	rs, err := g.ResourceGet(name)
@@ -196,7 +196,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 	}
 
 	switch rs.Kind {
-	case "postgres", "mysql":
+	case pb.ResourceType_POSTGRES, pb.ResourceType_MYSQL:
 		// setup cloud-sql proxy
 		ns := g.DeploymentName
 		kube, err := getKubeClientset(ns)
@@ -230,7 +230,6 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 		if err = g.AppRestart(app); err != nil {
 			log.Debugf("error: %+v", err)
 		}
-
 	default:
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
@@ -248,7 +247,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*models.Resource, error) {
 	return rs, nil
 }
 
-func append_app(app string, rs *models.Resource) {
+func append_app(app string, rs *pb.Resource) {
 	found := false
 	for _, a := range rs.Apps {
 		if app == a {
@@ -261,7 +260,7 @@ func append_app(app string, rs *models.Resource) {
 	}
 }
 
-func remove_app(app string, rs *models.Resource) {
+func remove_app(app string, rs *pb.Resource) {
 	for i, a := range rs.Apps {
 		if app == a {
 			rs.Apps = append(rs.Apps[:i], rs.Apps[i+1:]...)
@@ -270,7 +269,7 @@ func remove_app(app string, rs *models.Resource) {
 	}
 }
 
-func (g *GCPCloud) ResourceUnlink(app, name string) (*models.Resource, error) {
+func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 	g.fetchStack()
 
 	rs, err := g.ResourceGet(name)
@@ -279,7 +278,7 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*models.Resource, error) {
 	}
 
 	switch rs.Kind {
-	case "postgres", "mysql":
+	case pb.ResourceType_POSTGRES, pb.ResourceType_MYSQL:
 		// setup cloud-sql proxy
 		ns := g.DeploymentName
 		kube, err := getKubeClientset(ns)
@@ -320,4 +319,13 @@ func getDefaultPort(kind string) int {
 	}
 
 	return port
+}
+
+func getResourceKind(kind string) pb.ResourceType {
+	v, ok := pb.ResourceType_value[kind]
+	if !ok {
+		log.Fatal(fmt.Errorf("unsupported resource of kind: %s", kind)) 
+	}
+
+	return pb.ResourceType(v)
 }

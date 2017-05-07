@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -49,7 +49,7 @@ func execute_exec(env, pod string, args []string) int {
 		exitcode    int
 	)
 
-	cfgpath := filepath.Join(models.ConfigPath, env, "kubeconfig")
+	cfgpath := filepath.Join(pb.ConfigPath, env, "kubeconfig")
 	args = append([]string{"--kubeconfig", cfgpath, "-n", env, "--pod", pod, "exec"}, args...)
 	c := exec.Command("kubectl", args...)
 

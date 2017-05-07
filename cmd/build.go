@@ -14,7 +14,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
@@ -44,7 +44,7 @@ func cmdBuild(c *cli.Context) error {
 	return executeBuildDir(c, build, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *models.Build, dir string) error {
+func executeBuildDir(c *cli.Context, b *pb.Build, dir string) error {
 	tar, err := createTarball(dir)
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func createTarball(base string) ([]byte, error) {
 	return bytes, nil
 }
 
-func uploadBuildSource(c *cli.Context, b *models.Build, tarf []byte) (string, error) {
+func uploadBuildSource(c *cli.Context, b *pb.Build, tarf []byte) (string, error) {
 	client := getClient(c)
 	source := fmt.Sprintf("%s.tar.gz", b.Id)
 
@@ -151,16 +151,8 @@ func uploadBuildSource(c *cli.Context, b *models.Build, tarf []byte) (string, er
 	return source, nil
 }
 
-func finishBuild(c *cli.Context, b *models.Build, objectName string) error {
-	bopts := &models.BuildOptions{Key: objectName, Id: b.Id}
+func finishBuild(c *cli.Context, b *pb.Build, objectName string) error {
+	bopts := &pb.BuildOptions{Key: objectName, Id: b.Id}
 
-	err := getClient(c).Provider().BuildCreate(b.App, objectName, bopts)
-
-	if err != nil {
-		b.Status = "failed"
-	} else {
-		b.Status = "success"
-	}
-
-	return err
+	return getClient(c).Provider().BuildCreate(b.App, objectName, bopts)
 }

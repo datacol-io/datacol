@@ -3,12 +3,8 @@ package client
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+	"github.com/dinesh/datacol/api/models"
 	"time"
-)
-
-var (
-	r_bucket = []byte("releases")
 )
 
 func (c *Client) NewRelease(b *models.Build) *models.Release {
@@ -16,7 +12,6 @@ func (c *Client) NewRelease(b *models.Build) *models.Release {
 		Id:        generateId("R", 5),
 		App:       b.App,
 		BuildId:   b.Id,
-		CreatedAt: time.Now(),
 	}
 
 	return r
@@ -55,7 +50,7 @@ func (c *Client) waitForLoadBalancerIp(name string) error {
 			return err
 		}
 
-		if len(app.HostPort) > 0 {
+		if len(app.Endpoint) > 0 {
 			break
 		}
 

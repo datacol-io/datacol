@@ -1,20 +1,14 @@
 package client
 
 import (
-	"github.com/dinesh/datacol/client/models"
-	"time"
-)
-
-var (
-	b_bucket = []byte("builds")
+	"github.com/dinesh/datacol/api/models"
 )
 
 func (c *Client) NewBuild(app *models.App) *models.Build {
 	b := &models.Build{
 		App:       app.Name,
 		Id:        generateId("B", 5),
-		Status:    "creating",
-		CreatedAt: time.Now(),
+		Status:    models.Status_CREATED,
 	}
 
 	return b

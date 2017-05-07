@@ -1,0 +1,105 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "stack.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/stack": {
+      "post": {
+        "operationId": "Create",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsStack"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/modelsCreateStackRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StackService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "modelsCreateStackRequest": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "string"
+        },
+        "project_number": {
+          "type": "string",
+          "format": "int64"
+        },
+        "service_key": {
+          "type": "string",
+          "format": "byte"
+        },
+        "zone": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "modelsStack": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "string"
+        },
+        "project_number": {
+          "type": "string",
+          "format": "int64"
+        },
+        "service_key": {
+          "type": "string",
+          "format": "byte"
+        },
+        "zone": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    }
+  }
+}

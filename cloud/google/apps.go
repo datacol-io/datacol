@@ -13,13 +13,13 @@ import (
 	kapi "k8s.io/client-go/pkg/api/v1"
 	klabels "k8s.io/client-go/pkg/labels"
 
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 const appKind = "App"
 
-func (g *GCPCloud) AppList() (models.Apps, error) {
-	var apps models.Apps
+func (g *GCPCloud) AppList() (pb.Apps, error) {
+	var apps pb.Apps
 
 	q := datastore.NewQuery(appKind).Ancestor(g.stackKey())
 	if _, err := g.datastore().GetAll(context.TODO(), q, &apps); err != nil {
@@ -29,8 +29,8 @@ func (g *GCPCloud) AppList() (models.Apps, error) {
 	return apps, nil
 }
 
-func (g *GCPCloud) AppCreate(name string) (*models.App, error) {
-	app := &models.App{Name: name, Status: "created"}
+func (g *GCPCloud) AppCreate(name string) (*pb.App, error) {
+	app := &pb.App{Name: name, Status: pb.Status_CREATED }
 	key := g.nestedKey(appKind, name)
 	_, err := g.datastore().Put(context.TODO(), key, app)
 
@@ -83,14 +83,14 @@ func (g *GCPCloud) AppRestart(app string) error {
 	return nil
 }
 
-func (g *GCPCloud) AppGet(name string) (*models.App, error) {
-	app := new(models.App)
+func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
+	app := new(pb.App)
 
 	if err := g.datastore().Get(context.TODO(), g.nestedKey(appKind, name), app); err != nil {
 		return nil, err
 	}
 
-	if len(app.HostPort) > 0 {
+	if len(app.Endpoint) > 0 {
 		return app, nil
 	}
 
@@ -108,13 +108,13 @@ func (g *GCPCloud) AppGet(name string) (*models.App, error) {
 	if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
 		ing := svc.Status.LoadBalancer.Ingress[0]
 		if len(ing.Hostname) > 0 {
-			app.HostPort = ing.Hostname
+			app.Endpoint = ing.Hostname
 		} else {
 			port := 80
 			if len(svc.Spec.Ports) > 0 {
 				port = int(svc.Spec.Ports[0].Port)
 			}
-			app.HostPort = fmt.Sprintf("%s:%d", ing.IP, port)
+			app.Endpoint = fmt.Sprintf("%s:%d", ing.IP, port)
 		}
 	}
 

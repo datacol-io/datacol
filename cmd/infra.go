@@ -83,8 +83,9 @@ func cmdResourceList(c *cli.Context) error {
 	fmt.Println("\nResource:")
 
 	for _, r := range resp {
-		if _, err := checkResourceType(r.Kind); err == nil {
-			fmt.Printf("%s:%s\n", r.Kind, r.Name)
+		kind := r.Kind.String()
+		if _, err := checkResourceType(kind); err == nil {
+			fmt.Printf("%s:%s\n", kind, r.Name)
 		}
 	}
 

@@ -2,7 +2,7 @@ package client
 
 import (
 	"errors"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 	provider "github.com/dinesh/datacol/cloud/google"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"io/ioutil"
@@ -12,10 +12,11 @@ import (
 )
 
 var (
+	ErrNotFound = errors.New("key not found")
 	credNotFound = errors.New("Invalid credentials")
 )
 
-func (c *Client) CreateStack(project, zone, bucket string, optout bool) (*models.Stack, error) {
+func (c *Client) CreateStack(project, zone, bucket string, optout bool) (*stack, error) {
 	stackName := c.StackName
 
 	resp := provider.CreateCredential(stackName, project, optout)
@@ -36,36 +37,33 @@ func (c *Client) CreateStack(project, zone, bucket string, optout bool) (*models
 		return nil, err
 	}
 
-	st := &models.Stack{
+	st := &pb.Stack{
 		Name:       stackName,
 		Zone:       zone,
 		Bucket:     bucket,
 		ServiceKey: cred,
 		ProjectId:  resp.ProjectId,
-		PNumber:    resp.PNumber,
+		ProjectNumber: resp.PNumber,
 	}
 
 	time.Sleep(2 * time.Second)
 
-	if err := c.Provider().StackSave(st); err != nil {
-		return nil, err
-	}
+	// if err := c.Provider().StackSave(st); err != nil {
+	// 	return nil, err
+	// }
 
-	return st, nil
+	return &stack{Name: st.Name, ProjectId: st.ProjectId}, nil
 }
 
-func (c *Client) DeployStack(st *models.Stack, clusterName, machineType string, nodes int, preem bool) error {
-	if len(st.ServiceKey) == 0 {
-		return credNotFound
-	}
-
-	return c.Provider().Initialize(clusterName, machineType, nodes, preem)
+func (c *Client) DeployStack(st *stack, clusterName, machineType string, nodes int, preem bool) error {
+	return nil
+	// return c.Provider().Initialize(clusterName, machineType, nodes, preem)
 }
 
 func (c *Client) DestroyStack() error {
-	if err := c.Provider().Teardown(); err != nil {
-		return err
-	}
+	// if err := c.Provider().Teardown(); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -75,6 +73,6 @@ func (c *Client) SetFromEnv() {
 }
 
 func saveCredential(name string, data []byte) error {
-	path := filepath.Join(models.ConfigPath, name, models.SvaFilename)
+	path := filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
 	return ioutil.WriteFile(path, data, 0777)
 }

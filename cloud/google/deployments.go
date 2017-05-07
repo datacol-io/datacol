@@ -12,7 +12,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+  pb "github.com/dinesh/datacol/api/models"
 	dm "google.golang.org/api/deploymentmanager/v2"
 	"google.golang.org/api/googleapi"
 	sql "google.golang.org/api/sqladmin/v1beta4"
@@ -20,18 +20,16 @@ import (
 
 const stackKind = "Stack"
 
-type initOptions struct {
-	ClusterName                   string
-	MachineType                   string
-	DiskSize                      int64
-	NumNodes                      int
-	ProjectNumber                 int64
-	Zone, Bucket                  string
-	ClusterNotExists, Preemptible bool
+type InitOptions struct {
+  Name, Project, ClusterName, MachineType, Zone, Bucket string
+  DiskSize, ProjectNumber int64
+  NumNodes  int
+  SAEmail   string
+  ClusterNotExists, Preemptible bool
 }
 
-func (g *GCPCloud) StackSave(s *models.Stack) error {
-	key := datastore.NameKey(stackKind, s.Name, nil)
+func (g *GCPCloud) StackSave(s *pb.Stack) error {
+	key := nameKey(stackKind, s.Name, nil)
 	_, err := g.datastore().Put(context.TODO(), key, s)
 
 	return err
@@ -44,7 +42,7 @@ func (g *GCPCloud) fetchStack() {
 
 	log.Debugf("fetching stack details(%s) from datastore", g.DeploymentName)
 
-	st := new(models.Stack)
+	st := new(pb.Stack)
 	store := g.datastore()
   defer store.Close()
 
@@ -58,7 +56,7 @@ func (g *GCPCloud) fetchStack() {
 
 	g.BucketName = st.Bucket
 	g.Zone = st.Zone
-	g.ProjectNumber = st.PNumber
+	g.ProjectNumber = st.ProjectNumber
 	g.ServiceKey = st.ServiceKey
 }
 
@@ -79,7 +77,7 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
 		machineType = ditermineMachineType(nodes)
 	}
 
-	options := initOptions{
+	options := InitOptions{
 		ClusterName:      cluster,
 		DiskSize:         10,
 		NumNodes:         nodes,
@@ -98,12 +96,16 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
 			Name:    "registry.jinja",
 			Content: registryYAML,
 		},
+    {
+      Name: "compute.jinja",
+      Content: apiVmYAML,
+    },
 	}
 
 	if cnexists {
 		imports = append(imports, &dm.ImportFile{
 			Name:    "container-vm.jinja",
-			Content: vmYAML,
+			Content: kubeClusterYAML,
 		})
 	}
 
@@ -128,21 +130,20 @@ func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt boo
 		}
 	}
 
-	if err = g.waitForDpOp(service, op, true); err != nil {
+  tearfn := func() error {
+    return teardown(service, g.ServiceKey, g.DeploymentName, g.Project, g.BucketName)
+  }
+
+	if err = waitForDpOp(service, op, g.Project, true, tearfn); err != nil {
 		return err
 	}
 
 	kube, err := g.getCluster(cluster)
-	cfgroot := filepath.Join(models.ConfigPath, g.DeploymentName)
+	cfgroot := filepath.Join(pb.ConfigPath, g.DeploymentName)
 	return GenerateClusterConfig(name, cfgroot, kube)
 }
 
-func (g *GCPCloud) Teardown() error {
-	g.fetchStack()
-
-	name := g.DeploymentName
-	dmService := g.deploymentmanager()
-
+func teardown(dmsvc *dm.Service, cred []byte, name, project, bucket string) error {
 	// add fingerprint of in stop request
 	// if op, err := dmService.Deployments.Stop(g.Project, name, &dm.DeploymentsStopRequest{}).Do(); err != nil {
 	//   fmt.Printf(err.Error())
@@ -154,8 +155,8 @@ func (g *GCPCloud) Teardown() error {
 
 	log.Infof("Deleting stack %s", name)
 
-	gsService := g.storage()
-	resp, err := gsService.Objects.List(g.BucketName).Do()
+	gsService := storageService(cred)
+	resp, err := gsService.Objects.List(bucket).Do()
 	if err != nil {
 		return err
 	}
@@ -166,16 +167,17 @@ func (g *GCPCloud) Teardown() error {
 		}
 	}
 
-	op, err := dmService.Deployments.Delete(g.Project, name).Do()
+	op, err := dmsvc.Deployments.Delete(project, name).Do()
 	if err != nil {
 		return err
 	}
 
-	if err = g.waitForDpOp(dmService, op, false); err != nil {
+	if err = waitForDpOp(dmsvc, op, project, false, nil); err != nil {
 		return fmt.Errorf("deleting stack %v", err)
 	}
 
-	return g.resetDatabase()
+  return nil
+	// return g.resetDatabase()
 }
 
 func (g *GCPCloud) updateDeployment(
@@ -198,7 +200,7 @@ func (g *GCPCloud) updateDeployment(
 		return err
 	}
 
-	if err = g.waitForDpOp(service, op, false); err != nil {
+	if err = waitForDpOp(service, op, g.Project, false, nil); err != nil {
 		return err
 	}
 	return err
@@ -237,16 +239,15 @@ func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
 }
 
 func (g *GCPCloud) stackKey() *datastore.Key {
-	return datastore.NameKey(stackKind, g.DeploymentName, nil)
+	return nameKey(stackKind, g.DeploymentName, nil)
 }
 
 func (g *GCPCloud) nestedKey(kind, key string) *datastore.Key {
-	return datastore.NameKey(kind, key, g.stackKey())
+	return nameKey(kind, key, g.stackKey())
 }
 
-func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool) error {
+func waitForDpOp(svc *dm.Service, op *dm.Operation, project string, interrupt bool, teardown func() error) error {
 	log.Infof("Waiting on %s [%v]", op.OperationType, op.Name)
-	project := g.Project
 
 	cancelCh := make(chan os.Signal, 1)
 	signal.Notify(cancelCh, os.Interrupt, syscall.SIGTERM)
@@ -261,7 +262,7 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
 		select {
 		case <-cancelCh:
 			if interrupt {
-				return g.Teardown()
+				return teardown()
 			} else {
 				return nil
 			}
@@ -282,7 +283,7 @@ func (g *GCPCloud) waitForDpOp(svc *dm.Service, op *dm.Operation, interrupt bool
 				log.Errorf("Deployment failed: %v, Canceling ..", last)
 
 				if interrupt {
-					if err := g.Teardown(); err != nil {
+					if err := teardown(); err != nil {
 						log.Debugf("deleting stack: %+v", err)
 					}
 				}
@@ -360,8 +361,65 @@ func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *d
 	return dp, m, err
 }
 
-func resourceFromStack(service *dm.Service, project, stack, name string) (*models.Resource, error) {
-	return &models.Resource{Name: name }, nil
+func resourceFromStack(service *dm.Service, project, stack, name string) (*pb.Resource, error) {
+	return &pb.Resource{Name: name }, nil
+}
+
+func InitializeStack(opts *InitOptions, cred []byte) error {
+  if len(opts.MachineType) == 0 {
+    opts.MachineType = ditermineMachineType(opts.NumNodes)
+  }
+
+  imports := []*dm.ImportFile{
+    {
+      Name:    "registry.jinja",
+      Content: registryYAML,
+    },
+    {
+      Name: "compute.jinja",
+      Content: apiVmYAML,
+    },
+  }
+
+  if opts.ClusterNotExists {
+    imports = append(imports, &dm.ImportFile{
+      Name:    "container-vm.jinja",
+      Content: kubeClusterYAML,
+    })
+  }
+
+  name := opts.Name
+
+  req := &dm.Deployment{
+    Name: name,
+    Target: &dm.TargetConfiguration{
+      Imports: imports,
+      Config: &dm.ConfigFile{
+        Content: compileTmpl(configYAML, &opts),
+      },
+    },
+  }
+
+  service := dmService(cred)
+
+  op, err := service.Deployments.Insert(opts.Project, req).Do()
+  if err != nil {
+    if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
+      return fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
+    } else {
+      return err
+    }
+  }
+
+  tearfn := func() error {
+    return teardown(service, cred, opts.Name, opts.Project, opts.Bucket)
+  }
+
+  if err = waitForDpOp(service, op, opts.Project, true, tearfn); err != nil {
+    return err
+  }
+
+  return err
 }
 
 const registryYAML = `
@@ -373,7 +431,7 @@ resources:
     projectNumber: {{ properties['projectNumber'] }}
 `
 
-const vmYAML = `
+const kubeClusterYAML = `
 {% set CLUSTER_NAME = env['name'] %}
 {% set TYPE_NAME = CLUSTER_NAME + '-type' %}
 
@@ -411,6 +469,14 @@ resources:
     projectNumber: {{ .ProjectNumber }}
     zone: {{ .Zone }}
 
+- type: compute.jinja
+  properties:
+    machineType: f1-micro
+    zone: {{ .Zone }}
+    IMAGE_PROJECT: debian-cloud
+    IMAGE: debian-8
+    EMAIL: {{ .SAEmail }}
+
 {{ if .ClusterNotExists }}
 - type: container-vm.jinja
   name: {{ .ClusterName }}
@@ -421,6 +487,34 @@ resources:
     machineType: {{ .MachineType }}
     preemptible: {{ .Preemptible }}
 {{ end }}
+`
+
+const apiVmYAML = `
+resources:
+- name: {{ env['deployment'] }}-compute
+  type: compute.v1.instance
+  properties:
+    machineType: {{ properties['machineType'] }}
+    zone: {{ properties['zone'] }}
+    disks:
+    - autoDelete: true
+      boot: true
+      initializeParams:
+        sourceImage: https://www.googleapis.com/compute/v1/projects/{{ properties["IMAGE_PROJECT"] }}/global/images/{{ properties["IMAGE"] }}
+    networkInterfaces:
+    - accessConfigs:
+      - name: external-nat
+        type: ONE_TO_ONE_NAT
+    serviceAccounts:
+    - email: {{ properties['EMAIL'] }}
+      scopes:
+        - https://www.googleapis.com/auth/devstorage.read_only
+    metadata:
+      items:
+      - key: startup-script
+        value: |
+          #! /bin/bash
+          sudo apt-get update
 `
 
 const mysqlInstanceYAML = `

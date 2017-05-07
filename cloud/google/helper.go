@@ -15,25 +15,31 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"context"
+	"cloud.google.com/go/datastore"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+func nameKey(kind, id string, parent *datastore.Key) *datastore.Key {
+	return datastore.NewKey(context.TODO(), kind, id, 0, parent)
+}
+
 func kubecfgPath(name string) string {
-	return filepath.Join(models.ConfigPath, name, "kubeconfig")
+	return filepath.Join(pb.ConfigPath, name, "kubeconfig")
+}
+
+func timeNow() *timestamp.Timestamp {
+	v, _ := ptypes.TimestampProto(time.Now())
+	return v
 }
 
 func getTokenFile(name string) string {
-	return filepath.Join(models.ConfigPath, name, models.SvaFilename)
-}
-
-func getCachedToken(name string) string {
-	value, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "token"))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(value))
+	return filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
 }
 
 func loadTmpl(name string) string {
@@ -74,8 +80,8 @@ func toJson(object interface{}) string {
 	return string(dump)
 }
 
-func loadEnv(data []byte) models.Environment {
-	e := models.Environment{}
+func loadEnv(data []byte) pb.Environment {
+	e := pb.Environment{}
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
@@ -135,11 +141,10 @@ func dpToResourceType(dpname, name string) string {
 	return kind
 }
 
-
-func rsVarToMap(source []models.ResourceVar) map[string]string {
+func rsVarToMap(source []*pb.ResourceVar) map[string]string {
 	dst := make(map[string]string)
 	for _, r := range source {
-		dst[r.Name] = r.Value
+		dst[r.Key] = r.Value
 	}
 
 	return dst

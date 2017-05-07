@@ -1,0 +1,85 @@
+syntax = "proto3";
+package models;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.sizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message Stack {
+  string name           = 1 [(gogoproto.moretags) = "datastore:\"name\""];
+  string bucket         = 2 [(gogoproto.moretags) = "datastore:\"bucket\""];
+  string zone           = 3 [(gogoproto.moretags) = "datastore:\"zone\""];
+  string project_id     = 4 [(gogoproto.moretags) = "datastore:\"project_id\""];
+  int64  project_number = 5 [(gogoproto.moretags) = "datastore:\"project_number\""];
+  bytes service_key     = 6 [(gogoproto.moretags) = "datastore:\"service_key\""];
+}
+
+enum Status {
+  CREATED = 0;
+}
+
+message App {
+  string name       = 1 [(gogoproto.moretags) = "datastore:\"name\""];
+  Status status     = 2 [(gogoproto.moretags) = "datastore:\"status\""];
+  string release_id = 3 [(gogoproto.moretags) = "datastore:\"release_id\""];
+  string endpoint   = 4 [(gogoproto.moretags) = "datastore:\"endpoint\""];
+}
+
+message Build {
+  string id        = 1 [(gogoproto.moretags) = "datastore:\"id\""];
+  string app       = 2 [(gogoproto.moretags) = "datastore:\"app\""];
+  string remote_id = 3 [(gogoproto.moretags) = "datastore:\"remote_id\""];
+  Status status    = 4 [(gogoproto.moretags) = "datastore:\"status\""];
+  google.protobuf.Timestamp created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
+}
+
+message Release {
+  string id       = 1 [(gogoproto.moretags) = "datastore:\"id\""];
+  string app      = 2 [(gogoproto.moretags) = "datastore:\"app\""];
+  string build_id = 3 [(gogoproto.moretags) = "datastore:\"build_id\""];
+  Status status   = 4 [(gogoproto.moretags) = "datastore:\"status\""];
+  google.protobuf.Timestamp created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
+}
+
+enum resourceType {
+  MYSQL     = 0;
+  POSTGRES  = 1;
+}
+
+message Resource {
+  string name          = 1 [(gogoproto.moretags) = "datastore:\"name\""];
+  Status status        = 2 [(gogoproto.moretags) = "datastore:\"status\""];
+  resourceType kind    = 3 [(gogoproto.moretags) = "datastore:\"kind\""];
+  string URL           = 4 [(gogoproto.moretags) = "datastore:\"URL\""];
+  repeated string apps = 5 [(gogoproto.moretags) = "datastore:\"apps\""];
+  repeated ResourceVar exports = 6 [(gogoproto.moretags) = "datastore:\"exports\""];
+  map<string,string> parameters = 7;
+}
+
+message ResourceVar {
+  string key   = 1;
+  string value = 2;
+}
+
+message CreateStackRequest {
+  string name = 1;
+  string project_id = 2;
+  string zone = 3;
+  int64 project_number = 4;
+  string bucket = 5;
+  bytes service_key = 6;
+}
+
+service StackService {
+  rpc Create(CreateStackRequest) returns (Stack) {
+    option (google.api.http) = {
+      post: "/v1/stack"
+      body: "*"
+    };
+  }
+}
+

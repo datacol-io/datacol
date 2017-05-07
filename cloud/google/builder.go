@@ -17,7 +17,7 @@ import (
 	"google.golang.org/api/storage/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 
-	"github.com/dinesh/datacol/client/models"
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 const (
@@ -25,8 +25,8 @@ const (
 	releaseKind = "Release"
 )
 
-func (g *GCPCloud) BuildGet(app, id string) (*models.Build, error) {
-	var b models.Build
+func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
+	var b pb.Build
 	if err := g.datastore().Get(context.TODO(), g.nestedKey(buildKind, id), &b); err != nil {
 		return nil, err
 	}
@@ -37,25 +37,25 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 	return g.datastore().Delete(context.TODO(), g.nestedKey(buildKind, id))
 }
 
-func (g *GCPCloud) BuildList(app string, limit int) (models.Builds, error) {
+func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	q := datastore.NewQuery(buildKind).
 		Ancestor(g.stackKey()).
 		Filter("app = ", app).
 		Limit(limit)
 
-	var builds models.Builds
+	var builds pb.Builds
 	_, err := g.datastore().GetAll(context.TODO(), q, &builds)
 
 	return builds, err
 }
 
-func (g *GCPCloud) ReleaseList(app string, limit int) (models.Releases, error) {
+func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
 	q := datastore.NewQuery(releaseKind).
 		Ancestor(g.stackKey()).
 		Filter("app = ", app).
 		Limit(limit)
 
-	var rs models.Releases
+	var rs pb.Releases
 	_, err := g.datastore().GetAll(context.TODO(), q, &rs)
 
 	return rs, err
@@ -86,7 +86,7 @@ func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
 	return nil
 }
 
-func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptions) error {
+func (g *GCPCloud) BuildCreate(app string, gskey string, opts *pb.BuildOptions) error {
 	g.fetchStack()
 
 	service := g.cloudbuilder()
@@ -126,12 +126,12 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
 		return fmt.Errorf("failed to get Id for build %v", err)
 	}
 
-	build := &models.Build{
+	build := &pb.Build{
 		App:       app,
 		Id:        opts.Id,
 		RemoteId:  remoteId,
-		Status:    "created",
-		CreatedAt: time.Now(),
+		Status:    pb.Status_CREATED,
+		CreatedAt: timeNow(),
 	}
 
 	if _, err := g.datastore().Put(context.TODO(), g.nestedKey(buildKind, build.Id), build); err != nil {
@@ -149,7 +149,7 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *models.BuildOptio
 	return err
 }
 
-func (g *GCPCloud) BuildRelease(b *models.Build) (*models.Release, error) {
+func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	image := fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, b.App, b.Id)
 	log.Debugf("---- Docker Image: %s", image)
 	g.fetchStack()
@@ -189,12 +189,12 @@ func (g *GCPCloud) BuildRelease(b *models.Build) (*models.Release, error) {
 
 	log.Debugf("Deploying %s with %s", b.App, toJson(ret.Request))
 
-	r := &models.Release{
+	r := &pb.Release{
 		Id:        generateId("R", 5),
 		App:       b.App,
 		BuildId:   b.Id,
-		Status:    "created",
-		CreatedAt: time.Now(),
+		Status:    pb.Status_CREATED,
+		CreatedAt: timeNow(),
 	}
 
 	_, err = g.datastore().Put(context.TODO(), g.nestedKey(releaseKind, r.Id), r)

@@ -1,4 +1,4 @@
-package models
+package modelss
 
 import (
 	homedir "github.com/mitchellh/go-homedir"
@@ -9,12 +9,10 @@ import (
 
 var (
 	ConfigPath  string
-	DbFilename  string
 	SvaFilename string
 )
 
 func init() {
-	DbFilename = "dcol.db"
 	SvaFilename = "sva.json"
 
 	home, err := homedir.Dir()
@@ -26,11 +24,7 @@ func init() {
 
 type Stack struct {
 	Name       string `datastore:"name"`
-	Bucket     string `datastore:"bucket,noindex"`
-	Zone       string `datastore:"zone,noindex"`
-	ServiceKey []byte `datastore:"service_key,noindex"`
 	ProjectId  string `datastore:"project_id"`
-	PNumber    int64  `datastore:"project_number"`
 }
 
 type App struct {
