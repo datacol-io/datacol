@@ -47,12 +47,13 @@ func main() {
 }
 
 func getClient(c *cli.Context) *client.Client {
-	conn := &client.Client{
-		Version: c.App.Version,
-	}
-
+	conn := &client.Client{Version: c.App.Version}
 	conn.SetFromEnv()
 	return conn
+}
+
+func getApiClient(c *cli.Context) (*client.Client, func() error) {
+	return client.NewClient(c.App.Version)
 }
 
 func getDirApp(path string) (string, string, error) {
@@ -61,7 +62,7 @@ func getDirApp(path string) (string, string, error) {
 		return abs, "", err
 	}
 
-	app := stdcli.GetSetting("app")
+	app := stdcli.GetAppSetting("app")
 	if len(app) == 0 {
 		app = filepath.Base(abs)
 	}

@@ -7,16 +7,6 @@ import (
 	"time"
 )
 
-func (c *Client) NewRelease(b *models.Build) *models.Release {
-	r := &models.Release{
-		Id:        generateId("R", 5),
-		App:       b.App,
-		BuildId:   b.Id,
-	}
-
-	return r
-}
-
 func (c *Client) GetReleases(app string) (models.Releases, error) {
 	return c.Provider().ReleaseList(app, 20)
 }
@@ -25,8 +15,8 @@ func (c *Client) DeleteRelease(app, Id string) error {
 	return c.Provider().ReleaseDelete(app, Id)
 }
 
-func (c *Client) BuildRelease(build *models.Build, wait bool) (*models.Release, error) {
-	r, err := c.Provider().BuildRelease(build)
+func (c *Client) ReleaseBuild(build *models.Build, wait bool) (*models.Release, error) {
+	r, err := c.ProviderServiceClient.BuildRelease(ctx, build)
 	if err != nil {
 		return r, err
 	}
@@ -45,6 +35,7 @@ func (c *Client) waitForLoadBalancerIp(name string) error {
 	for {
 		time.Sleep(1 * time.Second)
 		fmt.Print(".")
+		
 		app, err := c.GetApp(name)
 		if err != nil {
 			return err

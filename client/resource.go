@@ -1,23 +1,28 @@
 package client
 
 import (
-	"github.com/dinesh/datacol/api/models"
+	pb "github.com/dinesh/datacol/api/models"
+  pbs "github.com/dinesh/datacol/api/controller"
 )
 
-func (c *Client) GetResource(name string) (*models.Resource, error) {
-	return c.Provider().ResourceGet(name)
+func (c *Client) GetResource(name string) (*pb.Resource, error) {
+	return c.ProviderServiceClient.ResourceGet(ctx, &pbs.AppRequest{Name: name})
 }
 
-func (c *Client) CreateResource(kind string, options map[string]string) (*models.Resource, error) {
-	return c.Provider().ResourceCreate(options["name"], kind, options)
+func (c *Client) CreateResource(kind string, options map[string]string) (*pb.Resource, error) {
+	return c.ProviderServiceClient.ResourceCreate(ctx, &pbs.CreateResourceRequest{
+    Name: options["name"], 
+    Kind: kind, 
+    Params: options,
+  })
 }
 
 func (c *Client) CreateResourceLink(app, name string) error {
-	_, err := c.Provider().ResourceLink(app, name)
+	_, err := c.ProviderServiceClient.ResourceLink(ctx, &pbs.AppResourceReq{App: app, Name: name})
 	return err
 }
 
 func (c *Client) DeleteResourceLink(app, name string) error {
-	_, err := c.Provider().ResourceUnlink(app, name)
+	_, err := c.ProviderServiceClient.ResourceUnlink(ctx, &pbs.AppResourceReq{App: app, Name: name})
 	return err
 }

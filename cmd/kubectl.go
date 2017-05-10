@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/dinesh/datacol/client"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/cmd/stdcli"
 )
 

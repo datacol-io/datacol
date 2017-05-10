@@ -1,0 +1,195 @@
+syntax = "proto3";
+package controller;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/dinesh/datacol/api/models/types.proto";
+
+option go_package = "controller";
+option (gogoproto.sizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message ListRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message AppRequest {
+  string name = 1;
+}
+
+message AppListResponse {
+  repeated models.App apps = 1 [(gogoproto.nullable) = false];
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message AuthRequest {
+  string password = 1;
+}
+
+message AuthResponse {
+  string host = 1;
+  string name = 2;
+  string project = 3;
+}
+
+message CreateBuildRequest {
+  string app = 1;
+  bytes data = 2;
+}
+
+message GetBuildRequest {
+  string app = 1;
+  string id = 2;
+}
+
+message BuildLogRequest {
+  string app = 1;
+  string id = 2;
+  int32  pos = 3;
+}
+
+message BuildLogResponse {
+  int32 pos = 1;
+  repeated string lines = 2;
+}
+
+message EnvSetRequest {
+  string name = 1;
+  string data = 2;
+}
+
+message ResourceListResponse {
+  repeated models.Resource resources = 1;
+}
+
+message CreateResourceRequest {
+  string name = 1;
+  string kind = 2;
+  map<string,string> params = 3;
+}
+
+message AppResourceReq {
+  string app = 1;
+  string name = 2;
+}
+
+service ProviderService {
+  rpc Auth(AuthRequest) returns (AuthResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth",
+      body: "*"
+    };
+  }
+
+  // Account api
+  rpc AppList(ListRequest) returns (AppListResponse) {
+    option (google.api.http) = {
+      get: "/v1/apps"
+    };
+  }
+
+  rpc AppCreate(AppRequest) returns (models.App) {
+    option (google.api.http) = {
+      post: "/v1/apps"
+      body: "*"
+    };
+  }
+
+  rpc AppGet(AppRequest) returns (models.App) {
+    option (google.api.http) = {
+      get: "/v1/apps/{name}"
+    };
+  }
+
+  rpc AppRestart(AppRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      get: "/v1/apps/{name}/restart"
+    };
+  }
+
+  rpc AppDelete(AppRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/apps/{name}"
+    };
+  }
+
+  //Build Api
+  rpc BuildCreate(CreateBuildRequest) returns (models.Build) {
+    option (google.api.http) = {
+      post: "/v1/builds"
+    };
+  }
+
+  rpc BuildRelease(models.Build) returns (models.Release) {
+    option (google.api.http) = {
+      post: "/v1/releases"
+    };
+  }
+
+  rpc BuildGet(GetBuildRequest) returns (models.Build) {
+    option (google.api.http) = {
+      post: "/v1/builds/{id}"
+    };
+  }
+
+  rpc BuildLogs(BuildLogRequest) returns (BuildLogResponse) {
+    option (google.api.http) = {
+      post: "/v1/builds/{id}/log"
+    };
+  }
+
+  rpc EnvironmentGet(AppRequest) returns (models.EnvConfig) {
+    option (google.api.http) = {
+      get: "/v1/env/{name}"
+    };
+  }
+
+  rpc EnvironmentSet(EnvSetRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/env/{name}"
+    };
+  }
+
+  // Resource endpoints
+  rpc ResourceList(google.protobuf.Empty) returns (ResourceListResponse) {
+    option (google.api.http) = {
+      get: "/v1/resources"
+    };
+  }
+
+  rpc ResourceGet(AppRequest) returns (models.Resource) {
+    option (google.api.http) = {
+      post: "/v1/resources/{name}"
+    };
+  }
+
+  rpc ResourceCreate(CreateResourceRequest) returns (models.Resource) {
+    option (google.api.http) = {
+      post: "/v1/resources"
+    };
+  }
+
+  rpc ResourceDelete(AppRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/resources/{name}"
+    };
+  }
+
+  rpc ResourceLink(AppResourceReq) returns (models.Resource) {
+    option (google.api.http) = {
+      put: "/v1/resources/{name}/link/{app}"
+    };
+  }
+
+  rpc ResourceUnlink(AppResourceReq) returns (models.Resource) {
+    option (google.api.http) = {
+      put: "/v1/resources/{name}/unlink/{app}"
+    };
+  }
+
+}
+

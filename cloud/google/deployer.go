@@ -361,11 +361,13 @@ func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
 	return nil
 }
 
-func setupCloudProxy(c *kubernetes.Clientset, ns, name string, options map[string]string, cred []byte) error {
+func setupCloudProxy(c *kubernetes.Clientset, ns, name string, options map[string]string) error {
 	dp, err := c.Extensions().Deployments(ns).Get(name)
 	if err != nil {
 		return err
 	}
+
+	cred := []byte("asdfdf")
 
 	if _, err := c.Core().Secrets(ns).Create(&v1.Secret{
 		ObjectMeta: v1.ObjectMeta{

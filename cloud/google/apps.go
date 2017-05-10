@@ -30,7 +30,7 @@ func (g *GCPCloud) AppList() (pb.Apps, error) {
 }
 
 func (g *GCPCloud) AppCreate(name string) (*pb.App, error) {
-	app := &pb.App{Name: name, Status: pb.Status_CREATED }
+	app := &pb.App{Name: name, Status: pb.Status_CREATED}
 	key := g.nestedKey(appKind, name)
 	_, err := g.datastore().Put(context.TODO(), key, app)
 

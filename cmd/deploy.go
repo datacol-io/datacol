@@ -46,7 +46,9 @@ func cmdDeploy(c *cli.Context) error {
 		return err
 	}
 
-	client := getClient(c)
+	client, close := getApiClient(c)
+	defer close()
+
 	app, err := client.GetApp(name)
 	if err != nil {
 		log.Warn(err)
@@ -57,8 +59,7 @@ func cmdDeploy(c *cli.Context) error {
 	buildId := c.String("build")
 
 	if len(buildId) == 0 {
-		build = client.NewBuild(app)
-		if err = executeBuildDir(c, build, dir); err != nil {
+		if err = executeBuildDir(client, app, dir); err != nil {
 			return err
 		}
 	} else {
@@ -75,11 +76,12 @@ func cmdDeploy(c *cli.Context) error {
 
 	fmt.Printf("Deploying build %s\n", build.Id)
 
-	if _, err = client.BuildRelease(build, c.Bool("wait")); err != nil {
+	if _, err = client.ReleaseBuild(build, c.Bool("wait")); err != nil {
 		return err
 	}
 
 	app, _ = client.GetApp(name)
+
 	if len(app.Endpoint) > 0 {
 		fmt.Printf("\nDeployed at %s\n", app.Endpoint)
 	} else {

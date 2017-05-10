@@ -13,10 +13,12 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	oauth2_google "golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudbuild/v1"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/deploymentmanager/v2"
 	iam "google.golang.org/api/iam/v1"
@@ -40,16 +42,13 @@ var _jwtClient *http.Client
 
 type GCPCloud struct {
 	Project        string
-	ProjectNumber  int64
+	ProjectNumber  string
 	DeploymentName string
 	BucketName     string
 	Zone           string
-	ServiceKey     []byte
 }
 
 func (g *GCPCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	g.fetchStack()
-
 	gskey := fmt.Sprintf("%s.env", name)
 	data, err := g.gsGet(g.BucketName, gskey)
 	if err != nil {
@@ -63,8 +62,6 @@ func (g *GCPCloud) EnvironmentGet(name string) (pb.Environment, error) {
 }
 
 func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
-	g.fetchStack()
-
 	gskey := fmt.Sprintf("%s.env", name)
 	return g.gsPut(g.BucketName, gskey, body)
 }
@@ -136,20 +133,29 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts pb.LogStreamOptions
 }
 
 func (g *GCPCloud) storage() *storage.Service {
-	return storageService(g.ServiceKey)
+	return storageService(g.DeploymentName)
 }
 
-func storageService(cred []byte) *storage.Service {
-	svc, err := storage.New(jwtClient(cred))
+func storageService(name string) *storage.Service {
+	svc, err := storage.New(httpClient(name))
 	if err != nil {
 		log.Fatal(fmt.Errorf("storage client %s", err))
 	}
 
-	return svc	
+	return svc
+}
+
+func computeService(name string) *compute.Service {
+	svc, err := compute.New(httpClient(name))
+	if err != nil {
+		log.Fatal(fmt.Errorf("compute client %s", err))
+	}
+
+	return svc
 }
 
 func (g *GCPCloud) cloudbuilder() *cloudbuild.Service {
-	svc, err := cloudbuild.New(jwtClient(g.ServiceKey))
+	svc, err := cloudbuild.New(httpClient(g.DeploymentName))
 	if err != nil {
 		log.Fatal(fmt.Errorf("cloudbuilder client %s", err))
 	}
@@ -158,7 +164,7 @@ func (g *GCPCloud) cloudbuilder() *cloudbuild.Service {
 }
 
 func (g *GCPCloud) csmanager() *csm.Service {
-	svc, err := csm.New(jwtClient(g.ServiceKey))
+	svc, err := csm.New(httpClient(g.DeploymentName))
 	if err != nil {
 		log.Fatal(fmt.Errorf("cloudresourcemanager client %s", err))
 	}
@@ -167,11 +173,11 @@ func (g *GCPCloud) csmanager() *csm.Service {
 }
 
 func (g *GCPCloud) deploymentmanager() *deploymentmanager.Service {
-	return dmService(g.ServiceKey)
+	return dmService(g.DeploymentName)
 }
 
-func dmService(cred []byte) *deploymentmanager.Service {
-	svc, err := deploymentmanager.New(jwtClient(cred))
+func dmService(name string) *deploymentmanager.Service {
+	svc, err := deploymentmanager.New(httpClient(name))
 	if err != nil {
 		log.Fatal(fmt.Errorf("deploymentmanager client %s", err))
 	}
@@ -180,7 +186,7 @@ func dmService(cred []byte) *deploymentmanager.Service {
 }
 
 func (g *GCPCloud) container() *container.Service {
-	svc, err := container.New(jwtClient(g.ServiceKey))
+	svc, err := container.New(httpClient(g.DeploymentName))
 	if err != nil {
 		log.Fatal(fmt.Errorf("container client %s", err))
 	}
@@ -189,9 +195,7 @@ func (g *GCPCloud) container() *container.Service {
 }
 
 func (g *GCPCloud) sqlAdmin() *sqladmin.Service {
-	g.fetchStack()
-	
-	svc, err := sqladmin.New(jwtClient(g.ServiceKey))
+	svc, err := sqladmin.New(httpClient(g.DeploymentName))
 	if err != nil {
 		log.Fatal(fmt.Errorf("sqlAdmin client %s", err))
 	}
@@ -200,7 +204,7 @@ func (g *GCPCloud) sqlAdmin() *sqladmin.Service {
 }
 
 func (g *GCPCloud) iam() *iam.Service {
-	svc, err := iam.New(jwtClient(g.ServiceKey))
+	svc, err := iam.New(httpClient(g.DeploymentName))
 	if err != nil {
 		log.Fatal(fmt.Errorf("iam client %s", err))
 	}
@@ -209,13 +213,16 @@ func (g *GCPCloud) iam() *iam.Service {
 }
 
 func (g *GCPCloud) datastore() *datastore.Client {
-	client, err := datastore.NewClient(
-		context.TODO(), g.Project,
-		option.WithServiceAccountFile(service_key_path(g.DeploymentName)),
-		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5*time.Second)),
-		option.WithGRPCDialOption(grpc.WithTimeout(30*time.Second)),
-	)
+	opts := []option.ClientOption{
+		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5 * time.Second)),
+		option.WithGRPCDialOption(grpc.WithTimeout(30 * time.Second)),
+	}
 
+	if !metadata.OnGCE() {
+		opts = append(opts, option.WithServiceAccountFile(service_key_path(g.DeploymentName)))
+	}
+
+	client, err := datastore.NewClient(context.TODO(), g.Project, opts...)
 	if err != nil {
 		log.Fatal(fmt.Errorf("datastore client %s", err))
 	}
@@ -226,6 +233,24 @@ func (g *GCPCloud) datastore() *datastore.Client {
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
 	service := g.container()
 	return service.Projects.Zones.Clusters.Get(g.Project, g.Zone, name).Do()
+}
+
+func httpClient(name string) *http.Client {
+	if !metadata.OnGCE() {
+		return jwtClient(service_key(name))
+	}
+
+	htx, err := oauth2_google.DefaultClient(
+		context.TODO(),
+		csm.CloudPlatformScope,
+		sqladmin.SqlserviceAdminScope,
+	)
+
+	if err != nil {
+		log.Fatal(fmt.Errorf("failed to create http client err:%v", err))
+	}
+
+	return htx
 }
 
 func jwtClient(sva []byte) *http.Client {
@@ -277,7 +302,36 @@ func getKubeClientset(name string) (*kubernetes.Clientset, error) {
 	return c, nil
 }
 
+func externalIp(obj *compute.Instance) string {
+	log.Debugf(toJson(obj))
+
+	if len(obj.NetworkInterfaces) > 0 {
+		intf := obj.NetworkInterfaces[0]
+		if len(intf.AccessConfigs) > 0 {
+			return intf.AccessConfigs[0].NatIP
+		}
+		return intf.NetworkIP
+	}
+
+	return ""
+}
 
 func service_key_path(name string) string {
 	return filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
+}
+
+var svkeys = map[string][]byte{}
+
+func service_key(name string) []byte {
+	if value, ok := svkeys[name]; ok {
+		return value
+	}
+
+	value, err := ioutil.ReadFile(service_key_path(name))
+	if err != nil {
+		log.Fatal(err)
+	}
+	svkeys[name] = value
+
+	return value
 }

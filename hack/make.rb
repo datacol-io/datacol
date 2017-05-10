@@ -14,6 +14,7 @@ $bin_matrix = {
 
 $version = ENV.fetch('VERSION')
 $cmd_name = "datacol"
+$api_name = "apictl"
 
 def build_all
   $bin_matrix.each do |os, archs|
@@ -25,6 +26,22 @@ def build_all
       with_cmd("GOOS=#{os} GOARCH=#{arch} go build -o dist/#{$version}/#{bin_name} #{$commands}")
     end
   end
+end
+
+
+def apictl
+  api_name = "apictl"
+  os, arch = 'linux', 'amd64'
+  with_cmd("GOOS=#{os} GOARCH=#{arch} go build -o dist/#{$version}/#{api_name} api/*.go")
+
+  binary_dest = "#{$bucket_prefix}/binaries/#{$version}/#{api_name}.zip"
+  version_dir = "dist/#{$version}"
+
+  with_cmd("pushd #{version_dir} && \
+            zip #{api_name}.zip #{api_name} && \
+            gsutil cp #{api_name}.zip #{binary_dest} && \
+            gsutil acl ch -u AllUsers:R #{binary_dest}
+            popd")
 end
 
 def push_all

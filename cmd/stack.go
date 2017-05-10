@@ -3,10 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/dinesh/datacol/cloud/google"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
-	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/cloud/google"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"time"
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 var (
@@ -61,6 +65,10 @@ func init() {
 				Usage: "Opt-out from getting updates by email by `datacol`",
 				Value: false,
 			},
+			&cli.StringFlag{
+				Name:  "password",
+				Usage: "api password for the stack",
+			},
 		},
 	})
 
@@ -79,6 +87,7 @@ func cmdStackCreate(c *cli.Context) error {
 	zone := c.String("zone")
 	nodes := c.Int("nodes")
 	bucket := c.String("bucket")
+	password := c.String("password")
 
 	if len(bucket) == 0 {
 		bucket = fmt.Sprintf("datacol-%s", slug(project))
@@ -87,8 +96,6 @@ func cmdStackCreate(c *cli.Context) error {
 	cluster := c.String("cluster")
 	machineType := c.String("machine-type")
 	preemptible := c.Bool("preemptible")
-
-	ac := getAnonClient(c, stackName, project)
 
 	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account.
 It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to automate
@@ -105,70 +112,105 @@ be used to communicate between this installer running on your computer and the G
 	prompt(url)
 
 	options := &google.InitOptions{
-		ClusterName:      cluster,
-		DiskSize:         10,
-		NumNodes:         nodes,
-		MachineType:      machineType,
-		Zone:             zone,
-		Bucket:           bucket,
-		Preemptible:      preemptible,
-		Project:          project,
+		Name:        stackName,
+		ClusterName: cluster,
+		DiskSize:    10,
+		NumNodes:    nodes,
+		MachineType: machineType,
+		Zone:        zone,
+		Bucket:      bucket,
+		Preemptible: preemptible,
+		Project:     project,
+		Version:     stdcli.Version,
+		API_KEY:     password,
 	}
 
-	initialize(options, nodes, c.Bool("opt-out"))
-
-	//todo: handler err better, 1. formatting error 2) no stack found
-	st, err := ac.CreateStack(project, zone, bucket, c.Bool("opt-out"))
-	if err != nil {
-		return err
-	}
-
-
-	log.Debugf("creating new stack %s", toJson(st))
-
-	if err = ac.DeployStack(st, cluster, machineType, nodes, preemptible); err != nil {
+	if err := initialize(options, nodes, c.Bool("opt-out")); err != nil {
 		return err
 	}
 
 	fmt.Printf("\nDONE.\n")
-
-	stname := fmt.Sprintf("%s@%s", st.Name, st.ProjectId)
+	stname := fmt.Sprintf("%s@%s", stackName, options.Project)
 	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stname)
-
 	return nil
 }
 
 func cmdStackDestroy(c *cli.Context) error {
-	client := getClient(c)
-	if err := client.DestroyStack(); err != nil {
+	if err := teardown(); err != nil {
 		return err
 	}
+
 	fmt.Printf("\nDONE\n")
 	return nil
 }
 
-
 func initialize(opts *google.InitOptions, nodes int, optout bool) error {
 	resp := google.CreateCredential(opts.Name, opts.Project, optout)
-	if resp.Err != nil { return resp.Err }
+	if resp.Err != nil {
+		return resp.Err
+	}
 
 	cred := resp.Cred
-	if len(cred) == 0 { return credNotFound }
+	if len(cred) == 0 {
+		return credNotFound
+	}
 
-	opts.Project  		 = resp.ProjectId
+	if err := saveCredential(opts.Name, cred); err != nil {
+		return err
+	}
+
+	opts.Project = resp.ProjectId
 	opts.ProjectNumber = resp.PNumber
-	opts.SAEmail 			 = resp.SAEmail
+	opts.SAEmail = resp.SAEmail
 
 	name := opts.Name
-	log.Infof("creating new stack %s", name)
-
 	if len(opts.ClusterName) == 0 {
 		opts.ClusterName = fmt.Sprintf("%v-cluster", name)
 	} else {
 		opts.ClusterNotExists = false
 	}
 
-	log.Debug(toJson(opts))
-	return google.InitializeStack(opts, cred)
+	time.Sleep(2 * time.Second) // wait for sometime for iam permission propagation
+	res, err := google.InitializeStack(opts)
+	if err != nil {
+		return err
+	}
+
+	return dumpParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
+}
+
+func teardown() error {
+	name := stdcli.CurrentStack()
+	project := stdcli.ReadSetting(name, "project")
+	bucket := stdcli.ReadSetting(name, "bucket")
+
+	if err := google.TeardownStack(name, project, bucket); err != nil {
+		return err
+	}
+
+	os.Remove(filepath.Join(pb.ConfigPath, "stack"))
+	return os.RemoveAll(filepath.Join(pb.ConfigPath, name))
+}
+
+func saveCredential(name string, data []byte) error {
+	cfgroot := filepath.Join(pb.ConfigPath, name)
+
+	if err := os.MkdirAll(cfgroot, 0700); err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(filepath.Join(pb.ConfigPath, "stack"), []byte(name), 0700); err != nil {
+		return err
+	}
+
+	path := filepath.Join(cfgroot, pb.SvaFilename)
+	return ioutil.WriteFile(path, data, 0777)
+}
+
+func dumpParams(name, project, bucket, host, api_key string) error {
+	stdcli.WriteSetting(name, "project", project)
+	stdcli.WriteSetting(name, "api_key", api_key)
+	stdcli.WriteSetting(name, "api_host", host)
+	return stdcli.WriteSetting(name, "bucket", bucket)
 }
 

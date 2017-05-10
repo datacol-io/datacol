@@ -66,8 +66,6 @@ func (g *GCPCloud) ReleaseDelete(app, id string) error {
 }
 
 func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
-	g.fetchStack()
-
 	service := g.storage()
 	bucket := g.BucketName
 
@@ -86,17 +84,31 @@ func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
 	return nil
 }
 
-func (g *GCPCloud) BuildCreate(app string, gskey string, opts *pb.BuildOptions) error {
-	g.fetchStack()
-
-	service := g.cloudbuilder()
+func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
+	service := g.storage()
 	bucket := g.BucketName
+	id := generateId("B", 5)
+	gskey := fmt.Sprintf("%s.tar.gz", id)
+
+	log.Infof("Pushing code to gs://%s/%s", bucket, gskey)
+
+	object := &storage.Object{
+		Bucket:      bucket,
+		Name:        gskey,
+		ContentType: "application/gzip",
+	}
+
+	if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil {
+		return nil, fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
+	}
+
+	cb := g.cloudbuilder()
 
 	log.Infof("Building from gs://%s/%s", bucket, gskey)
-	tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, opts.Id)
+	tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, id)
 	latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", app)
 
-	op, err := service.Projects.Builds.Create(g.Project, &cloudbuild.Build{
+	op, err := cb.Projects.Builds.Create(g.Project, &cloudbuild.Build{
 		LogsBucket: bucket,
 		Source: &cloudbuild.Source{
 			StorageSource: &cloudbuild.StorageSource{
@@ -118,41 +130,44 @@ func (g *GCPCloud) BuildCreate(app string, gskey string, opts *pb.BuildOptions) 
 			log.Fatal(ae)
 		}
 
-		return fmt.Errorf("failed to initiate build %v", err)
+		return nil, fmt.Errorf("failed to initiate build %v", err)
 	}
 
 	remoteId, err := getBuildID(op)
 	if err != nil {
-		return fmt.Errorf("failed to get Id for build %v", err)
+		return nil, fmt.Errorf("failed to get Id for build %v", err)
 	}
 
 	build := &pb.Build{
 		App:       app,
-		Id:        opts.Id,
+		Id:        id,
 		RemoteId:  remoteId,
 		Status:    pb.Status_CREATED,
-		CreatedAt: timeNow(),
+		CreatedAt: timestampNow(),
 	}
+
+	log.Debugf("Saving build %s", toJson(build))
 
 	if _, err := g.datastore().Put(context.TODO(), g.nestedKey(buildKind, build.Id), build); err != nil {
-		return err
+		return nil, fmt.Errorf("saving build err: %v", err);
 	}
 
-	logURL := fmt.Sprintf("https://console.cloud.google.com/m/cloudstorage/b/%s/o/log-%s.txt", bucket, remoteId)
-	log.Infof("Logs at %s", logURL)
+	return build, nil
+}
 
+func (g *GCPCloud) BuildLogs(app, id string, index int) (int, []string, error) {
 	storageService := g.storage()
-	status, err := waitForOp(service, storageService, g.Project, bucket, remoteId)
-	if status != "SUCCESS" {
-		return fmt.Errorf("build failed. Please try again.")
+	i, logs, err := buildLogs(storageService, g.BucketName, id, index)
+	if err != nil {
+		return i, logs, err
 	}
-	return err
+
+	return i, logs, err
 }
 
 func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	image := fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, b.App, b.Id)
 	log.Debugf("---- Docker Image: %s", image)
-	g.fetchStack()
 
 	envVars, err := g.EnvironmentGet(b.App)
 	if err != nil {
@@ -194,7 +209,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		App:       b.App,
 		BuildId:   b.Id,
 		Status:    pb.Status_CREATED,
-		CreatedAt: timeNow(),
+		CreatedAt: timestampNow(),
 	}
 
 	_, err = g.datastore().Put(context.TODO(), g.nestedKey(releaseKind, r.Id), r)
@@ -215,26 +230,30 @@ func getBuildID(op *cloudbuild.Operation) (string, error) {
 	return bm.Build.Id, nil
 }
 
-func showBuildLogs(service *storage.Service, bucket, key string, index int) int {
+func buildLogs(service *storage.Service, bucket, bid string, index int) (int, []string, error) {
+	key := fmt.Sprintf("log-%s.txt", bid)
 	resp, err := service.Objects.Get(bucket, key).Download()
+	lines := []string{}
+
 	if err != nil {
-		log.Fatal(err)
+		return index, lines, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return index, lines, err
 	}
 
 	parts := strings.Split(string(body), "\n")
+	
 	for _, line := range parts[index:] {
 		if len(line) > 0 && line != "\n" {
-			fmt.Println(line)
+			lines = append(lines, line)
 		}
 	}
 
-	return len(parts) - 1
+	return len(parts)-1, lines, nil
 }
 
 func waitForOp(svc *cloudbuild.Service, stsvc *storage.Service, projectId, bucket, id string) (string, error) {
@@ -251,7 +270,13 @@ func waitForOp(svc *cloudbuild.Service, stsvc *storage.Service, projectId, bucke
 		status = b.Status
 
 		logKey := fmt.Sprintf("log-%s.txt", id)
-		index = showBuildLogs(stsvc, bucket, logKey, index)
+		i, logs, err := buildLogs(stsvc, bucket, logKey, index)
+		index = i
+		if err != nil { log.Fatal(err) }
+
+		for _, line := range logs {
+			fmt.Println(line)
+		}
 
 		if b.Status != "WORKING" && b.Status != "QUEUED" {
 			fmt.Printf("\n")

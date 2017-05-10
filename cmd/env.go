@@ -5,7 +5,6 @@ import (
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
-	"strings"
 )
 
 func init() {
@@ -34,12 +33,14 @@ func cmdConfigList(c *cli.Context) error {
 		return err
 	}
 
-	ct := getClient(c)
+	ct, close := getApiClient(c)
+	defer close()
+
 	if _, err = ct.GetApp(name); err != nil {
 		return fmt.Errorf("failed to fetch app: %v", err)
 	}
 
-	env, err := ct.Provider().EnvironmentGet(name)
+	env, err := ct.GetEnvironment(name)
 	if err != nil {
 		return err
 	}
@@ -59,8 +60,10 @@ func cmdConfigSet(c *cli.Context) error {
 		return err
 	}
 
-	provider := getClient(c).Provider()
-	env, err := provider.EnvironmentGet(name)
+	ct, close := getApiClient(c)
+	defer close()
+
+	env, err := ct.GetEnvironment(name)
 	if err != nil {
 		env = pb.Environment{}
 	}
@@ -75,7 +78,7 @@ func cmdConfigSet(c *cli.Context) error {
 		data += fmt.Sprintf("%s\n", value)
 	}
 
-	return provider.EnvironmentSet(name, strings.NewReader(data))
+	return ct.SetEnvironment(name, data)
 }
 
 func cmdConfigUnset(c *cli.Context) error {
@@ -84,8 +87,10 @@ func cmdConfigUnset(c *cli.Context) error {
 		return err
 	}
 
-	provider := getClient(c).Provider()
-	env, err := provider.EnvironmentGet(name)
+	client, close := getApiClient(c)
+	defer close()
+
+	env, err := client.GetEnvironment(name)
 	if err != nil {
 		return err
 	}
@@ -98,5 +103,5 @@ func cmdConfigUnset(c *cli.Context) error {
 		}
 	}
 
-	return provider.EnvironmentSet(name, strings.NewReader(data))
+	return client.SetEnvironment(name, data)
 }

@@ -107,10 +107,10 @@ func (h callbackHandler) termOnError(err error) {
 
 func (h callbackHandler) termOnSuccess(data []byte) {
 	h.stop <- authPacket{
-		Cred: 			data, 
-		ProjectId: 	projectId,
-		PNumber: 		pNumber,
-		SAEmail: 	  service_account_email(),
+		Cred:      data,
+		ProjectId: projectId,
+		PNumber:   pNumber,
+		SAEmail:   service_account_email(),
 	}
 }
 
@@ -192,7 +192,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 		return cred, fmt.Errorf("failed to get iam policy for %q", projectId)
 	}
 
-	members := []string{fmt.Sprintf("serviceAccount:svcName", svcName)}
+	members := []string{fmt.Sprintf("serviceAccount:%s", svcName)}
 	newPolicy := &crmgr.Policy{
 		Bindings: []*crmgr.Binding{
 			&crmgr.Binding{Role: "roles/viewer", Members: members},
@@ -214,6 +214,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 
 	_, err = rmgrClient.Projects.SetIamPolicy(projectId, &crmgr.SetIamPolicyRequest{Policy: p}).Do()
 	if err != nil {
+		log.Warn(err)
 		return cred, fmt.Errorf("failed to apply IAM roles")
 	}
 

@@ -46,7 +46,7 @@ import:
   - context
 - package: github.com/googleapis/gax-go
 - package: github.com/grpc-ecosystem/grpc-gateway
-  version: ~1.1.0
+  version: 1.2.0
   subpackages:
   - '...'
 - package: google.golang.org/grpc

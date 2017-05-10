@@ -3,6 +3,8 @@ package google
 import (
 	"bufio"
 	"bytes"
+	"cloud.google.com/go/datastore"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,8 +17,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"context"
-	"cloud.google.com/go/datastore"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -36,6 +36,10 @@ func kubecfgPath(name string) string {
 func timeNow() *timestamp.Timestamp {
 	v, _ := ptypes.TimestampProto(time.Now())
 	return v
+}
+
+func timestampNow() int32 {
+	return int32(time.Now().Unix())
 }
 
 func getTokenFile(name string) string {

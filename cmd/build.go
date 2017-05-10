@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 	"path/filepath"
 
+	"golang.org/x/net/context"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
@@ -15,7 +17,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	pb "github.com/dinesh/datacol/api/models"
+	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/dinesh/datacol/client"
 )
 
 func init() {
@@ -27,24 +31,24 @@ func init() {
 }
 
 func cmdBuild(c *cli.Context) error {
-	client := getClient(c)
+	api, close := getApiClient(c)
+	defer close()
 
 	dir, name, err := getDirApp(".")
 	if err != nil {
 		return err
 	}
 
-	app, err := client.GetApp(name)
+	app, err := api.GetApp(name)
 	if err != nil {
 		log.Warn(err)
 		return app404Err(name)
 	}
 
-	build := client.NewBuild(app)
-	return executeBuildDir(c, build, dir)
+	return executeBuildDir(api, app, dir)
 }
 
-func executeBuildDir(c *cli.Context, b *pb.Build, dir string) error {
+func executeBuildDir(api *client.Client, app *pb.App, dir string) error {
 	tar, err := createTarball(dir)
 	if err != nil {
 		return err
@@ -52,12 +56,13 @@ func executeBuildDir(c *cli.Context, b *pb.Build, dir string) error {
 
 	fmt.Println("OK")
 
-	objectName, err := uploadBuildSource(c, b, tar)
+	b, err := api.CreateBuild(app, tar)
+
 	if err != nil {
 		return err
 	}
 
-	return finishBuild(c, b, objectName)
+	return finishBuild(api, b)
 }
 
 func createTarball(base string) ([]byte, error) {
@@ -141,18 +146,33 @@ func createTarball(base string) ([]byte, error) {
 	return bytes, nil
 }
 
-func uploadBuildSource(c *cli.Context, b *pb.Build, tarf []byte) (string, error) {
-	client := getClient(c)
-	source := fmt.Sprintf("%s.tar.gz", b.Id)
+func finishBuild(api *client.Client, b *pb.Build) error {
+	index := int32(0)
 
-	if err := client.Provider().BuildImport(source, tarf); err != nil {
-		return "", nil
+	for {
+		time.Sleep(2 * time.Second)
+		
+		ret, err := api.BuildLogs(context.TODO(), &pbs.BuildLogRequest{
+			App: b.App, 
+			Id: b.RemoteId, 
+			Pos: index,
+		})
+
+		if err != nil { 
+			return fmt.Errorf("Getting logs for build: %s err: %v", b.RemoteId, err) 
+		}
+
+		index = ret.Pos
+		lines := ret.Lines
+
+		for _, line := range lines {
+			fmt.Println(line)
+		}
+
+		if  len(lines) > 0 && lines[len(lines)-1] == "DONE" { 
+			break
+		}
 	}
-	return source, nil
-}
 
-func finishBuild(c *cli.Context, b *pb.Build, objectName string) error {
-	bopts := &pb.BuildOptions{Key: objectName, Id: b.Id}
-
-	return getClient(c).Provider().BuildCreate(b.App, objectName, bopts)
+	return nil
 }

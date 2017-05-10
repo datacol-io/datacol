@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-  pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/dinesh/datacol/api/models"
+	"google.golang.org/api/compute/v1"
 	dm "google.golang.org/api/deploymentmanager/v2"
 	"google.golang.org/api/googleapi"
 	sql "google.golang.org/api/sqladmin/v1beta4"
@@ -21,141 +21,33 @@ import (
 const stackKind = "Stack"
 
 type InitOptions struct {
-  Name, Project, ClusterName, MachineType, Zone, Bucket string
-  DiskSize, ProjectNumber int64
-  NumNodes  int
-  SAEmail   string
-  ClusterNotExists, Preemptible bool
+	Name, Project, ClusterName, MachineType, Zone, Bucket string
+	DiskSize, ProjectNumber                               int64
+	NumNodes, Port                                        int
+	SAEmail                                               string
+	ClusterNotExists, Preemptible                         bool
+	API_KEY, Version, Region                              string
 }
 
-func (g *GCPCloud) StackSave(s *pb.Stack) error {
-	key := nameKey(stackKind, s.Name, nil)
-	_, err := g.datastore().Put(context.TODO(), key, s)
+func teardown(dmService *dm.Service, name, project string) error {
+	log.Infof("Deleting stack %s", name)
 
-	return err
-}
-
-func (g *GCPCloud) fetchStack() {
-	if len(g.BucketName) > 0 {
-		return
-	}
-
-	log.Debugf("fetching stack details(%s) from datastore", g.DeploymentName)
-
-	st := new(pb.Stack)
-	store := g.datastore()
-  defer store.Close()
-
-	if err := store.Get(context.TODO(), g.stackKey(), st); err != nil {
-		if err.Error() == datastore.ErrNoSuchEntity.Error() {
-			log.Fatal(fmt.Errorf("Unable to find stack by name: %s", g.DeploymentName))
-		} else {
-			log.Fatal(err)
-		}
-	}
-
-	g.BucketName = st.Bucket
-	g.Zone = st.Zone
-	g.ProjectNumber = st.ProjectNumber
-	g.ServiceKey = st.ServiceKey
-}
-
-func (g *GCPCloud) Initialize(cluster, machineType string, nodes int, preemt bool) error {
-	name := g.DeploymentName
-	log.Infof("creating new stack %s", name)
-
-	g.fetchStack()
-	cnexists := true
-
-	if len(cluster) == 0 {
-		cluster = fmt.Sprintf("%v-cluster", g.DeploymentName)
-	} else {
-		cnexists = false
-	}
-
-	if len(machineType) == 0 {
-		machineType = ditermineMachineType(nodes)
-	}
-
-	options := InitOptions{
-		ClusterName:      cluster,
-		DiskSize:         10,
-		NumNodes:         nodes,
-		MachineType:      machineType,
-		Zone:             g.Zone,
-		Bucket:           g.BucketName,
-		ProjectNumber:    g.ProjectNumber,
-		ClusterNotExists: cnexists,
-		Preemptible:      preemt,
-	}
-
-	log.Debug(toJson(options))
-
-	imports := []*dm.ImportFile{
-		{
-			Name:    "registry.jinja",
-			Content: registryYAML,
-		},
-    {
-      Name: "compute.jinja",
-      Content: apiVmYAML,
-    },
-	}
-
-	if cnexists {
-		imports = append(imports, &dm.ImportFile{
-			Name:    "container-vm.jinja",
-			Content: kubeClusterYAML,
-		})
-	}
-
-	req := &dm.Deployment{
-		Name: name,
-		Target: &dm.TargetConfiguration{
-			Imports: imports,
-			Config: &dm.ConfigFile{
-				Content: compileTmpl(configYAML, &options),
-			},
-		},
-	}
-
-	service := g.deploymentmanager()
-
-	op, err := service.Deployments.Insert(g.Project, req).Do()
+	op, err := dmService.Deployments.Delete(project, name).Do()
 	if err != nil {
-		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-			return fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
-		} else {
-			return err
-		}
-	}
-
-  tearfn := func() error {
-    return teardown(service, g.ServiceKey, g.DeploymentName, g.Project, g.BucketName)
-  }
-
-	if err = waitForDpOp(service, op, g.Project, true, tearfn); err != nil {
 		return err
 	}
 
-	kube, err := g.getCluster(cluster)
-	cfgroot := filepath.Join(pb.ConfigPath, g.DeploymentName)
-	return GenerateClusterConfig(name, cfgroot, kube)
+	if err = waitForDpOp(dmService, op, project, false, nil); err != nil {
+		return fmt.Errorf("deleting stack %v", err)
+	}
+
+	return nil
 }
 
-func teardown(dmsvc *dm.Service, cred []byte, name, project, bucket string) error {
-	// add fingerprint of in stop request
-	// if op, err := dmService.Deployments.Stop(g.Project, name, &dm.DeploymentsStopRequest{}).Do(); err != nil {
-	//   fmt.Printf(err.Error())
-	//   gerr, ok := err.(*googleapi.Error)
-	//   if !ok  || (ok && gerr.Code != 412) {
-	//     return fmt.Errorf("waiting to stop deployment: %v", err)
-	//   }
-	// }
-
+func TeardownStack(name, project, bucket string) error {
 	log.Infof("Deleting stack %s", name)
 
-	gsService := storageService(cred)
+	gsService := storageService(name)
 	resp, err := gsService.Objects.List(bucket).Do()
 	if err != nil {
 		return err
@@ -167,6 +59,7 @@ func teardown(dmsvc *dm.Service, cred []byte, name, project, bucket string) erro
 		}
 	}
 
+	dmsvc := dmService(name)
 	op, err := dmsvc.Deployments.Delete(project, name).Do()
 	if err != nil {
 		return err
@@ -176,7 +69,7 @@ func teardown(dmsvc *dm.Service, cred []byte, name, project, bucket string) erro
 		return fmt.Errorf("deleting stack %v", err)
 	}
 
-  return nil
+	return nil
 	// return g.resetDatabase()
 }
 
@@ -230,8 +123,8 @@ func waitForSqlOp(svc *sql.Service, op *sql.Operation, project string) error {
 				log.Errorf("sqlAdmin Operation failed: %v, Canceling ..", last)
 				return last
 			} else {
-        return nil
-      }
+				return nil
+			}
 		default:
 			return fmt.Errorf("Unknown status %q: %+v", op.Status, op)
 		}
@@ -362,64 +255,89 @@ func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *d
 }
 
 func resourceFromStack(service *dm.Service, project, stack, name string) (*pb.Resource, error) {
-	return &pb.Resource{Name: name }, nil
+	return &pb.Resource{Name: name}, nil
 }
 
-func InitializeStack(opts *InitOptions, cred []byte) error {
-  if len(opts.MachineType) == 0 {
-    opts.MachineType = ditermineMachineType(opts.NumNodes)
-  }
+type initResponse struct {
+	Host, Password string
+}
 
-  imports := []*dm.ImportFile{
-    {
-      Name:    "registry.jinja",
-      Content: registryYAML,
-    },
-    {
-      Name: "compute.jinja",
-      Content: apiVmYAML,
-    },
-  }
+func InitializeStack(opts *InitOptions) (*initResponse, error) {
+	if len(opts.MachineType) == 0 {
+		opts.MachineType = ditermineMachineType(opts.NumNodes)
+	}
 
-  if opts.ClusterNotExists {
-    imports = append(imports, &dm.ImportFile{
-      Name:    "container-vm.jinja",
-      Content: kubeClusterYAML,
-    })
-  }
+	if len(opts.API_KEY) == 0 {
+		opts.API_KEY = generateId("A", 19)
+	}
 
-  name := opts.Name
+	opts.Region = getGcpRegion(opts.Zone)
+	opts.Port = 8080
 
-  req := &dm.Deployment{
-    Name: name,
-    Target: &dm.TargetConfiguration{
-      Imports: imports,
-      Config: &dm.ConfigFile{
-        Content: compileTmpl(configYAML, &opts),
-      },
-    },
-  }
+	imports := []*dm.ImportFile{
+		{
+			Name:    "registry.jinja",
+			Content: registryYAML,
+		},
+		{
+			Name:    "compute.jinja",
+			Content: apiVmYAML,
+		},
+	}
 
-  service := dmService(cred)
+	if opts.ClusterNotExists {
+		imports = append(imports, &dm.ImportFile{
+			Name:    "container-vm.jinja",
+			Content: kubeClusterYAML,
+		})
+	}
 
-  op, err := service.Deployments.Insert(opts.Project, req).Do()
-  if err != nil {
-    if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-      return fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
-    } else {
-      return err
-    }
-  }
+	name := opts.Name
 
-  tearfn := func() error {
-    return teardown(service, cred, opts.Name, opts.Project, opts.Bucket)
-  }
+	req := &dm.Deployment{
+		Name: name,
+		Target: &dm.TargetConfiguration{
+			Imports: imports,
+			Config: &dm.ConfigFile{
+				Content: compileTmpl(configYAML, &opts),
+			},
+		},
+	}
 
-  if err = waitForDpOp(service, op, opts.Project, true, tearfn); err != nil {
-    return err
-  }
+	service := dmService(name)
+	log.Infof("creating new stack %s", name)
+	log.Debugf(toJson(opts))
 
-  return err
+	op, err := service.Deployments.Insert(opts.Project, req).Do()
+	if err != nil {
+		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
+			return nil, fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
+		} else {
+			return nil, err
+		}
+	}
+
+	tearfn := func() error {
+		return teardown(service, opts.Name, opts.Project)
+	}
+
+	if err = waitForDpOp(service, op, opts.Project, true, tearfn); err != nil {
+		return nil, err
+	}
+
+	instanceName := fmt.Sprintf("%s-compute", opts.Name)
+	ret, err := compute.NewInstancesService(computeService(opts.Name)).Get(
+		opts.Project,
+		opts.Zone,
+		instanceName,
+	).Do()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IP err: %v", err)
+	}
+
+	host := externalIp(ret)
+	return &initResponse{Host: host, Password: opts.API_KEY}, nil
 }
 
 const registryYAML = `
@@ -470,12 +388,17 @@ resources:
     zone: {{ .Zone }}
 
 - type: compute.jinja
+  name: {{ .Name }}-datacol-vm
   properties:
     machineType: f1-micro
     zone: {{ .Zone }}
-    IMAGE_PROJECT: debian-cloud
-    IMAGE: debian-8
-    EMAIL: {{ .SAEmail }}
+    bucket: {{ .Bucket }}
+    sva_email: {{ .SAEmail }}
+    api_key: {{ .API_KEY }}
+    stack_name: {{ .Name }}
+    version: {{ .Version }}
+    region: {{ .Region }}
+    port: {{ .Port }}
 
 {{ if .ClusterNotExists }}
 - type: container-vm.jinja
@@ -491,30 +414,61 @@ resources:
 
 const apiVmYAML = `
 resources:
+- name: {{ env["deployment"] }}-fw
+  type: compute.v1.firewall
+  properties:
+    region: {{ properties['region'] }}
+    allowed:
+    - IPProtocol: tcp
+      ports:
+      - 80
+      - 22
+      - 8080
+      - 10000
+    sourceRange: 0.0.0.0/0
+    targetTags:
+    - datacol
+
 - name: {{ env['deployment'] }}-compute
   type: compute.v1.instance
   properties:
-    machineType: {{ properties['machineType'] }}
+    machineType: https://www.googleapis.com/compute/v1/projects/{{ env["project"] }}/zones/{{ properties["zone"] }}/machineTypes/{{ properties["machineType"] }}
     zone: {{ properties['zone'] }}
     disks:
     - autoDelete: true
       boot: true
       initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/{{ properties["IMAGE_PROJECT"] }}/global/images/{{ properties["IMAGE"] }}
+        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8-jessie-v20170426
     networkInterfaces:
     - accessConfigs:
       - name: external-nat
         type: ONE_TO_ONE_NAT
     serviceAccounts:
-    - email: {{ properties['EMAIL'] }}
+    - email: {{ properties['sva_email'] }}
       scopes:
-        - https://www.googleapis.com/auth/devstorage.read_only
+        - https://www.googleapis.com/auth/cloud-platform
+        - https://www.googleapis.com/auth/devstorage.read_write
+        - https://www.googleapis.com/auth/logging.write
+        - https://www.googleapis.com/auth/monitoring
+    tags:
+      items:
+        - datacol
     metadata:
       items:
+      - key: DATACOL_API_KEY
+        value: {{ properties['api_key'] }}
+      - key: DATACOL_STACK
+        value: {{ properties['stack_name'] }}
+      - key: DATACOL_BUCKET
+        value: {{ properties['bucket'] }}
       - key: startup-script
         value: |
           #! /bin/bash
-          sudo apt-get update
+          apt-get update
+          apt-get install -y unzip curl
+          curl -Ls /tmp https://storage.googleapis.com/datacol-distros/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
+          unzip /tmp/apictl.zip -d /usr/local/bin && chmod +x /usr/local/bin/apictl
+          nohup apictl &
 `
 
 const mysqlInstanceYAML = `

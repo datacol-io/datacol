@@ -57,7 +57,10 @@ func cmdAppRestart(c *cli.Context) error {
 }
 
 func cmdAppsList(c *cli.Context) error {
-	apps, err := getClient(c).GetApps()
+	api, close := getApiClient(c)
+	defer close()
+
+	apps, err := api.GetApps()
 	if err != nil {
 		return err
 	}
@@ -89,18 +92,19 @@ func cmdAppCreate(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	client := getClient(c)
-	app, err := client.CreateApp(name)
+	api, close := getApiClient(c)
+	defer close()
+
+	app, err := api.CreateApp(name)
 	if err != nil {
 		return err
 	}
 
-	if err = stdcli.WriteSetting("app", name); err != nil {
+	if err = stdcli.WriteAppSetting("app", name); err != nil {
 		return err
 	}
 
-	stname := fmt.Sprintf("%s@%s", client.StackName, client.ProjectId)
-	if err = stdcli.WriteSetting("stack", stname); err != nil {
+	if err = stdcli.WriteAppSetting("stack", api.StackName); err != nil {
 		return err
 	}
 
@@ -114,12 +118,15 @@ func cmdAppInfo(c *cli.Context) error {
 		return err
 	}
 
-	app, err := getClient(c).GetApp(name)
+	api, close := getApiClient(c)
+	defer close()
+
+	app, err := api.GetApp(name)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%+v", app)
+	fmt.Printf("%s", toJson(app))
 	return nil
 }
 
@@ -129,7 +136,10 @@ func cmdAppDelete(c *cli.Context) error {
 		return err
 	}
 
-	if err = getClient(c).DeleteApp(name); err != nil {
+	api, close := getApiClient(c)
+	defer close()
+
+	if err = api.DeleteApp(name); err != nil {
 		return err
 	}
 

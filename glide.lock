@@ -1,5 +1,5 @@
-hash: 307362c5f8ac8dd499bed45cfb4fbc2de1549ccdd17f1bc481bc8191c703b7b0
-updated: 2017-05-06T22:19:20.849537764+05:30
+hash: 4af1f4a146f20a6056a6b2052d26aeaab5307b2f7318455cc344e8e5540374ad
+updated: 2017-05-08T00:45:48.86401738+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -92,12 +92,11 @@ imports:
 - name: github.com/gorilla/mux
   version: 4c1c3952b7d9d0a061a3fa7b36fd373ba0398ebc
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: a8f25bd1ab549f8b87afd48aa9181221e9d439bb
+  version: 18d159699f2e83fc5bb9ef2f79465ca3f3122676
   subpackages:
   - '...'
   - runtime
   - runtime/internal
-  - third_party/googleapis/google/api
   - utilities
 - name: github.com/grpc/grpc-go
   version: 708a7f9f3283aa2d4f6132d287d78683babe55c8

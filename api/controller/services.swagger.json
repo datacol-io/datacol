@@ -1,0 +1,770 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "services.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/apps": {
+      "get": {
+        "summary": "Account api",
+        "operationId": "AppList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerAppListResponse"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      },
+      "post": {
+        "operationId": "AppCreate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsApp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controllerAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/apps/{name}": {
+      "get": {
+        "operationId": "AppGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsApp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      },
+      "delete": {
+        "operationId": "AppDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/apps/{name}/restart": {
+      "get": {
+        "operationId": "AppRestart",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/auth": {
+      "post": {
+        "operationId": "Auth",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerAuthResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controllerAuthRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/builds": {
+      "post": {
+        "summary": "Build Api",
+        "operationId": "BuildCreate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsBuild"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/builds/{id}": {
+      "post": {
+        "operationId": "BuildGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsBuild"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/builds/{id}/log": {
+      "post": {
+        "operationId": "BuildLogs",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerBuildLogResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/env/{name}": {
+      "get": {
+        "operationId": "EnvironmentGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsEnvConfig"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      },
+      "post": {
+        "operationId": "EnvironmentSet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/releases": {
+      "post": {
+        "operationId": "BuildRelease",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsRelease"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources": {
+      "get": {
+        "summary": "Resource endpoints",
+        "operationId": "ResourceList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerResourceListResponse"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      },
+      "post": {
+        "operationId": "ResourceCreate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources/{name}": {
+      "delete": {
+        "operationId": "ResourceDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      },
+      "post": {
+        "operationId": "ResourceGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources/{name}/link/{app}": {
+      "put": {
+        "operationId": "ResourceLink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          },
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources/{name}/unlink/{app}": {
+      "put": {
+        "operationId": "ResourceUnlink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          },
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "controllerAppListResponse": {
+      "type": "object",
+      "properties": {
+        "apps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsApp"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "controllerAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerAppResourceReq": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerAuthRequest": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerAuthResponse": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "project": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerBuildLogRequest": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        },
+        "pos": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "controllerBuildLogResponse": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "string"
+          }
+        },
+        "pos": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "controllerCreateBuildRequest": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "controllerCreateResourceRequest": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        }
+      }
+    },
+    "controllerEnvSetRequest": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerGetBuildRequest": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "controllerListRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "controllerResourceListResponse": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsResource"
+          }
+        }
+      }
+    },
+    "modelsApp": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "format": "string"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "release_id": {
+          "type": "string",
+          "format": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/modelsStatus"
+        }
+      }
+    },
+    "modelsBuild": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "created_at": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        },
+        "remote_id": {
+          "type": "string",
+          "format": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/modelsStatus"
+        }
+      }
+    },
+    "modelsEnvConfig": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        }
+      }
+    },
+    "modelsRelease": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "build_id": {
+          "type": "string",
+          "format": "string"
+        },
+        "created_at": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/modelsStatus"
+        }
+      }
+    },
+    "modelsResource": {
+      "type": "object",
+      "properties": {
+        "URL": {
+          "type": "string",
+          "format": "string"
+        },
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "string"
+          }
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsResourceVar"
+          }
+        },
+        "kind": {
+          "$ref": "#/definitions/modelsresourceType"
+        },
+        "name": {
+          "type": "string",
+          "format": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/definitions/modelsStatus"
+        }
+      }
+    },
+    "modelsResourceVar": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
+    "modelsStatus": {
+      "type": "string",
+      "enum": [
+        "CREATED"
+      ],
+      "default": "CREATED"
+    },
+    "modelsresourceType": {
+      "type": "string",
+      "enum": [
+        "MYSQL",
+        "POSTGRES"
+      ],
+      "default": "MYSQL"
+    },
+    "protobufEmpty": {
+      "type": "object",
+      "description": "service Foo {\n      rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);\n    }\n\nThe JSON representation for `Empty` is empty JSON object `{}`.",
+      "title": "A generic empty message that you can re-use to avoid defining duplicated\nempty messages in your APIs. A typical example is to use it as the request\nor the response type of an API method. For instance:"
+    }
+  }
+}

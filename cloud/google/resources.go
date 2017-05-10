@@ -36,7 +36,6 @@ func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
 }
 
 func (g *GCPCloud) ResourceDelete(name string) error {
-	g.fetchStack()
 
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
@@ -79,7 +78,6 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 }
 
 func (g *GCPCloud) ResourceList() (pb.Resources, error) {
-	g.fetchStack()
 
 	var rs pb.Resources
 
@@ -116,7 +114,6 @@ func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 }
 
 func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error) {
-	g.fetchStack()
 
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
@@ -188,7 +185,6 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 }
 
 func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
-	g.fetchStack()
 
 	rs, err := g.ResourceGet(name)
 	if err != nil {
@@ -205,7 +201,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 		}
 
 		rsvars := rsVarToMap(rs.Exports)
-		if err = setupCloudProxy(kube, ns, app, rsvars, g.ServiceKey); err != nil {
+		if err = setupCloudProxy(kube, ns, app, rsvars); err != nil {
 			return nil, err
 		}
 
@@ -270,8 +266,6 @@ func remove_app(app string, rs *pb.Resource) {
 }
 
 func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
-	g.fetchStack()
-
 	rs, err := g.ResourceGet(name)
 	if err != nil {
 		return nil, err
@@ -324,7 +318,7 @@ func getDefaultPort(kind string) int {
 func getResourceKind(kind string) pb.ResourceType {
 	v, ok := pb.ResourceType_value[kind]
 	if !ok {
-		log.Fatal(fmt.Errorf("unsupported resource of kind: %s", kind)) 
+		log.Fatal(fmt.Errorf("unsupported resource of kind: %s", kind))
 	}
 
 	return pb.ResourceType(v)

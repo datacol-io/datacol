@@ -4,16 +4,22 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
 
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"google.golang.org/grpc"
+)
+
+const (
+	apiHttpPort = 8080
+	apiRpcPort  = 10000
 )
 
 func init() {
@@ -35,15 +41,41 @@ type Client struct {
 	Version   string
 	StackName string
 	ProjectId string
+
+	pb.ProviderServiceClient
 }
 
-func (c *Client) Stack() (pb.StackServiceClient, func() error) {
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+func (c *Client) SetFromEnv() {
+	c.SetStack(stdcli.GetAppStack())
+}
+
+func NewClient(version string) (*Client, func() error) {
+	name := stdcli.GetAppStack()
+	psc, close := grpcClient(name)
+	conn := &Client{
+		Version: version,
+		ProviderServiceClient: psc,
+	}
+	conn.SetStack(name)
+
+	return conn, close
+}
+
+func grpcClient(name string) (pb.ProviderServiceClient, func() error) {
+	v, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	address := fmt.Sprintf("%s:%d", strings.TrimSpace(string(v)), apiRpcPort)
+	log.Debugf("grpc dialing at %s", address)
+
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatal(fmt.Errorf("did not connect: %v", err))
 	}
-	
-	return pb.NewStackServiceClient(conn), conn.Close
+
+	return pb.NewProviderServiceClient(conn), conn.Close
 }
 
 func (c *Client) configRoot() string {
@@ -58,6 +90,10 @@ func (c *Client) SetStack(name string) {
 		c.ProjectId = parts[1]
 	} else {
 		c.ProjectId = os.Getenv("PROJECT_ID")
+	}
+
+	if len(c.ProjectId) == 0 {
+		c.ProjectId = stdcli.ReadSetting(c.StackName, "project")
 	}
 
 	if len(c.ProjectId) == 0 {

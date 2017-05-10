@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-
+	"log"
+	pb "github.com/dinesh/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -44,8 +45,8 @@ func New() *cli.App {
 	return app
 }
 
-func GetStack() string {
-	stack := GetSetting("stack")
+func GetAppStack() string {
+	stack := GetAppSetting("stack")
 	if stack == "" {
 		stack = os.Getenv("STACK")
 	}
@@ -60,7 +61,7 @@ func AddCommand(cmd *cli.Command) {
 	Commands = append(Commands, cmd)
 }
 
-func GetSetting(setting string) string {
+func GetAppSetting(setting string) string {
 	value, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", localappdir, setting))
 	if err != nil {
 		return ""
@@ -70,7 +71,7 @@ func GetSetting(setting string) string {
 	return output
 }
 
-func WriteSetting(setting, value string) error {
+func WriteAppSetting(setting, value string) error {
 	if err := os.MkdirAll(localappdir, 0777); err != nil {
 		return err
 	}
@@ -84,6 +85,42 @@ func WriteSetting(setting, value string) error {
 
 func RmSettingDir(path string) error {
 	return os.RemoveAll(filepath.Join(path, localappdir))
+}
+
+func CurrentStack() string {
+	name := os.Getenv("STACK")
+	name = strings.Split(name, "@")[0]
+
+	if len(name) == 0 {
+		v, err := ioutil.ReadFile(filepath.Join(pb.ConfigPath, "stack"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Printf("no active stack found.")
+				os.Exit(0)
+			} else {
+				log.Fatal(err)
+			}
+		}
+		name = strings.TrimSpace(string(v))
+	}
+
+	return name
+}
+
+func WriteSetting(name, setting, value string) error {
+	path := filepath.Join(pb.ConfigPath, name, setting)
+	return ioutil.WriteFile(path, []byte(value), 0700)
+}
+
+func ReadSetting(name, setting string) string {
+	path := filepath.Join(pb.ConfigPath, name, setting)
+	value, err := ioutil.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	output := strings.TrimSpace(string(value))
+
+	return output
 }
 
 func CheckFlagsPresence(c *cli.Context, flags ...string) {

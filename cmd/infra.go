@@ -72,8 +72,10 @@ func init() {
 }
 
 func cmdResourceList(c *cli.Context) error {
-	client := getClient(c)
-	resp, err := client.Provider().ResourceList()
+	client, close := getApiClient(c)
+	defer close()
+
+	resp, err := client.ResourceList()
 	if err != nil {
 		return err
 	}
@@ -99,14 +101,17 @@ func cmdResourceInfo(c *cli.Context) error {
 		stdcli.Usage(c)
 	}
 
-	rs, err := getClient(c).GetResource(name)
+	client, close := getApiClient(c)
+	defer close()
+
+	rs, err := client.GetResource(name)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("%s ", rs.Name)
 	for k, v := range rs.Exports {
-		fmt.Printf("%s=%s ", k, v)
+		fmt.Printf("%d=%s", k, v)
 	}
 
 	fmt.Printf("\n")
@@ -119,8 +124,10 @@ func cmdResourceDelete(c *cli.Context) error {
 		log.Errorf("no name given. Usage: \n")
 		stdcli.Usage(c)
 	}
+	client, close := getApiClient(c)
+	defer close()
 
-	err := getClient(c).Provider().ResourceDelete(name)
+	err := client.ResourceDelete(name)
 	if err != nil {
 		return err
 	}
@@ -156,7 +163,10 @@ func cmdResourceCreate(c *cli.Context) error {
 	fmt.Printf(")... ")
 	fmt.Printf("\n")
 
-	rs, err := getClient(c).CreateResource(t.name, options)
+	client, close := getApiClient(c)
+	defer close()
+
+	rs, err := client.CreateResource(t.name, options)
 	if err != nil {
 		return err
 	}
@@ -173,7 +183,10 @@ func cmdLinkCreate(c *cli.Context) error {
 	}
 	name := c.Args().First()
 
-	err = getClient(c).CreateResourceLink(app, name)
+	client, close := getApiClient(c)
+	defer close()
+
+	err = client.CreateResourceLink(app, name)
 	if err != nil {
 		return err
 	}
@@ -188,8 +201,10 @@ func cmdLinkDelete(c *cli.Context) error {
 		return err
 	}
 	name := c.Args().First()
+	client, close := getApiClient(c)
+	defer close()
 
-	err = getClient(c).DeleteResourceLink(app, name)
+	err = client.DeleteResourceLink(app, name)
 	if err != nil {
 		return err
 	}
