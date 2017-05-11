@@ -5,21 +5,21 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"time"
 	"path/filepath"
+	"time"
 
-	"golang.org/x/net/context"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
+	"golang.org/x/net/context"
 	"gopkg.in/urfave/cli.v2"
 
 	log "github.com/Sirupsen/logrus"
 
-	pb "github.com/dinesh/datacol/api/models"
 	pbs "github.com/dinesh/datacol/api/controller"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/client"
+	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
 func init() {
@@ -151,15 +151,15 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 
 	for {
 		time.Sleep(2 * time.Second)
-		
+
 		ret, err := api.BuildLogs(context.TODO(), &pbs.BuildLogRequest{
-			App: b.App, 
-			Id: b.RemoteId, 
+			App: b.App,
+			Id:  b.RemoteId,
 			Pos: index,
 		})
 
-		if err != nil { 
-			return fmt.Errorf("Getting logs for build: %s err: %v", b.RemoteId, err) 
+		if err != nil {
+			return fmt.Errorf("Getting logs for build: %s err: %v", b.RemoteId, err)
 		}
 
 		index = ret.Pos
@@ -169,7 +169,7 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 			fmt.Println(line)
 		}
 
-		if  len(lines) > 0 && lines[len(lines)-1] == "DONE" { 
+		if len(lines) > 0 && lines[len(lines)-1] == "DONE" {
 			break
 		}
 	}

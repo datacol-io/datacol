@@ -35,7 +35,7 @@ func (c *Client) waitForLoadBalancerIp(name string) error {
 	for {
 		time.Sleep(1 * time.Second)
 		fmt.Print(".")
-		
+
 		app, err := c.GetApp(name)
 		if err != nil {
 			return err

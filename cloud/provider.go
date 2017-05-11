@@ -29,7 +29,6 @@ type Provider interface {
 
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
 
-
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)
 	ResourceGet(name string) (*pb.Resource, error)

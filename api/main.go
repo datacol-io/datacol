@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/controller"
@@ -10,18 +11,17 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"flag"
 )
 
 var (
-	rpcPort     = 10000
-	port        = 8080
+	rpcPort = 10000
+	port    = 8080
 	logPath string
 	debugF  bool
 )
 
-func init(){
-	flag.StringVar(&logPath, "log-dir", "", "path for logs")
+func init() {
+	flag.StringVar(&logPath, "log-file", "", "path for logs")
 	flag.BoolVar(&debugF, "debug", true, "debug mode")
 }
 
@@ -57,26 +57,27 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
 
-	fmt.Printf("http proxy on port: %d\n", port)
+	fmt.Printf("starting proxy on %d and grpc on %d ...\n", port, rpcPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
-func setupLogging(){
+func setupLogging() {
 	flag.Parse()
 
 	if len(logPath) > 0 {
 		fmt.Printf("setting logging at %s\n", logPath)
 		file, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE, 0755)
 
-		defer file.Close()
 		if err != nil {
 			panic(err)
 		}
 		log.SetOutput(file)
 	}
 
-	if debugF { log.SetLevel(log.DebugLevel) }
-	
+	if debugF {
+		log.SetLevel(log.DebugLevel)
+	}
+
 	log.SetFormatter(&log.TextFormatter{})
 }
 

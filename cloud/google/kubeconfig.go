@@ -9,12 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	homeDir "github.com/mitchellh/go-homedir"
 	container "google.golang.org/api/container/v1"
-)
-
-var (
-	home, _ = homeDir.Dir()
 )
 
 const kubeconfigTemplate = `apiVersion: v1
@@ -33,7 +28,6 @@ kind: Config
 preferences: {}
 users:
 - name: {{.User}}
-  tokenFile: {{.TokenFile}}
   user:
     auth-provider:
       name: gcp
@@ -48,7 +42,35 @@ type configOptions struct {
 	TokenFile string
 }
 
-func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error {
+func CacheKubeConfig(sName, project, zone, cname string) (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	filename := filepath.Join(dir, "kubeconfig")
+
+	if _, err = os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+			svc, err := container.New(httpClient(sName))
+			if err != nil {
+				return filename, fmt.Errorf("container client %s", err)
+			}
+
+			ret, err := svc.Projects.Zones.Clusters.Get(project, zone, cname).Do()
+			if err != nil {
+				return filename, err
+			}
+
+			return filename, generateClusterConfig(sName, dir, ret)
+		} else {
+			return filename, err
+		}
+	}
+
+	return filename, nil
+}
+
+func generateClusterConfig(rackName, baseDir string, c *container.Cluster) error {
 	tmpl, err := template.New("kubeconfig").Parse(kubeconfigTemplate)
 	if err != nil {
 		return fmt.Errorf("error reading config template: %v", err)
@@ -73,12 +95,12 @@ func GenerateClusterConfig(rackName, baseDir string, c *container.Cluster) error
 	}
 
 	copts := &configOptions{
-		CA:        caDecodedPath,
-		Server:    "https://" + c.Endpoint,
-		User:      rackName,
-		Context:   rackName,
-		Cluster:   rackName,
-		TokenFile: getTokenFile(rackName),
+		CA:      caDecodedPath,
+		Server:  "https://" + c.Endpoint,
+		User:    rackName,
+		Context: rackName,
+		Cluster: rackName,
+		// TokenFile: getTokenFile(rackName),
 	}
 
 	var kubeconfig bytes.Buffer

@@ -1,42 +1,68 @@
 package main
 
 import (
-  "bufio"
-  "os"
-  log "github.com/Sirupsen/logrus"
-  "golang.org/x/net/context"
-  "fmt"
-  pbs "github.com/dinesh/datacol/api/controller"
-  "github.com/dinesh/datacol/cmd/stdcli"
-  "gopkg.in/urfave/cli.v2"
+	"bufio"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
+	"github.com/dinesh/datacol/client"
+	"github.com/dinesh/datacol/cmd/stdcli"
+	"golang.org/x/net/context"
+	"gopkg.in/urfave/cli.v2"
+	"os"
+	"strings"
 )
 
 func init() {
-  stdcli.AddCommand(&cli.Command{
-    Name:   "login",
-    Usage:  "login",
-    Action: cmdLogin,
-  })
+	stdcli.AddCommand(&cli.Command{
+		Name:   "login",
+		Usage:  "login",
+		Action: cmdLogin,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "ip",
+				Usage: "datacol stack hostname or IP address",
+			},
+		},
+	})
 }
 
 func cmdLogin(c *cli.Context) error {
-  r := bufio.NewReader(os.Stdin)
-  fmt.Print("Enter your password: ")
+	stdcli.CheckFlagsPresence(c, "ip")
 
-  passwd, err := r.ReadString('\n')
-  if err != nil {
-    log.Fatal(err)
-  }
+	r := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter your password: ")
 
-  api, close := getApiClient(c)
-  defer close()
+	p, err := r.ReadString('\n')
+	if err != nil {
+		log.Fatal(err)
+	}
 
-  ret, err := api.Auth(context.TODO(), &pbs.AuthRequest{Password: passwd})
-  if err != nil {
-    return err
-  }
+	passwd := strings.TrimSpace(p)
+	host := c.String("ip")
 
-  log.Debugf("response: %+v", ret)
-  fmt.Printf("Successfully Logged in.")
-  return nil
+	api, close := client.GrpcClient(host)
+	defer close()
+
+	log.Debugf("Trying to login with [%s]", passwd)
+	ret, err := api.Auth(context.TODO(), &pbs.AuthRequest{Password: passwd})
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("response: %+v", toJson(ret))
+	if err = updateSetting(ret, host, passwd); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully Logged in.")
+	return nil
+}
+
+func updateSetting(ret *pbs.AuthResponse, host, passwd string) error {
+	if err := createStackDir(ret.Name); err != nil {
+		return err
+	}
+
+	return dumpParams(ret.Name, ret.Project, "", host, passwd)
 }

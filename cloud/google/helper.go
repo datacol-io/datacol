@@ -25,6 +25,16 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+func deleteFromQuery(dc *datastore.Client, q *datastore.Query) error {
+	ctx := context.TODO()
+	keys, err := dc.GetAll(ctx, q, nil)
+	if err != nil {
+		return err
+	}
+
+	return dc.DeleteMulti(ctx, keys)
+}
+
 func nameKey(kind, id string, parent *datastore.Key) *datastore.Key {
 	return datastore.NewKey(context.TODO(), kind, id, 0, parent)
 }

@@ -51,9 +51,15 @@ func (c *Client) SetFromEnv() {
 
 func NewClient(version string) (*Client, func() error) {
 	name := stdcli.GetAppStack()
-	psc, close := grpcClient(name)
+	v, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	host := strings.TrimSpace(string(v))
+
+	psc, close := GrpcClient(host)
 	conn := &Client{
-		Version: version,
+		Version:               version,
 		ProviderServiceClient: psc,
 	}
 	conn.SetStack(name)
@@ -61,13 +67,8 @@ func NewClient(version string) (*Client, func() error) {
 	return conn, close
 }
 
-func grpcClient(name string) (pb.ProviderServiceClient, func() error) {
-	v, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	address := fmt.Sprintf("%s:%d", strings.TrimSpace(string(v)), apiRpcPort)
+func GrpcClient(host string) (pb.ProviderServiceClient, func() error) {
+	address := fmt.Sprintf("%s:%d", host, apiRpcPort)
 	log.Debugf("grpc dialing at %s", address)
 
 	conn, err := grpc.Dial(address, grpc.WithInsecure())

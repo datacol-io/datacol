@@ -1,15 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"cloud.google.com/go/compute/metadata"
 	"fmt"
-	"strings"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/google"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 )
@@ -54,7 +56,7 @@ func newServer() *Server {
 		ProjectNumber:  projectNumber,
 	}
 
-	return &Server{Provider: provider, Password: password}
+	return &Server{Provider: provider, Password: password, Project: projectId, Zone: zone, StackName: name}
 }
 
 func getAttr(key string) string {
@@ -67,7 +69,7 @@ func getAttr(key string) string {
 
 type Server struct {
 	cloud.Provider
-	Password, StackName string
+	Password, StackName, Project, Zone string
 }
 
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
@@ -85,7 +87,7 @@ func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthRespo
 			}
 			project = _pid
 		} else {
-			ip = "localhost:8080"
+			ip = "localhost"
 			project = "gcs-local"
 		}
 
@@ -139,30 +141,29 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 }
 
 func (s *Server) BuildGet(ctx context.Context, req *pbs.GetBuildRequest) (*pb.Build, error) {
-  b, err := s.Provider.BuildGet(req.App, req.Id)
-  if err != nil {
-    return nil, internalError(err, "failed to get build.")
-  }
-  return b, nil
+	b, err := s.Provider.BuildGet(req.App, req.Id)
+	if err != nil {
+		return nil, internalError(err, "failed to get build.")
+	}
+	return b, nil
 }
 
 func (s *Server) BuildRelease(ctx context.Context, b *pb.Build) (*pb.Release, error) {
-  r, err := s.Provider.BuildRelease(b)
-  if err != nil {
-    return nil, internalError(err, "failed to deploy app.")
-  }
-  return r, nil
+	r, err := s.Provider.BuildRelease(b)
+	if err != nil {
+		return nil, internalError(err, "failed to deploy app.")
+	}
+	return r, nil
 }
 
 func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.BuildLogResponse, error) {
-  pos, lines, err := s.Provider.BuildLogs(req.App, req.Id, int(req.Pos))
-  if err != nil {
-    return nil, internalError(err, "build process failed.")
-  }
+	pos, lines, err := s.Provider.BuildLogs(req.App, req.Id, int(req.Pos))
+	if err != nil {
+		return nil, internalError(err, "build process failed.")
+	}
 
-  return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
 }
-
 
 func (s *Server) EnvironmentGet(ctx context.Context, req *pbs.AppRequest) (*pb.EnvConfig, error) {
 	env, err := s.Provider.EnvironmentGet(req.Name)
@@ -180,7 +181,7 @@ func (s *Server) EnvironmentSet(ctx context.Context, req *pbs.EnvSetRequest) (*e
 	return &empty.Empty{}, nil
 }
 
-func (s *Server) ResourceList(ctx context.Context, req *empty.Empty) (*pbs.ResourceListResponse, error) {
+func (s *Server) ResourceList(ctx context.Context, req *pbs.ListRequest) (*pbs.ResourceListResponse, error) {
 	ret, err := s.Provider.ResourceList()
 	if err != nil {
 		return nil, err
@@ -214,8 +215,24 @@ func (s *Server) ResourceLink(ctx context.Context, req *pbs.AppResourceReq) (*pb
 func (s *Server) ResourceUnlink(ctx context.Context, req *pbs.AppResourceReq) (*pb.Resource, error) {
 	ret, err := s.Provider.ResourceUnlink(req.App, req.Name)
 	if err != nil {
-		return nil, internalError(err, fmt.Sprintf("failed to link resource %s", req.Name))
+		return nil, internalError(err, fmt.Sprintf("failed to unlink resource %s", req.Name))
 	}
 	return ret, nil
 }
 
+func (s *Server) LogStream(ctx context.Context, req *pbs.LogStreamReq) (*pbs.LogStreamResponse, error) {
+	buf := new(bytes.Buffer)
+	since, err := ptypes.Duration(req.Since)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.Provider.LogStream(req.Name, buf, pb.LogStreamOptions{
+		Follow: req.Follow,
+		Since:  since,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &pbs.LogStreamResponse{Data: buf.Bytes()}, nil
+}

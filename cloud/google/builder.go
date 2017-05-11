@@ -149,7 +149,7 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 	log.Debugf("Saving build %s", toJson(build))
 
 	if _, err := g.datastore().Put(context.TODO(), g.nestedKey(buildKind, build.Id), build); err != nil {
-		return nil, fmt.Errorf("saving build err: %v", err);
+		return nil, fmt.Errorf("saving build err: %v", err)
 	}
 
 	return build, nil
@@ -246,14 +246,14 @@ func buildLogs(service *storage.Service, bucket, bid string, index int) (int, []
 	}
 
 	parts := strings.Split(string(body), "\n")
-	
+
 	for _, line := range parts[index:] {
 		if len(line) > 0 && line != "\n" {
 			lines = append(lines, line)
 		}
 	}
 
-	return len(parts)-1, lines, nil
+	return len(parts) - 1, lines, nil
 }
 
 func waitForOp(svc *cloudbuild.Service, stsvc *storage.Service, projectId, bucket, id string) (string, error) {
@@ -272,7 +272,9 @@ func waitForOp(svc *cloudbuild.Service, stsvc *storage.Service, projectId, bucke
 		logKey := fmt.Sprintf("log-%s.txt", id)
 		i, logs, err := buildLogs(stsvc, bucket, logKey, index)
 		index = i
-		if err != nil { log.Fatal(err) }
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		for _, line := range logs {
 			fmt.Println(line)

@@ -75,7 +75,7 @@ func cmdResourceList(c *cli.Context) error {
 	client, close := getApiClient(c)
 	defer close()
 
-	resp, err := client.ResourceList()
+	resp, err := client.ListResources()
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func cmdResourceDelete(c *cli.Context) error {
 	client, close := getApiClient(c)
 	defer close()
 
-	err := client.ResourceDelete(name)
+	err := client.DeleteResource(name)
 	if err != nil {
 		return err
 	}

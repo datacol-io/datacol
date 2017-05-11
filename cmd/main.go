@@ -68,10 +68,3 @@ func getDirApp(path string) (string, string, error) {
 	}
 	return abs, app, nil
 }
-
-func getAnonClient(c *cli.Context, name, pid string) *client.Client {
-	return &client.Client{
-		StackName: name,
-		ProjectId: pid,
-	}
-}

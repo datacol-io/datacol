@@ -48,6 +48,7 @@ func TeardownStack(name, project, bucket string) error {
 	log.Infof("Deleting stack %s", name)
 
 	gsService := storageService(name)
+
 	resp, err := gsService.Objects.List(bucket).Do()
 	if err != nil {
 		return err
@@ -69,8 +70,7 @@ func TeardownStack(name, project, bucket string) error {
 		return fmt.Errorf("deleting stack %v", err)
 	}
 
-	return nil
-	// return g.resetDatabase()
+	return resetDatabase(name, project)
 }
 
 func (g *GCPCloud) updateDeployment(
@@ -189,6 +189,26 @@ func waitForDpOp(svc *dm.Service, op *dm.Operation, project string, interrupt bo
 	}
 }
 
+func resetDatabase(name, project string) error {
+	s, close := datastoreClient(name, project)
+	defer close()
+	parent := nameKey("Stack", name, nil)
+
+	if err := deleteFromQuery(s, datastore.NewQuery(appKind).Ancestor(parent)); err != nil {
+		return err
+	}
+
+	if err := deleteFromQuery(s, datastore.NewQuery(buildKind).Ancestor(parent)); err != nil {
+		return err
+	}
+
+	if err := deleteFromQuery(s, datastore.NewQuery(releaseKind).Ancestor(parent)); err != nil {
+		return err
+	}
+
+	return deleteFromQuery(s, datastore.NewQuery(resourceKind).Ancestor(parent))
+}
+
 func (g *GCPCloud) resetDatabase() error {
 	apps, err := g.AppList()
 	if err != nil {
@@ -201,24 +221,16 @@ func (g *GCPCloud) resetDatabase() error {
 	// delete apps, builds, releases
 	for _, app := range apps {
 		q := datastore.NewQuery(buildKind).Ancestor(g.stackKey()).
-			Filter("app =", app.Name).KeysOnly()
-		keys, err := store.GetAll(ctx, q, nil)
-		if err != nil {
-			return err
-		}
-		err = store.DeleteMulti(ctx, keys)
-		if err != nil {
+			Filter("App =", app.Name).KeysOnly()
+
+		if err = deleteFromQuery(store, q); err != nil {
 			return err
 		}
 
 		q = datastore.NewQuery(releaseKind).Ancestor(g.stackKey()).
-			Filter("app =", app.Name).KeysOnly()
-		keys, err = store.GetAll(ctx, q, nil)
-		if err != nil {
-			return err
-		}
-		err = store.DeleteMulti(ctx, keys)
-		if err != nil {
+			Filter("App =", app.Name).KeysOnly()
+
+		if err = deleteFromQuery(store, q); err != nil {
 			return err
 		}
 
@@ -229,16 +241,7 @@ func (g *GCPCloud) resetDatabase() error {
 
 	// delete resources
 	q := datastore.NewQuery(resourceKind).Ancestor(g.stackKey()).KeysOnly()
-	keys, err := store.GetAll(ctx, q, nil)
-	if err != nil {
-		return err
-	}
-	if err = store.DeleteMulti(ctx, keys); err != nil {
-		return err
-	}
-
-	// delete stack
-	return store.Delete(ctx, g.stackKey())
+	return deleteFromQuery(store, q)
 }
 
 func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *dm.Manifest, error) {
@@ -399,6 +402,7 @@ resources:
     version: {{ .Version }}
     region: {{ .Region }}
     port: {{ .Port }}
+    cluster_name: {{ .ClusterName }}
 
 {{ if .ClusterNotExists }}
 - type: container-vm.jinja
@@ -461,14 +465,20 @@ resources:
         value: {{ properties['stack_name'] }}
       - key: DATACOL_BUCKET
         value: {{ properties['bucket'] }}
+      - key: DATACOL_CLUSTER
+        value: {{ properties['cluster_name'] }}
       - key: startup-script
         value: |
           #! /bin/bash
           apt-get update
           apt-get install -y unzip curl
-          curl -Ls /tmp https://storage.googleapis.com/datacol-distros/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
-          unzip /tmp/apictl.zip -d /usr/local/bin && chmod +x /usr/local/bin/apictl
-          nohup apictl &
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
+            chmod +x kubectl && \
+            mv kubectl /usr/local/bin
+          mkdir /opt/datacol && \
+            curl -Ls /tmp https://storage.googleapis.com/datacol-distros/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
+            unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
+          cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `
 
 const mysqlInstanceYAML = `

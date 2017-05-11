@@ -1,18 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"golang.org/x/net/context"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"syscall"
 
-	"gopkg.in/urfave/cli.v2"
-
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/client"
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
@@ -25,38 +21,31 @@ func init() {
 }
 
 func cmdKubectl(c *cli.Context) error {
-	ct := client.Client{}
-	ct.SetFromEnv()
+	client, close := getApiClient(c)
+	defer close()
 
-	excode := execute(ct.StackName, c.Args().Slice())
-	os.Exit(excode)
+	args := c.Args().Slice()
+	ret, err := client.ProviderServiceClient.Kubectl(context.TODO(), &pbs.KubectlReq{Args: args})
+
+	if err != nil {
+		return err
+	}
+	onApiExec(ret, args)
 	return nil
 }
 
-func execute(env string, args []string) int {
-	var (
-		out, outErr bytes.Buffer
-		exitcode    int
-	)
-
-	cfgpath := filepath.Join(pb.ConfigPath, env, "kubeconfig")
-	args = append([]string{"--kubeconfig", cfgpath, "-n", env}, args...)
-	c := exec.Command("kubectl", args...)
-
-	c.Stdout = &out
-	c.Stderr = &outErr
-	err := c.Run()
-
-	if exitError, ok := err.(*exec.ExitError); ok {
-		if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
-			exitcode = waitStatus.ExitStatus()
+func onApiExec(ret *pbs.CmdResponse, args []string) {
+	exitcode := int(ret.ExitCode)
+	if len(ret.Err) > 0 {
+		log.Warn(ret.Err)
+		fmt.Printf("failed to execute %v", args)
+	} else {
+		if exitcode == 0 {
+			fmt.Printf(ret.StdOut)
+		} else {
+			fmt.Printf(ret.StdErr)
 		}
 	}
-	if exitcode == 0 {
-		fmt.Printf(out.String())
-	} else {
-		fmt.Printf(outErr.String())
-	}
 
-	return exitcode
+	os.Exit(exitcode)
 }

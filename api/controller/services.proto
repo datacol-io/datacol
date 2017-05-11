@@ -3,6 +3,7 @@ package controller;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/dinesh/datacol/api/models/types.proto";
 
@@ -75,6 +76,32 @@ message CreateResourceRequest {
 message AppResourceReq {
   string app = 1;
   string name = 2;
+}
+
+message KubectlReq {
+  repeated string args = 1;
+}
+
+message CmdResponse {
+  int32  exit_code = 1;
+  string err       = 2;
+  string stdOut    = 3;
+  string stdErr    = 4;
+}
+
+message LogStreamReq {
+  string name = 1;
+  bool follow = 2;
+  google.protobuf.Duration since = 3;
+}
+
+message LogStreamResponse {
+  bytes data = 1;
+}
+
+message ProcessRunReq {
+  string name = 1;
+  repeated string command = 2;
 }
 
 service ProviderService {
@@ -155,7 +182,7 @@ service ProviderService {
   }
 
   // Resource endpoints
-  rpc ResourceList(google.protobuf.Empty) returns (ResourceListResponse) {
+  rpc ResourceList(ListRequest) returns (ResourceListResponse) {
     option (google.api.http) = {
       get: "/v1/resources"
     };
@@ -188,6 +215,26 @@ service ProviderService {
   rpc ResourceUnlink(AppResourceReq) returns (models.Resource) {
     option (google.api.http) = {
       put: "/v1/resources/{name}/unlink/{app}"
+    };
+  }
+
+  // kubectl api wrappers
+  rpc Kubectl(KubectlReq) returns (CmdResponse) {
+    option (google.api.http) = {
+      get: "/v1/kubectl"
+    };
+  }
+
+  // Process api 
+  rpc ProcessRun(ProcessRunReq) returns (CmdResponse) {
+    option (google.api.http) = {
+      get: "/v1/process/{name}/run"
+    };
+  }
+
+  rpc LogStream(LogStreamReq) returns (LogStreamResponse) {
+    option (google.api.http) = {
+      get: "/v1/logs/{name}"
     };
   }
 

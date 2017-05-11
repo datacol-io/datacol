@@ -2,7 +2,7 @@ require 'rubygems'
 
 $commands = "cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go " +
             "cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go " + 
-            "cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go"
+            "cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go"
 
 $bucket_prefix = "gs://datacol-distros"
 

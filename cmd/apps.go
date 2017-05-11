@@ -48,7 +48,10 @@ func cmdAppRestart(c *cli.Context) error {
 		return err
 	}
 
-	if err := getClient(c).Provider().AppRestart(app); err != nil {
+	client, close := getApiClient(c)
+	defer close()
+
+	if err := client.RestartApp(app); err != nil {
 		return err
 	}
 

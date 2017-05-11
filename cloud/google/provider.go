@@ -28,6 +28,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	kapi "k8s.io/client-go/pkg/api/v1"
@@ -213,21 +214,26 @@ func (g *GCPCloud) iam() *iam.Service {
 }
 
 func (g *GCPCloud) datastore() *datastore.Client {
+	dc, _ := datastoreClient(g.DeploymentName, g.Project)
+	return dc
+}
+
+func datastoreClient(name, project string) (*datastore.Client, func()) {
 	opts := []option.ClientOption{
 		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5 * time.Second)),
 		option.WithGRPCDialOption(grpc.WithTimeout(30 * time.Second)),
 	}
 
 	if !metadata.OnGCE() {
-		opts = append(opts, option.WithServiceAccountFile(service_key_path(g.DeploymentName)))
+		opts = append(opts, option.WithServiceAccountFile(service_key_path(name)))
 	}
 
-	client, err := datastore.NewClient(context.TODO(), g.Project, opts...)
+	client, err := datastore.NewClient(context.TODO(), project, opts...)
 	if err != nil {
 		log.Fatal(fmt.Errorf("datastore client %s", err))
 	}
 
-	return client
+	return client, client.Close
 }
 
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
@@ -285,13 +291,23 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 }
 
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {
-	if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", service_key_path(name)); err != nil {
-		return nil, err
-	}
+	var config *rest.Config
+	if metadata.OnGCE() {
+		c, err := clientcmd.BuildConfigFromFlags("", "/opt/datacol/kubeconfig")
+		if err != nil {
+			return nil, err
+		}
+		config = c
+	} else {
+		if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", service_key_path(name)); err != nil {
+			return nil, err
+		}
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubecfgPath(name))
-	if err != nil {
-		return nil, err
+		c, err := clientcmd.BuildConfigFromFlags("", kubecfgPath(name))
+		if err != nil {
+			return nil, err
+		}
+		config = c
 	}
 
 	c, err := kubernetes.NewForConfig(config)

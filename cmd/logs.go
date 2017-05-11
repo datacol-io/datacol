@@ -32,7 +32,10 @@ func cmdAppLogStream(c *cli.Context) error {
 		return err
 	}
 
-	if _, err := getClient(c).GetApp(name); err != nil {
+	client, close := getApiClient(c)
+	defer close()
+
+	if _, err := client.GetApp(name); err != nil {
 		return err
 	}
 
@@ -40,5 +43,5 @@ func cmdAppLogStream(c *cli.Context) error {
 		name = c.Args().Get(0)
 	}
 
-	return getClient(c).StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), os.Stdout)
+	return client.StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), os.Stdout)
 }

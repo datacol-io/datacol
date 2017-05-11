@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud/google"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	pb "github.com/dinesh/datacol/api/models"
 )
 
 var (
@@ -165,6 +165,7 @@ func initialize(opts *google.InitOptions, nodes int, optout bool) error {
 
 	name := opts.Name
 	if len(opts.ClusterName) == 0 {
+		opts.ClusterNotExists = true
 		opts.ClusterName = fmt.Sprintf("%v-cluster", name)
 	} else {
 		opts.ClusterNotExists = false
@@ -192,9 +193,8 @@ func teardown() error {
 	return os.RemoveAll(filepath.Join(pb.ConfigPath, name))
 }
 
-func saveCredential(name string, data []byte) error {
+func createStackDir(name string) error {
 	cfgroot := filepath.Join(pb.ConfigPath, name)
-
 	if err := os.MkdirAll(cfgroot, 0700); err != nil {
 		return err
 	}
@@ -202,8 +202,15 @@ func saveCredential(name string, data []byte) error {
 	if err := ioutil.WriteFile(filepath.Join(pb.ConfigPath, "stack"), []byte(name), 0700); err != nil {
 		return err
 	}
+	return nil
+}
 
-	path := filepath.Join(cfgroot, pb.SvaFilename)
+func saveCredential(name string, data []byte) error {
+	if err := createStackDir(name); err != nil {
+		return err
+	}
+
+	path := filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
 	return ioutil.WriteFile(path, data, 0777)
 }
 
@@ -213,4 +220,3 @@ func dumpParams(name, project, bucket, host, api_key string) error {
 	stdcli.WriteSetting(name, "api_host", host)
 	return stdcli.WriteSetting(name, "bucket", bucket)
 }
-
