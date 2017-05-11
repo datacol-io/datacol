@@ -35,7 +35,6 @@ type Provider interface {
 	ResourceDelete(name string) error
 	ResourceLink(app, name string) (*pb.Resource, error)
 	ResourceUnlink(string, string) (*pb.Resource, error)
-	// ResourceUpdate(name string, params map[string]string) (*pb.Resource, error)
 
 	GetRunningPods(string) (string, error)
 }

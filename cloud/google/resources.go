@@ -106,7 +106,7 @@ func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 	for _, r := range mc.Resources {
 		resp = append(resp, &pb.Resource{
 			Name: r.Name,
-			Kind: getResourceKind(dpToResourceType(r.Type, r.Name)),
+			Kind: dpToResourceType(r.Type, r.Name),
 		})
 	}
 
@@ -114,14 +114,13 @@ func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 }
 
 func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error) {
-
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
 	if err != nil {
 		return nil, err
 	}
 
-	rs := &pb.Resource{Name: name, Kind: getResourceKind(kind)}
+	rs := &pb.Resource{Name: name, Kind: kind}
 
 	var sqlj2 string
 	switch kind {
@@ -192,7 +191,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 	}
 
 	switch rs.Kind {
-	case pb.ResourceType_POSTGRES, pb.ResourceType_MYSQL:
+	case "mysql", "postgres":
 		// setup cloud-sql proxy
 		ns := g.DeploymentName
 		kube, err := getKubeClientset(ns)
@@ -272,7 +271,7 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 	}
 
 	switch rs.Kind {
-	case pb.ResourceType_POSTGRES, pb.ResourceType_MYSQL:
+	case "mysql", "postgres":
 		// setup cloud-sql proxy
 		ns := g.DeploymentName
 		kube, err := getKubeClientset(ns)
@@ -313,13 +312,4 @@ func getDefaultPort(kind string) int {
 	}
 
 	return port
-}
-
-func getResourceKind(kind string) pb.ResourceType {
-	v, ok := pb.ResourceType_value[kind]
-	if !ok {
-		log.Fatal(fmt.Errorf("unsupported resource of kind: %s", kind))
-	}
-
-	return pb.ResourceType(v)
 }

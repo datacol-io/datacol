@@ -30,25 +30,21 @@ message Build {
 }
 
 message Release {
-  string id       = 1 [(gogoproto.moretags) = "datastore:\"id\""];
-  string app      = 2 [(gogoproto.moretags) = "datastore:\"app\""];
-  string build_id = 3 [(gogoproto.moretags) = "datastore:\"build_id\""];
-  Status status   = 4 [(gogoproto.moretags) = "datastore:\"status\""];
+  string id        = 1 [(gogoproto.moretags) = "datastore:\"id\""];
+  string app       = 2 [(gogoproto.moretags) = "datastore:\"app\""];
+  string build_id  = 3 [(gogoproto.moretags) = "datastore:\"build_id\""];
+  Status status    = 4 [(gogoproto.moretags) = "datastore:\"status\""];
   int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
 }
 
-enum resourceType {
-  MYSQL     = 0;
-  POSTGRES  = 1;
-}
 
 message Resource {
-  string name          = 1 [(gogoproto.moretags) = "datastore:\"name\""];
-  Status status        = 2 [(gogoproto.moretags) = "datastore:\"status\""];
-  resourceType kind    = 3 [(gogoproto.moretags) = "datastore:\"kind\""];
-  string URL           = 4 [(gogoproto.moretags) = "datastore:\"URL\""];
-  repeated string apps = 5 [(gogoproto.moretags) = "datastore:\"apps\""];
-  repeated ResourceVar exports = 6 [(gogoproto.moretags) = "datastore:\"exports\""];
+  string name                   = 1 [(gogoproto.moretags) = "datastore:\"name\""];
+  Status status                 = 2 [(gogoproto.moretags) = "datastore:\"status\""];
+  string kind                   = 3 [(gogoproto.moretags) = "datastore:\"kind\""];
+  string URL                    = 4 [(gogoproto.moretags) = "datastore:\"URL\""];
+  repeated string apps          = 5 [(gogoproto.moretags) = "datastore:\"apps\""];
+  repeated ResourceVar exports  = 6 [(gogoproto.moretags) = "datastore:\"exports\""];
   map<string,string> parameters = 7;
 }
 

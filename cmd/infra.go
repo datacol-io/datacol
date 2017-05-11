@@ -85,7 +85,7 @@ func cmdResourceList(c *cli.Context) error {
 	fmt.Println("\nResource:")
 
 	for _, r := range resp {
-		kind := r.Kind.String()
+		kind := r.Kind
 		if _, err := checkResourceType(kind); err == nil {
 			fmt.Printf("%s:%s\n", kind, r.Name)
 		}
@@ -171,7 +171,7 @@ func cmdResourceCreate(c *cli.Context) error {
 		return err
 	}
 
-	log.Debugf("Resource: %+v", rs)
+	log.Debugf("Resource: %v", toJson(rs))
 	fmt.Println("\nCREATED")
 	return nil
 }

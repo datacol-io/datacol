@@ -16,7 +16,7 @@ import (
 func init() {
 	stdcli.AddCommand(&cli.Command{
 		Name:   "login",
-		Usage:  "login",
+		Usage:  "login in to datacol",
 		Action: cmdLogin,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

@@ -857,7 +857,8 @@
           }
         },
         "kind": {
-          "$ref": "#/definitions/modelsresourceType"
+          "type": "string",
+          "format": "string"
         },
         "name": {
           "type": "string",
@@ -894,14 +895,6 @@
         "CREATED"
       ],
       "default": "CREATED"
-    },
-    "modelsresourceType": {
-      "type": "string",
-      "enum": [
-        "MYSQL",
-        "POSTGRES"
-      ],
-      "default": "MYSQL"
     },
     "protobufDuration": {
       "type": "object",

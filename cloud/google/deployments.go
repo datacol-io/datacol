@@ -475,7 +475,7 @@ resources:
           curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
             chmod +x kubectl && \
             mv kubectl /usr/local/bin
-          mkdir /opt/datacol && \
+          mkdir -p /opt/datacol && \
             curl -Ls /tmp https://storage.googleapis.com/datacol-distros/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
           cd /opt/datacol && nohup ./apictl -log-file log.txt &

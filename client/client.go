@@ -51,6 +51,7 @@ func (c *Client) SetFromEnv() {
 
 func NewClient(version string) (*Client, func() error) {
 	name := stdcli.GetAppStack()
+
 	v, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
 	if err != nil {
 		log.Fatal(err)

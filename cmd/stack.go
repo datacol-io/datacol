@@ -34,7 +34,7 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "zone",
-				Usage: "zone for stack",
+				Usage: "GCP zone for stack",
 				Value: "us-east1-b",
 			},
 			&cli.StringFlag{

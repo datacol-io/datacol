@@ -40,7 +40,7 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	q := datastore.NewQuery(buildKind).
 		Ancestor(g.stackKey()).
-		Filter("app = ", app).
+		Filter("App = ", app).
 		Limit(limit)
 
 	var builds pb.Builds
@@ -52,7 +52,7 @@ func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
 	q := datastore.NewQuery(releaseKind).
 		Ancestor(g.stackKey()).
-		Filter("app = ", app).
+		Filter("App = ", app).
 		Limit(limit)
 
 	var rs pb.Releases
