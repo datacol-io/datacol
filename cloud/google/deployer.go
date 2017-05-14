@@ -325,16 +325,17 @@ func newIngress(payload *DeployResponse) *v1beta1.Ingress {
 }
 
 var (
-	sqlContainerName      = "cloudsql-instance-credentials"
+	sqlSecretName         = "cloudsql-secret"
 	cloudsqlContainerName = "cloudsql-proxy"
 	cloudsqlImage         = "gcr.io/cloudsql-docker/gce-proxy:1.09"
 	sqlCredVolName        = "cloudsql-instance-credentials"
 )
 
 func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
-	// if err := c.Core().Secrets(ns).Delete(sqlContainerName); err != nil {
-	//   return nil
-	// }
+	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
+	if err := c.Core().Secrets(ns).Delete(secretName, &v1.DeleteOptions{}); err != nil {
+		return nil
+	}
 
 	dp, err := c.Extensions().Deployments(ns).Get(name)
 	if err != nil {
@@ -355,23 +356,36 @@ func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
 		return fmt.Errorf("resource %s not liked with %s", process, name)
 	}
 
+	found = false
+	vls := []v1.Volume{}
+	for _, v := range dp.Spec.Template.Spec.Volumes {
+		if v.Name != sqlCredVolName && v.Name != "cloudsql" {
+			vls = append(vls, v)
+		}
+	}
+
+	dp.Spec.Template.Spec.Volumes = vls
 	if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
 		return err
 	}
 	return nil
 }
 
-func setupCloudProxy(c *kubernetes.Clientset, ns, name string, options map[string]string) error {
+func setupCloudProxy(c *kubernetes.Clientset, ns, project, name string, options map[string]string) error {
 	dp, err := c.Extensions().Deployments(ns).Get(name)
 	if err != nil {
 		return err
 	}
 
-	cred := []byte("asdfdf")
+	cred, err := svaPrivateKey(name, project)
+	if err != nil {
+		return err
+	}
 
+	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
 	if _, err := c.Core().Secrets(ns).Create(&v1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Name: sqlContainerName,
+			Name: secretName,
 		},
 		Data: map[string][]byte{
 			"credentials.json": cred,
@@ -382,14 +396,14 @@ func setupCloudProxy(c *kubernetes.Clientset, ns, name string, options map[strin
 		}
 	}
 
-	dp = mergeSqlManifest(dp, options)
+	dp = mergeSqlManifest(dp, secretName, options)
 	if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
 		return err
 	}
 	return nil
 }
 
-func mergeSqlManifest(dp *v1beta1.Deployment, options map[string]string) *v1beta1.Deployment {
+func mergeSqlManifest(dp *v1beta1.Deployment, secretName string, options map[string]string) *v1beta1.Deployment {
 	containers := dp.Spec.Template.Spec.Containers
 	parts := strings.Split(options["DATABASE_URL"], "://")
 	port := getDefaultPort(parts[0])
@@ -403,7 +417,7 @@ func mergeSqlManifest(dp *v1beta1.Deployment, options map[string]string) *v1beta
 		ImagePullPolicy: "IfNotPresent",
 		VolumeMounts: []v1.VolumeMount{
 			v1.VolumeMount{
-				Name:      "cloudsql-instance-credentials",
+				Name:      sqlCredVolName,
 				MountPath: "/secrets/cloudsql",
 				ReadOnly:  true,
 			},
@@ -444,7 +458,7 @@ func mergeSqlManifest(dp *v1beta1.Deployment, options map[string]string) *v1beta
 					Name: sqlCredVolName,
 					VolumeSource: v1.VolumeSource{
 						Secret: &v1.SecretVolumeSource{
-							SecretName: "cloudsql-instance-credentials",
+							SecretName: secretName,
 						},
 					},
 				},

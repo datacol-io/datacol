@@ -44,8 +44,8 @@ message Resource {
   string kind                   = 3 [(gogoproto.moretags) = "datastore:\"kind\""];
   string URL                    = 4 [(gogoproto.moretags) = "datastore:\"URL\""];
   repeated string apps          = 5 [(gogoproto.moretags) = "datastore:\"apps\""];
-  repeated ResourceVar exports  = 6 [(gogoproto.moretags) = "datastore:\"exports\""];
-  map<string,string> parameters = 7;
+  bytes exports                 = 6 [(gogoproto.moretags) = "datastore:\"exports\""];
+  bytes parameters              = 7 [(gogoproto.moretags) = "datastore:\"parameters\""];
 }
 
 message ResourceVar {

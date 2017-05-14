@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud/google"
+	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "project",
-				Usage: "GCP project name or id to use",
+				Usage: "GCP project id to use",
 			},
 			&cli.StringFlag{
 				Name:  "zone",
@@ -97,21 +98,28 @@ func cmdStackCreate(c *cli.Context) error {
 	machineType := c.String("machine-type")
 	preemptible := c.Bool("preemptible")
 
-	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account.
-It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to automate
-all away to give you a better deployment experience.
+	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account. 
+It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to 
+automate all away to give you a better deployment experience.
 
-It will need GCP credentials to install/uninstall the Datacol platform into your GCP account. These credentials will only 
-be used to communicate between this installer running on your computer and the Google API.
+Datacol CLI will authenticate with your Google Account and install the Datacol platform into your GCP account. 
+These credentials will only be used to communicate between this installer running on your computer and the Google platform.
 `
 
 	fmt.Printf(message)
 
-	fmt.Printf("\nTo enable APIs in your Google account please open following link in browser and click ENABLE.\n")
-	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=datastore.googleapis.com,cloudbuild.googleapis.com,deploymentmanager&project=%s", project)
+	apis := []string{
+		"datastore.googleapis.com",
+		"cloudbuild.googleapis.com",
+		"deploymentmanager",
+		"iam.googleapis.com",
+	}
+
+	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue.\n")
+	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), project)
 	prompt(url)
 
-	options := &google.InitOptions{
+	options := &gcp.InitOptions{
 		Name:        stackName,
 		ClusterName: cluster,
 		DiskSize:    10,
@@ -130,8 +138,8 @@ be used to communicate between this installer running on your computer and the G
 	}
 
 	fmt.Printf("\nDONE.\n")
-	stname := fmt.Sprintf("%s@%s", stackName, options.Project)
-	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stname)
+
+	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stackName)
 	return nil
 }
 
@@ -144,8 +152,8 @@ func cmdStackDestroy(c *cli.Context) error {
 	return nil
 }
 
-func initialize(opts *google.InitOptions, nodes int, optout bool) error {
-	resp := google.CreateCredential(opts.Name, opts.Project, optout)
+func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
+	resp := gcp.CreateCredential(opts.Name, opts.Project, optout)
 	if resp.Err != nil {
 		return resp.Err
 	}
@@ -172,10 +180,14 @@ func initialize(opts *google.InitOptions, nodes int, optout bool) error {
 	}
 
 	time.Sleep(2 * time.Second) // wait for sometime for iam permission propagation
-	res, err := google.InitializeStack(opts)
+
+	res, err := gcp.InitializeStack(opts)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("\nStack hostIP %s\n", res.Host)
+	fmt.Printf("Stack password: %s [Please keep is secret]\n", res.Password)
 
 	return dumpParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
 }
@@ -185,7 +197,7 @@ func teardown() error {
 	project := stdcli.ReadSetting(name, "project")
 	bucket := stdcli.ReadSetting(name, "bucket")
 
-	if err := google.TeardownStack(name, project, bucket); err != nil {
+	if err := gcp.TeardownStack(name, project, bucket); err != nil {
 		return err
 	}
 

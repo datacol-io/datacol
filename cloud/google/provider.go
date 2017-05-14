@@ -35,6 +35,8 @@ import (
 	klabels "k8s.io/client-go/pkg/labels"
 
 	pb "github.com/dinesh/datacol/api/models"
+	gcp "github.com/dinesh/datacol/cmd/provider/gcp"
+
 	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc"
 )
@@ -213,6 +215,15 @@ func (g *GCPCloud) iam() *iam.Service {
 	return svc
 }
 
+func svaPrivateKey(name, project string) ([]byte, error) {
+	iamClient, err := iam.New(httpClient(name))
+	if err != nil {
+		return []byte(""), err
+	}
+
+	return gcp.NewServiceAccountPrivateKey(iamClient, project)
+}
+
 func (g *GCPCloud) datastore() *datastore.Client {
 	dc, _ := datastoreClient(g.DeploymentName, g.Project)
 	return dc
@@ -239,6 +250,10 @@ func datastoreClient(name, project string) (*datastore.Client, func()) {
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
 	service := g.container()
 	return service.Projects.Zones.Clusters.Get(g.Project, g.Zone, name).Do()
+}
+
+func (g *GCPCloud) ctxNS() context.Context {
+	return datastore.WithNamespace(context.TODO(), g.DeploymentName)
 }
 
 func httpClient(name string) *http.Client {

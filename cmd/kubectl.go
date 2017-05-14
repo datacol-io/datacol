@@ -38,6 +38,7 @@ func onApiExec(ret *pbs.CmdResponse, args []string) {
 	exitcode := int(ret.ExitCode)
 	if len(ret.Err) > 0 {
 		log.Warn(ret.Err)
+		log.Warn(ret.StdErr)
 		fmt.Printf("failed to execute %v", args)
 	} else {
 		if exitcode == 0 {

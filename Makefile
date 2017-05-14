@@ -13,6 +13,7 @@ all:
 
 vet:
 	go vet cmd/*.go
+	go vet cmd/provider/gcp/*.go
 	go vet client/*.go
 	go vet cloud/google/*.go
 	go vet cloud/*.go
@@ -21,6 +22,7 @@ vet:
 	go vet api/controller/*.go
 
 	go fmt cmd/*.go
+	go fmt cmd/provider/gcp/*.go
 	go fmt client/*.go
 	go fmt cloud/google/*.go
 	go fmt cloud/*.go
@@ -29,10 +31,10 @@ vet:
 	go fmt api/controller/*.go
 
 build:
-	go build -i ${BUILD_CMD}
+	go build -ldflags="-s -w" -i ${BUILD_CMD}
 
 apictl:
-	go build -o apictl -i api/*.go
+	go build -o apictl -ldflags="-s -w" -i api/*.go
 
 gen:
 	## building api/models/*.proto

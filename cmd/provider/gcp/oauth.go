@@ -1,4 +1,4 @@
-package google
+package gcp
 
 import (
 	"context"
@@ -48,8 +48,7 @@ func CreateCredential(rackName, projectId string, optout bool) authPacket {
 
 	scopes := []string{
 		"https://www.googleapis.com/auth/iam",
-		"https://www.googleapis.com/auth/cloudplatformprojects",
-		"https://www.googleapis.com/auth/sqlservice.admin",
+		"https://www.googleapis.com/auth/cloud-platform",
 	}
 
 	if emailOptin {
@@ -195,14 +194,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 	members := []string{fmt.Sprintf("serviceAccount:%s", svcName)}
 	newPolicy := &crmgr.Policy{
 		Bindings: []*crmgr.Binding{
-			&crmgr.Binding{Role: "roles/viewer", Members: members},
-			&crmgr.Binding{Role: "roles/deploymentmanager.editor", Members: members},
-			&crmgr.Binding{Role: "roles/storage.admin", Members: members},
-			&crmgr.Binding{Role: "roles/cloudbuild.builds.editor", Members: members},
-			&crmgr.Binding{Role: "roles/container.developer", Members: members},
-			&crmgr.Binding{Role: "roles/cloudsql.admin", Members: members},
-			&crmgr.Binding{Role: "roles/cloudsql.client", Members: members},
-			&crmgr.Binding{Role: "roles/datastore.user", Members: members},
+			&crmgr.Binding{Role: "roles/owner", Members: members},
 		},
 	}
 
@@ -217,6 +209,15 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 		log.Warn(err)
 		return cred, fmt.Errorf("failed to apply IAM roles")
 	}
+
+	return NewServiceAccountPrivateKey(iamClient, projectId)
+}
+
+func NewServiceAccountPrivateKey(iamClient *iam.Service, project string) ([]byte, error) {
+	cred := []byte{}
+	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%v@%v.iam.gserviceaccount.com", project, saName, project)
+
+	log.Debugf("creating new private key for %s", saFQN)
 
 	sKey, err := iamClient.Projects.ServiceAccounts.Keys.Create(saFQN, &iam.CreateServiceAccountKeyRequest{}).Do()
 	if err != nil {

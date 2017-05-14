@@ -205,7 +205,7 @@ func rollbar(err error, level string) {
 	}
 
 	rollbarAPI.Platform = "client"
-	rollbarAPI.Token = "915b990fdfee4bd4a8c280b3a838205d"
+	rollbarAPI.Token = "f2feac705b1c41069ba478523ce36657"
 	var cmd string
 
 	if len(os.Args) > 1 {

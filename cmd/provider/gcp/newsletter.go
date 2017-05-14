@@ -1,4 +1,4 @@
-package google
+package gcp
 
 import (
 	"bytes"

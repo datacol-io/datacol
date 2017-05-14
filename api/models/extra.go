@@ -27,11 +27,6 @@ type Builds []*Build
 type Releases []*Release
 type Resources []*Resource
 
-type BuildOptions struct {
-	Id  string
-	Key string
-}
-
 type ReleaseOptions struct {
 	Port int
 	Env  string

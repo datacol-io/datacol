@@ -1,7 +1,6 @@
 package google
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -21,8 +20,8 @@ const appKind = "App"
 func (g *GCPCloud) AppList() (pb.Apps, error) {
 	var apps pb.Apps
 
-	q := datastore.NewQuery(appKind).Ancestor(g.stackKey())
-	if _, err := g.datastore().GetAll(context.TODO(), q, &apps); err != nil {
+	q := datastore.NewQuery(appKind)
+	if _, err := g.datastore().GetAll(g.ctxNS(), q, &apps); err != nil {
 		return nil, err
 	}
 
@@ -31,8 +30,8 @@ func (g *GCPCloud) AppList() (pb.Apps, error) {
 
 func (g *GCPCloud) AppCreate(name string) (*pb.App, error) {
 	app := &pb.App{Name: name, Status: pb.Status_CREATED}
-	key := g.nestedKey(appKind, name)
-	_, err := g.datastore().Put(context.TODO(), key, app)
+	ctx, key := g.nestedKey(appKind, name)
+	_, err := g.datastore().Put(ctx, key, app)
 
 	return app, err
 }
@@ -86,7 +85,8 @@ func (g *GCPCloud) AppRestart(app string) error {
 func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 	app := new(pb.App)
 
-	if err := g.datastore().Get(context.TODO(), g.nestedKey(appKind, name), app); err != nil {
+	ctx, key := g.nestedKey(appKind, name)
+	if err := g.datastore().Get(ctx, key, app); err != nil {
 		return nil, err
 	}
 
@@ -118,11 +118,39 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 		}
 	}
 
-	_, err = g.datastore().Put(context.TODO(), g.nestedKey(appKind, name), app)
+	_, err = g.datastore().Put(ctx, key, app)
 	return app, err
 }
 
 func (g *GCPCloud) AppDelete(name string) error {
+	g.deleteAppFromCluster(name)
+	return g.deleteAppFromDatastore(name)
+}
+
+func (g *GCPCloud) deleteAppFromDatastore(name string) error {
+	store := g.datastore()
+	ctx := g.ctxNS()
+
+	q := datastore.NewQuery(buildKind).Filter("App =", name).KeysOnly()
+	if err := deleteFromQuery(store, ctx, q); err != nil {
+		return err
+	}
+
+	q = datastore.NewQuery(releaseKind).Filter("App =", name).KeysOnly()
+
+	if err := deleteFromQuery(store, ctx, q); err != nil {
+		return err
+	}
+
+	ctx, key := g.nestedKey(appKind, name)
+	if err := store.Delete(ctx, key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *GCPCloud) deleteAppFromCluster(name string) error {
 	ns := g.DeploymentName
 	kube, err := getKubeClientset(ns)
 	if err != nil {
@@ -179,5 +207,5 @@ func (g *GCPCloud) AppDelete(name string) error {
 		return err
 	}
 
-	return g.datastore().Delete(context.TODO(), g.nestedKey(appKind, name))
+	return nil
 }

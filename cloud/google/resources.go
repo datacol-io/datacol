@@ -1,7 +1,7 @@
 package google
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -16,27 +16,24 @@ const (
 	resourceKind = "Resource"
 )
 
+type dmResource struct {
+	Name       string                 `yaml:"name"`
+	Type       string                 `yaml:"type"`
+	Properties map[string]interface{} `yaml:"properties"`
+}
+
 type manifestConfig struct {
-	Resources []struct {
-		Name       string                 `yaml:"name"`
-		Type       string                 `yaml:"type"`
-		Properties map[string]interface{} `yaml:"properties"`
-	} `yaml:"resources"`
+	Resources []dmResource `yaml:"resources"`
 }
 
 func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
 	rs := new(pb.Resource)
-
-	err := g.datastore().Get(
-		context.TODO(),
-		g.nestedKey(resourceKind, name),
-		&rs,
-	)
+	ctx, key := g.nestedKey(resourceKind, name)
+	err := g.datastore().Get(ctx, key, rs)
 	return rs, err
 }
 
 func (g *GCPCloud) ResourceDelete(name string) error {
-
 	service := g.deploymentmanager()
 	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
 	if err != nil {
@@ -51,13 +48,17 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 	found := false
 	rs_db := fmt.Sprintf("%s-%s", name, databaseName)
 
-	for i, r := range mc.Resources {
-		if r.Name == name || r.Name == rs_db {
-			mc.Resources = append(mc.Resources[:i], mc.Resources[i+1:]...)
+	resources := []dmResource{}
+
+	for _, r := range mc.Resources {
+		if r.Name != name && r.Name != rs_db {
+			resources = append(resources, r)
+		} else {
 			found = true
-			break
 		}
 	}
+
+	mc.Resources = resources
 
 	if !found {
 		return fmt.Errorf("%s not found", name)
@@ -74,15 +75,15 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 		return err
 	}
 
-	return g.datastore().Delete(context.TODO(), g.nestedKey(resourceKind, name))
+	ctx, key := g.nestedKey(resourceKind, name)
+	return g.datastore().Delete(ctx, key)
 }
 
 func (g *GCPCloud) ResourceList() (pb.Resources, error) {
-
 	var rs pb.Resources
 
-	q := datastore.NewQuery(resourceKind).Ancestor(g.stackKey())
-	if _, err := g.datastore().GetAll(context.TODO(), q, &rs); err != nil {
+	q := datastore.NewQuery(resourceKind)
+	if _, err := g.datastore().GetAll(g.ctxNS(), q, &rs); err != nil {
 		return nil, err
 	}
 
@@ -90,7 +91,6 @@ func (g *GCPCloud) ResourceList() (pb.Resources, error) {
 }
 
 func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
-
 	resp := pb.Resources{}
 	service := g.deploymentmanager()
 	_, manifest, err := getManifest(service, g.Project, g.DeploymentName)
@@ -163,19 +163,14 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		exports["DATABASE_URL"] = fmt.Sprintf("%s://%s:%s@%s/%s", kind, kind, passwd, hostName, databaseName)
 	}
 
-	for key, value := range exports {
-		rs.Exports = append(rs.Exports, &pb.ResourceVar{Key: key, Value: value})
-	}
+	rs.Exports = jsonEncode(exports)
+	rs.Parameters = jsonEncode(params)
 
-	rs.Parameters = params
-	log.Debugf("storing resource details into datastore.")
+	log.Debugf("storing %s details into datastore.", toJson(rs))
 
 	store := g.datastore()
-	if _, err := store.Put(
-		context.TODO(),
-		g.nestedKey(resourceKind, name),
-		rs,
-	); err != nil {
+	ctx, key := g.nestedKey(resourceKind, name)
+	if _, err := store.Put(ctx, key, rs); err != nil {
 		return nil, err
 	}
 
@@ -184,7 +179,6 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 }
 
 func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
-
 	rs, err := g.ResourceGet(name)
 	if err != nil {
 		return nil, err
@@ -199,8 +193,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 			return nil, err
 		}
 
-		rsvars := rsVarToMap(rs.Exports)
-		if err = setupCloudProxy(kube, ns, app, rsvars); err != nil {
+		rsvars := jsonDecode(rs.Exports)
+		if err = setupCloudProxy(kube, ns, g.Project, app, rsvars); err != nil {
 			return nil, err
 		}
 
@@ -231,11 +225,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 
 	append_app(app, rs)
 
-	if _, err := g.datastore().Put(
-		context.TODO(),
-		g.nestedKey(resourceKind, rs.Name),
-		rs,
-	); err != nil {
+	ctx, key := g.nestedKey(resourceKind, rs.Name)
+	if _, err := g.datastore().Put(ctx, key, rs); err != nil {
 		return nil, err
 	}
 
@@ -289,11 +280,8 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 
 	remove_app(app, rs)
 
-	if _, err := g.datastore().Put(
-		context.TODO(),
-		g.nestedKey(resourceKind, rs.Name),
-		rs,
-	); err != nil {
+	ctx, key := g.nestedKey(buildKind, rs.Name)
+	if _, err := g.datastore().Put(ctx, key, rs); err != nil {
 		return nil, err
 	}
 
@@ -312,4 +300,20 @@ func getDefaultPort(kind string) int {
 	}
 
 	return port
+}
+
+func jsonEncode(opts map[string]string) []byte {
+	b, err := json.Marshal(opts)
+	if err != nil {
+		log.Fatal(fmt.Errorf("marshaling %+v err:%v", opts, err))
+	}
+	return b
+}
+
+func jsonDecode(b []byte) map[string]string {
+	var opts map[string]string
+	if err := json.Unmarshal(b, &opts); err != nil {
+		log.Fatal(fmt.Errorf("unmarshaling %+v err:%v", opts, err))
+	}
+	return opts
 }

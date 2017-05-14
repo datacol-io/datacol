@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -51,6 +52,7 @@ func CacheKubeConfig(sName, project, zone, cname string) (string, error) {
 
 	if _, err = os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
+			log.Debugf("creating kubeconfig in %s ...", dir)
 			svc, err := container.New(httpClient(sName))
 			if err != nil {
 				return filename, fmt.Errorf("container client %s", err)

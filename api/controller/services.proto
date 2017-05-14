@@ -42,7 +42,7 @@ message CreateBuildRequest {
   bytes data = 2;
 }
 
-message GetBuildRequest {
+message AppIdRequest {
   string app = 1;
   string id = 2;
 }
@@ -65,6 +65,10 @@ message EnvSetRequest {
 
 message ResourceListResponse {
   repeated models.Resource resources = 1;
+}
+
+message BuildListResponse {
+  repeated models.Build builds = 1;
 }
 
 message CreateResourceRequest {
@@ -102,6 +106,10 @@ message LogStreamResponse {
 message ProcessRunReq {
   string name = 1;
   repeated string command = 2;
+}
+
+message ReleaseListResponse {
+  repeated models.Release releases = 1;
 }
 
 service ProviderService {
@@ -157,9 +165,21 @@ service ProviderService {
     };
   }
 
-  rpc BuildGet(GetBuildRequest) returns (models.Build) {
+  rpc BuildGet(AppIdRequest) returns (models.Build) {
     option (google.api.http) = {
       post: "/v1/builds/{id}"
+    };
+  }
+
+  rpc BuildDelete(AppIdRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/builds/{id}"
+    };
+  }
+
+  rpc BuildList(AppRequest) returns (BuildListResponse) {
+    option (google.api.http) = {
+      post: "/v1/builds/{name}"
     };
   }
 
@@ -178,6 +198,19 @@ service ProviderService {
   rpc EnvironmentSet(EnvSetRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/env/{name}"
+    };
+  }
+
+  // Release endpoints
+  rpc ReleaseList(AppRequest) returns (ReleaseListResponse) {
+    option (google.api.http) = {
+      get: "/v1/releases/{name}"
+    };
+  }
+
+  rpc ReleaseDelete(AppIdRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/releases/{app}/{id}"
     };
   }
 

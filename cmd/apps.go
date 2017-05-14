@@ -68,10 +68,7 @@ func cmdAppsList(c *cli.Context) error {
 		return err
 	}
 
-	for _, a := range apps {
-		fmt.Printf("%+v\n", a)
-	}
-
+	fmt.Println(toJson(apps))
 	return nil
 }
 
@@ -146,7 +143,12 @@ func cmdAppDelete(c *cli.Context) error {
 		return err
 	}
 
-	return stdcli.RmSettingDir(abs)
+	if err = stdcli.RmSettingDir(abs); err != nil {
+		return err
+	}
+
+	fmt.Println("Done")
+	return nil
 }
 
 func app404Err(name string) error {

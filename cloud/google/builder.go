@@ -3,7 +3,6 @@ package google
 import (
 	"bytes"
 	"cloud.google.com/go/datastore"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -27,42 +26,39 @@ const (
 
 func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 	var b pb.Build
-	if err := g.datastore().Get(context.TODO(), g.nestedKey(buildKind, id), &b); err != nil {
+	ctx, key := g.nestedKey(buildKind, id)
+	if err := g.datastore().Get(ctx, key, &b); err != nil {
 		return nil, err
 	}
 	return &b, nil
 }
 
 func (g *GCPCloud) BuildDelete(app, id string) error {
-	return g.datastore().Delete(context.TODO(), g.nestedKey(buildKind, id))
+	ctx, key := g.nestedKey(buildKind, id)
+	return g.datastore().Delete(ctx, key)
 }
 
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	q := datastore.NewQuery(buildKind).
-		Ancestor(g.stackKey()).
-		Filter("App = ", app).
-		Limit(limit)
+	q := datastore.NewQuery(buildKind).Filter("App = ", app).Limit(limit)
 
 	var builds pb.Builds
-	_, err := g.datastore().GetAll(context.TODO(), q, &builds)
+	_, err := g.datastore().GetAll(g.ctxNS(), q, &builds)
 
 	return builds, err
 }
 
 func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	q := datastore.NewQuery(releaseKind).
-		Ancestor(g.stackKey()).
-		Filter("App = ", app).
-		Limit(limit)
+	q := datastore.NewQuery(releaseKind).Filter("App = ", app).Limit(limit)
 
 	var rs pb.Releases
-	_, err := g.datastore().GetAll(context.TODO(), q, &rs)
+	_, err := g.datastore().GetAll(g.ctxNS(), q, &rs)
 
 	return rs, err
 }
 
 func (g *GCPCloud) ReleaseDelete(app, id string) error {
-	return g.datastore().Delete(context.TODO(), g.nestedKey(releaseKind, id))
+	ctx, key := g.nestedKey(buildKind, id)
+	return g.datastore().Delete(ctx, key)
 }
 
 func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
@@ -148,7 +144,8 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 
 	log.Debugf("Saving build %s", toJson(build))
 
-	if _, err := g.datastore().Put(context.TODO(), g.nestedKey(buildKind, build.Id), build); err != nil {
+	ctx, key := g.nestedKey(buildKind, build.Id)
+	if _, err := g.datastore().Put(ctx, key, build); err != nil {
 		return nil, fmt.Errorf("saving build err: %v", err)
 	}
 
@@ -212,7 +209,8 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		CreatedAt: timestampNow(),
 	}
 
-	_, err = g.datastore().Put(context.TODO(), g.nestedKey(releaseKind, r.Id), r)
+	ctx, key := g.nestedKey(releaseKind, r.Id)
+	_, err = g.datastore().Put(ctx, key, r)
 
 	return r, err
 }

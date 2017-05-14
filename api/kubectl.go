@@ -31,7 +31,7 @@ func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResp
 		return nil, internalError(err, "failed to fetch k8s config")
 	}
 
-	args := append([]string{"--kubeconfig", cfg}, req.Args...)
+	args := append([]string{"--kubeconfig", cfg, "-n", s.StackName}, req.Args...)
 	out := cmd_execute("kubectl", args)
 	return makeResponse(out), nil
 }
@@ -47,7 +47,7 @@ func (s *Server) ProcessRun(ctx context.Context, req *pbs.ProcessRunReq) (*pbs.C
 		return nil, err
 	}
 
-	args := append([]string{"--kubeconfig", cfg, "-e", s.StackName, "--pod", pod, "exec"}, req.Command...)
+	args := append([]string{"--kubeconfig", cfg, "-n", s.StackName, "--pod", pod, "exec"}, req.Command...)
 	out := cmd_execute("kubectl", args)
 	return makeResponse(out), nil
 }

@@ -174,12 +174,12 @@
     },
     "/v1/builds/{id}": {
       "post": {
-        "operationId": "BuildGet",
+        "operationId": "BuildDelete",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/modelsBuild"
+              "$ref": "#/definitions/protobufEmpty"
             }
           }
         },
@@ -211,6 +211,31 @@
         "parameters": [
           {
             "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/builds/{name}": {
+      "post": {
+        "operationId": "BuildList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerBuildListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
             "in": "path",
             "required": true,
             "type": "string",
@@ -349,6 +374,64 @@
             }
           }
         },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/releases/{app}/{id}": {
+      "delete": {
+        "operationId": "ReleaseDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/releases/{name}": {
+      "get": {
+        "summary": "Release endpoints",
+        "operationId": "ReleaseList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerReleaseListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
         "tags": [
           "ProviderService"
         ]
@@ -499,6 +582,19 @@
     }
   },
   "definitions": {
+    "controllerAppIdRequest": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string",
+          "format": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
     "controllerAppListResponse": {
       "type": "object",
       "properties": {
@@ -563,6 +659,17 @@
         "project": {
           "type": "string",
           "format": "string"
+        }
+      }
+    },
+    "controllerBuildListResponse": {
+      "type": "object",
+      "properties": {
+        "builds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsBuild"
+          }
         }
       }
     },
@@ -666,19 +773,6 @@
         }
       }
     },
-    "controllerGetBuildRequest": {
-      "type": "object",
-      "properties": {
-        "app": {
-          "type": "string",
-          "format": "string"
-        },
-        "id": {
-          "type": "string",
-          "format": "string"
-        }
-      }
-    },
     "controllerKubectlReq": {
       "type": "object",
       "properties": {
@@ -742,6 +836,17 @@
         "name": {
           "type": "string",
           "format": "string"
+        }
+      }
+    },
+    "controllerReleaseListResponse": {
+      "type": "object",
+      "properties": {
+        "releases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsRelease"
+          }
         }
       }
     },
@@ -851,10 +956,8 @@
           }
         },
         "exports": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/modelsResourceVar"
-          }
+          "type": "string",
+          "format": "byte"
         },
         "kind": {
           "type": "string",
@@ -865,27 +968,11 @@
           "format": "string"
         },
         "parameters": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "string"
-          }
+          "type": "string",
+          "format": "byte"
         },
         "status": {
           "$ref": "#/definitions/modelsStatus"
-        }
-      }
-    },
-    "modelsResourceVar": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string",
-          "format": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "string"
         }
       }
     },

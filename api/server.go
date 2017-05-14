@@ -8,6 +8,8 @@ import (
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/google"
+	"google.golang.org/grpc"
+	"net"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -70,6 +72,21 @@ func getAttr(key string) string {
 type Server struct {
 	cloud.Provider
 	Password, StackName, Project, Zone string
+}
+
+func (s *Server) Run() error {
+	if _, err := configPath(s.StackName, s.Project, s.Zone); err != nil {
+		return fmt.Errorf("caching kubernetes config err: %v", err)
+	}
+
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
+	if err != nil {
+		return err
+	}
+	grpcServer := grpc.NewServer()
+	pbs.RegisterProviderServiceServer(grpcServer, s)
+
+	return grpcServer.Serve(listener)
 }
 
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
@@ -140,12 +157,27 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 	return b, nil
 }
 
-func (s *Server) BuildGet(ctx context.Context, req *pbs.GetBuildRequest) (*pb.Build, error) {
+func (s *Server) BuildList(ctx context.Context, req *pbs.AppRequest) (*pbs.BuildListResponse, error) {
+	items, err := s.Provider.BuildList(req.Name, 100)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.BuildListResponse{Builds: items}, nil
+}
+
+func (s *Server) BuildGet(ctx context.Context, req *pbs.AppIdRequest) (*pb.Build, error) {
 	b, err := s.Provider.BuildGet(req.App, req.Id)
 	if err != nil {
 		return nil, internalError(err, "failed to get build.")
 	}
 	return b, nil
+}
+
+func (s *Server) BuildDelete(ctx context.Context, req *pbs.AppIdRequest) (*empty.Empty, error) {
+	if err := s.Provider.BuildDelete(req.App, req.Id); err != nil {
+		return nil, err
+	}
+	return &empty.Empty{}, nil
 }
 
 func (s *Server) BuildRelease(ctx context.Context, b *pb.Build) (*pb.Release, error) {
@@ -163,6 +195,23 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	}
 
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+}
+
+// Releases endpoints
+func (s *Server) ReleaseList(ctx context.Context, req *pbs.AppRequest) (*pbs.ReleaseListResponse, error) {
+	items, err := s.Provider.ReleaseList(req.Name, 20)
+	if err != nil {
+		return nil, internalError(err, "failed to deploy app.")
+	}
+	return &pbs.ReleaseListResponse{Releases: items}, nil
+}
+
+func (s *Server) ReleaseDelete(ctx context.Context, req *pbs.AppIdRequest) (*empty.Empty, error) {
+	err := s.Provider.ReleaseDelete(req.App, req.Id)
+	if err != nil {
+		return nil, internalError(err, "failed to delete release.")
+	}
+	return &empty.Empty{}, nil
 }
 
 func (s *Server) EnvironmentGet(ctx context.Context, req *pbs.AppRequest) (*pb.EnvConfig, error) {

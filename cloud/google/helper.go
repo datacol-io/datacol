@@ -25,18 +25,22 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-func deleteFromQuery(dc *datastore.Client, q *datastore.Query) error {
-	ctx := context.TODO()
+func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {
+	q = q.KeysOnly()
 	keys, err := dc.GetAll(ctx, q, nil)
 	if err != nil {
 		return err
 	}
-
 	return dc.DeleteMulti(ctx, keys)
 }
 
-func nameKey(kind, id string, parent *datastore.Key) *datastore.Key {
-	return datastore.NewKey(context.TODO(), kind, id, 0, parent)
+func nameKey(kind, id, ns string) (context.Context, *datastore.Key) {
+	ctx := datastore.WithNamespace(context.TODO(), ns)
+	return ctx, datastore.NewKey(ctx, kind, id, 0, nil)
+}
+
+func ditermineMachineType(nodes int) string {
+	return "n1-standard-1"
 }
 
 func kubecfgPath(name string) string {
@@ -80,10 +84,6 @@ func compileTmpl(content string, opts interface{}) string {
 	}
 
 	return doc.String()
-}
-
-func ditermineMachineType(num int) string {
-	return "n1-standard-1"
 }
 
 func toJson(object interface{}) string {

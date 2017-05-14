@@ -3,16 +3,23 @@ package client
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
+
 	"time"
 )
 
 func (c *Client) GetReleases(app string) (models.Releases, error) {
-	return c.Provider().ReleaseList(app, 20)
+	ret, err := c.ProviderServiceClient.ReleaseList(ctx, &pbs.AppRequest{Name: app})
+	if err != nil {
+		return nil, err
+	}
+	return ret.Releases, nil
 }
 
-func (c *Client) DeleteRelease(app, Id string) error {
-	return c.Provider().ReleaseDelete(app, Id)
+func (c *Client) DeleteRelease(app, id string) error {
+	_, err := c.ProviderServiceClient.ReleaseDelete(ctx, &pbs.AppIdRequest{App: app, Id: id})
+	return err
 }
 
 func (c *Client) ReleaseBuild(build *models.Build, wait bool) (*models.Release, error) {

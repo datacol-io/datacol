@@ -13,13 +13,18 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 }
 
 func (c *Client) GetBuilds(app string) (pb.Builds, error) {
-	return c.Provider().BuildList(app, 20)
+	ret, err := c.ProviderServiceClient.BuildList(ctx, &pbs.AppRequest{Name: app})
+	if err != nil {
+		return nil, err
+	}
+	return ret.Builds, nil
 }
 
 func (c *Client) GetBuild(app, id string) (*pb.Build, error) {
-	return c.Provider().BuildGet(app, id)
+	return c.ProviderServiceClient.BuildGet(ctx, &pbs.AppIdRequest{App: app, Id: id})
 }
 
 func (c *Client) DeleteBuild(app, id string) error {
-	return c.Provider().BuildDelete(app, id)
+	_, err := c.ProviderServiceClient.BuildDelete(ctx, &pbs.AppIdRequest{App: app, Id: id})
+	return err
 }

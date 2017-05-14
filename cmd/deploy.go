@@ -15,26 +15,31 @@ func init() {
 		Action: cmdDeploy,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "image, i",
-				Usage: "docker image to use",
+				Name:    "image",
+				Aliases: []string{"i"},
+				Usage:   "docker image to use",
 			},
 			&cli.IntFlag{
-				Name:  "port, p",
-				Usage: "service port",
-				Value: 8080,
+				Name:    "port",
+				Aliases: []string{"p"},
+				Usage:   "service port",
+				Value:   8080,
 			},
 			&cli.StringFlag{
-				Name:  "build, b",
-				Usage: "Build id to use",
+				Name:    "build",
+				Aliases: []string{"b"},
+				Usage:   "Build id to use",
 			},
 			&cli.BoolFlag{
-				Name:  "wait, w",
-				Usage: "Wait for the app become available",
-				Value: true,
+				Name:    "wait",
+				Aliases: []string{"w"},
+				Usage:   "Wait for the app become available",
+				Value:   true,
 			},
 			&cli.StringFlag{
-				Name:  "file, f",
-				Usage: "path of Dockerfile or app.yaml",
+				Name:    "file, f",
+				Aliases: []string{"f"},
+				Usage:   "path of Dockerfile or app.yaml",
 			},
 		},
 	})
@@ -59,7 +64,7 @@ func cmdDeploy(c *cli.Context) error {
 	buildId := c.String("build")
 
 	if len(buildId) == 0 {
-		if err = executeBuildDir(client, app, dir); err != nil {
+		if build, err = executeBuildDir(client, app, dir); err != nil {
 			return err
 		}
 	} else {
@@ -67,6 +72,7 @@ func cmdDeploy(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
+
 		if b == nil {
 			return fmt.Errorf("No build found by id: %s.", buildId)
 		}
@@ -80,12 +86,15 @@ func cmdDeploy(c *cli.Context) error {
 		return err
 	}
 
-	app, _ = client.GetApp(name)
+	app, err = client.GetApp(name)
+	if err != nil {
+		return fmt.Errorf("fetching app %s err: %v", name, err)
+	}
 
 	if len(app.Endpoint) > 0 {
 		fmt.Printf("\nDeployed at %s\n", app.Endpoint)
 	} else {
-		fmt.Println("DONE.")
+		fmt.Println("[DONE].")
 	}
 
 	return nil

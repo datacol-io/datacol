@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -110,8 +111,8 @@ func cmdResourceInfo(c *cli.Context) error {
 	}
 
 	fmt.Printf("%s ", rs.Name)
-	for k, v := range rs.Exports {
-		fmt.Printf("%d=%s", k, v)
+	for k, v := range jsonDecode(rs.Exports) {
+		fmt.Printf("%s=%s", k, v)
 	}
 
 	fmt.Printf("\n")
@@ -221,4 +222,12 @@ func checkResourceType(t string) (*ResourceType, error) {
 	}
 
 	return nil, fmt.Errorf("unsupported resource type %s; see 'datacol infra create --help'", t)
+}
+
+func jsonDecode(b []byte) map[string]string {
+	var opts map[string]string
+	if err := json.Unmarshal(b, &opts); err != nil {
+		log.Fatal(fmt.Errorf("unmarshaling %+v err:%v", opts, err))
+	}
+	return opts
 }

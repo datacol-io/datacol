@@ -27,7 +27,58 @@ func init() {
 		Name:   "build",
 		Usage:  "build an app from Dockerfile or app.yaml(App-Engine)",
 		Action: cmdBuild,
+		Subcommands: []*cli.Command{
+			{
+				Name:   "list",
+				Usage:  "get builds for an app",
+				Action: cmdBuildList,
+			},
+			{
+				Name:   "delete",
+				Usage:  "delete a build",
+				Action: cmdBuildDelete,
+			},
+		},
 	})
+}
+
+func cmdBuildList(c *cli.Context) error {
+	_, name, err := getDirApp(".")
+	if err != nil {
+		return err
+	}
+	api, close := getApiClient(c)
+	defer close()
+
+	builds, err := api.GetBuilds(name)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(toJson(builds))
+	return nil
+}
+
+func cmdBuildDelete(c *cli.Context) error {
+	_, name, err := getDirApp(".")
+	if err != nil {
+		return err
+	}
+	api, close := getApiClient(c)
+	defer close()
+
+	if c.Args().Len() == 0 {
+		return fmt.Errorf("Please provide id of the build")
+	}
+
+	bid := c.Args().First()
+
+	if err = api.DeleteBuild(name, bid); err != nil {
+		return err
+	}
+
+	fmt.Println("DONE")
+	return nil
 }
 
 func cmdBuild(c *cli.Context) error {
@@ -45,24 +96,24 @@ func cmdBuild(c *cli.Context) error {
 		return app404Err(name)
 	}
 
-	return executeBuildDir(api, app, dir)
+	_, err = executeBuildDir(api, app, dir)
+	return err
 }
 
-func executeBuildDir(api *client.Client, app *pb.App, dir string) error {
+func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, error) {
 	tar, err := createTarball(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Println("OK")
 
 	b, err := api.CreateBuild(app, tar)
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return finishBuild(api, b)
+	return b, finishBuild(api, b)
 }
 
 func createTarball(base string) ([]byte, error) {

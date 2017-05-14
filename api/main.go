@@ -8,9 +8,9 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
 	"net/http"
 	"os"
+	"time"
 )
 
 var (
@@ -26,15 +26,8 @@ func init() {
 }
 
 func runRpcServer() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
-	if err != nil {
-		return err
-	}
-	grpcServer := grpc.NewServer()
-	pb.RegisterProviderServiceServer(grpcServer, newServer())
-
 	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
+		if err := newServer().Run(); err != nil {
 			log.Fatal(fmt.Errorf("serveGRPC err: %v", err))
 		}
 	}()
@@ -87,6 +80,8 @@ func main() {
 	if err := runRpcServer(); err != nil {
 		log.Fatal(err)
 	}
+
+	time.Sleep(1 * time.Second)
 
 	if err := run(); err != nil {
 		log.Fatal(err)

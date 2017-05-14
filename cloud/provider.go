@@ -1,10 +1,8 @@
 package cloud
 
 import (
-	"io"
-
 	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud/google"
+	"io"
 )
 
 type Provider interface {
@@ -37,11 +35,4 @@ type Provider interface {
 	ResourceUnlink(string, string) (*pb.Resource, error)
 
 	GetRunningPods(string) (string, error)
-}
-
-func Getgcp(name, project string) Provider {
-	return &google.GCPCloud{
-		Project:        project,
-		DeploymentName: name,
-	}
 }

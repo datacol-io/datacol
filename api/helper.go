@@ -10,7 +10,7 @@ import (
 
 func internalError(err error, message string) error {
 	log.Errorf(err.Error())
-	return grpc.Errorf(codes.Unknown, message)
+	return grpc.Errorf(codes.Unknown, err.Error())
 }
 
 func toJson(object interface{}) string {

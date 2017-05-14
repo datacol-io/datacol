@@ -11,8 +11,6 @@ import (
 
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
-
-	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"google.golang.org/grpc"
 )
@@ -80,10 +78,6 @@ func GrpcClient(host string) (pb.ProviderServiceClient, func() error) {
 	return pb.NewProviderServiceClient(conn), conn.Close
 }
 
-func (c *Client) configRoot() string {
-	return filepath.Join(models.ConfigPath, c.StackName)
-}
-
 func (c *Client) SetStack(name string) {
 	parts := strings.Split(name, "@")
 
@@ -101,12 +95,4 @@ func (c *Client) SetStack(name string) {
 	if len(c.ProjectId) == 0 {
 		log.Fatal(fmt.Errorf("GCP project-id not found. Please set `PROJECT_ID` environment variable."))
 	}
-}
-
-func (c *Client) Provider() cloud.Provider {
-	if len(c.StackName) == 0 || len(c.ProjectId) == 0 {
-		log.Fatal(stdcli.Stack404)
-	}
-
-	return cloud.Getgcp(c.StackName, c.ProjectId)
 }
