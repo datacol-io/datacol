@@ -23,7 +23,7 @@ def build_all
       bin_name = "#{$cmd_name}-#{os}-#{arch}"
       bin_name += ".exe" if os == 'windows'
 
-      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -o dist/#{$version}/#{bin_name} #{$commands}")
+      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\"-o dist/#{$version}/#{bin_name} #{$commands}")
     end
   end
 end
@@ -32,7 +32,7 @@ end
 def apictl
   api_name = "apictl"
   os, arch = 'linux', 'amd64'
-  with_cmd("GOOS=#{os} GOARCH=#{arch} go build -o dist/#{$version}/#{api_name} api/*.go")
+  with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{api_name} api/*.go")
 
   binary_dest = "#{$bucket_prefix}/binaries/#{$version}/#{api_name}.zip"
   version_dir = "dist/#{$version}"
