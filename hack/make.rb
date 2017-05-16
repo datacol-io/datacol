@@ -9,7 +9,7 @@ $bucket_prefix = "gs://datacol-distros"
 $bin_matrix = {
   darwin: ['386', 'amd64'],
   linux: ['arm', '386', 'amd64'],
-  # windows: ['386', 'amd64']
+  windows: ['386', 'amd64']
 }
 
 $version = ENV.fetch('VERSION')
@@ -23,7 +23,7 @@ def build_all
       bin_name = "#{$cmd_name}-#{os}-#{arch}"
       bin_name += ".exe" if os == 'windows'
 
-      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\"-o dist/#{$version}/#{bin_name} #{$commands}")
+      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} #{$commands}")
     end
   end
 end
@@ -45,6 +45,7 @@ def apictl
 end
 
 def push_all
+  apictl
   build_all
   binary_dir = "#{$bucket_prefix}/binaries"
   latest_txt_path = "#{binary_dir}/latest.txt"
