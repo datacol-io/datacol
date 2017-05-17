@@ -1,5 +1,5 @@
-hash: 4af1f4a146f20a6056a6b2052d26aeaab5307b2f7318455cc344e8e5540374ad
-updated: 2017-05-08T00:45:48.86401738+05:30
+hash: 287821a2730a0b6204cb312339db5c9a033e9e97b1193d01c9a60c8bbccd3137
+updated: 2017-05-17T17:23:49.826682383+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -8,6 +8,14 @@ imports:
   - datastore
   - internal
   - storage
+- name: github.com/appscode/errors
+  version: 45337f4d7774392043ed9f8c237f9e810974dd98
+- name: github.com/appscode/go
+  version: 496a78e678c2a161788f53f94bdb0ab9c812231f
+  subpackages:
+  - env
+- name: github.com/appscode/go-term
+  version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/go-oidc
@@ -52,6 +60,10 @@ imports:
   subpackages:
   - log
   - swagger
+- name: github.com/facebookgo/stack
+  version: 751773369052141c013c6e827a71e8f35c07879c
+- name: github.com/fatih/color
+  version: 9131ab34cf20d2f6d83fdc67168a5430d1c7dc23
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
@@ -82,6 +94,7 @@ imports:
   - ptypes
   - ptypes/any
   - ptypes/duration
+  - ptypes/empty
   - ptypes/struct
   - ptypes/timestamp
   - ptypes/wrappers
@@ -125,6 +138,12 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/mattn/go-colorable
+  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+  repo: https://github.com/mattn/go-colorable
+- name: github.com/mattn/go-isatty
+  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+  repo: https://github.com/mattn/go-isatty
 - name: github.com/Microsoft/go-winio
   version: f3b1913901892ada21d52d0cffe1d4c7080d36b7
 - name: github.com/mitchellh/go-homedir
@@ -199,6 +218,7 @@ imports:
   subpackages:
   - cloudbuild/v1
   - cloudresourcemanager/v1
+  - compute/v1
   - container/v1
   - deploymentmanager/v2
   - gensupport
@@ -209,6 +229,7 @@ imports:
   - internal
   - iterator
   - option
+  - servicemanagement/v1
   - sqladmin/v1beta4
   - storage/v1
   - transport

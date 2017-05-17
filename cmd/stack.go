@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -11,11 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 var (
-	credNotFound = errors.New("Invalid credentials")
+	credNotFound    = errors.New("Invalid credentials")
+	projectNotFound = errors.New("Invalid project id")
 )
 
 func init() {
@@ -28,10 +29,6 @@ func init() {
 				Name:  "stack",
 				Usage: "Name of stack",
 				Value: "dev",
-			},
-			&cli.StringFlag{
-				Name:  "project",
-				Usage: "GCP project id to use",
 			},
 			&cli.StringFlag{
 				Name:  "zone",
@@ -63,7 +60,7 @@ func init() {
 			},
 			&cli.BoolFlag{
 				Name:  "opt-out",
-				Usage: "Opt-out from getting updates by email by `datacol`",
+				Usage: "Opt-out from getting updates via email from `datacol`",
 				Value: false,
 			},
 			&cli.StringFlag{
@@ -81,18 +78,11 @@ func init() {
 }
 
 func cmdStackCreate(c *cli.Context) error {
-	stdcli.CheckFlagsPresence(c, "project")
-
 	stackName := c.String("stack")
-	project := c.String("project")
 	zone := c.String("zone")
 	nodes := c.Int("nodes")
 	bucket := c.String("bucket")
 	password := c.String("password")
-
-	if len(bucket) == 0 {
-		bucket = fmt.Sprintf("datacol-%s", slug(project))
-	}
 
 	cluster := c.String("cluster")
 	machineType := c.String("machine-type")
@@ -107,17 +97,7 @@ These credentials will only be used to communicate between this installer runnin
 `
 
 	fmt.Printf(message)
-
-	apis := []string{
-		"datastore.googleapis.com",
-		"cloudbuild.googleapis.com",
-		"deploymentmanager",
-		"iam.googleapis.com",
-	}
-
-	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue.\n")
-	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), project)
-	prompt(url)
+	prompt("")
 
 	options := &gcp.InitOptions{
 		Name:        stackName,
@@ -128,7 +108,6 @@ These credentials will only be used to communicate between this installer runnin
 		Zone:        zone,
 		Bucket:      bucket,
 		Preemptible: preemptible,
-		Project:     project,
 		Version:     stdcli.Version,
 		API_KEY:     password,
 	}
@@ -153,7 +132,7 @@ func cmdStackDestroy(c *cli.Context) error {
 }
 
 func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
-	resp := gcp.CreateCredential(opts.Name, opts.Project, optout)
+	resp := gcp.CreateCredential(opts.Name, optout)
 	if resp.Err != nil {
 		return resp.Err
 	}
@@ -161,6 +140,10 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 	cred := resp.Cred
 	if len(cred) == 0 {
 		return credNotFound
+	}
+
+	if len(resp.ProjectId) == 0 {
+		return projectNotFound
 	}
 
 	if err := saveCredential(opts.Name, cred); err != nil {
@@ -171,6 +154,10 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 	opts.ProjectNumber = resp.PNumber
 	opts.SAEmail = resp.SAEmail
 
+	if len(opts.Bucket) == 0 {
+		opts.Bucket = fmt.Sprintf("datacol-%s", slug(opts.Project))
+	}
+
 	name := opts.Name
 	if len(opts.ClusterName) == 0 {
 		opts.ClusterNotExists = true
@@ -179,7 +166,12 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 		opts.ClusterNotExists = false
 	}
 
-	time.Sleep(2 * time.Second) // wait for sometime for iam permission propagation
+	apis := []string{"datastore.googleapis.com", "cloudbuild.googleapis.com",
+		"deploymentmanager", "iam.googleapis.com"}
+
+	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue.\n")
+	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), opts.Project)
+	prompt(url)
 
 	res, err := gcp.InitializeStack(opts)
 	if err != nil {
@@ -221,8 +213,9 @@ func saveCredential(name string, data []byte) error {
 	if err := createStackDir(name); err != nil {
 		return err
 	}
-
 	path := filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
+	log.Debugf("saving GCP credentials at %s", path)
+
 	return ioutil.WriteFile(path, data, 0777)
 }
 

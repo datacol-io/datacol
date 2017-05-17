@@ -5,24 +5,20 @@ import (
 	"bytes"
 	"cloud.google.com/go/datastore"
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/appscode/go/crypto/rand"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"html/template"
 	"io/ioutil"
-	"math/big"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {
@@ -115,29 +111,12 @@ func getGcpRegion(zone string) string {
 	return zone[0 : len(zone)-2]
 }
 
-var idAlphabet = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
 func generateId(prefix string, size int) string {
-	b := make([]rune, size)
-	for i := range b {
-		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(idAlphabet))))
-		if err != nil {
-			panic(err)
-		}
-		b[i] = idAlphabet[idx.Int64()]
-	}
-	return prefix + string(b)
+	return prefix + "-" + rand.Characters(size)
 }
 
-func generatePassword() (string, error) {
-	data := make([]byte, 1024)
-
-	if _, err := rand.Read(data); err != nil {
-		return "", err
-	}
-
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:])[0:30], nil
+func generatePassword() string {
+	return rand.GeneratePassword()
 }
 
 func dpToResourceType(dpname, name string) string {
