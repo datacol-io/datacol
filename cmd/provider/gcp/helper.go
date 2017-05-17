@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"cloud.google.com/go/datastore"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	"google.golang.org/api/compute/v1"
 	"io/ioutil"
-	"math/big"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -25,20 +23,6 @@ func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Que
 		return err
 	}
 	return dc.DeleteMulti(ctx, keys)
-}
-
-var idAlphabet = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func generateId(prefix string, size int) string {
-	b := make([]rune, size)
-	for i := range b {
-		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(idAlphabet))))
-		if err != nil {
-			panic(err)
-		}
-		b[i] = idAlphabet[idx.Int64()]
-	}
-	return prefix + string(b)
 }
 
 func externalIp(obj *compute.Instance) string {

@@ -82,10 +82,15 @@ func confirm(s string, tries int) bool {
 
 func prompt(s string) {
 	r := bufio.NewReader(os.Stdin)
-
-	fmt.Printf("%s\n\nPress any key to continue ", s)
-	if _, err := r.ReadString('\n'); err != nil {
-		log.Fatal(err)
+	fmt.Printf("%s\n\nPlease press [ENTER] or Ctrl-C to cancel", s)
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		if line == "\n" {
+			break
+		}
 	}
 }
 

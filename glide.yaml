@@ -64,4 +64,4 @@ import:
   version: ~1.0.1-GA
   subpackages:
   - '...'
-
+- package: github.com/appscode/go-term

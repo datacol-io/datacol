@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/appscode/go/crypto/rand"
 	"golang.org/x/oauth2/google"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
@@ -47,7 +48,7 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	}
 
 	if len(opts.API_KEY) == 0 {
-		opts.API_KEY = generateId("A", 19)
+		opts.API_KEY = rand.GeneratePassword()
 	}
 
 	opts.Region = getGcpRegion(opts.Zone)
@@ -128,7 +129,7 @@ func servicemanagement(name string) *smm.APIService {
 }
 
 func httpClient(name string) *http.Client {
-	cfg, err := google.JWTConfigFromJSON(serviceKey(name), csm.CloudPlatformScope)
+	cfg, err := google.JWTConfigFromJSON(serviceKey(serviceKeyPath(name)), csm.CloudPlatformScope)
 
 	if err != nil {
 		log.Fatal(fmt.Errorf("creating JWT config err: %v", err))

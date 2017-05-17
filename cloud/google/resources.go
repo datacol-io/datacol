@@ -149,10 +149,7 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
 	switch kind {
 	case "mysql", "postgres":
-		passwd, err := generatePassword()
-		if err != nil {
-			return nil, err
-		}
+		passwd := generatePassword()
 		if err := g.createSqlUser(kind, passwd, name); err != nil {
 			return nil, err
 		}

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	"github.com/skratchdot/open-golang/open"
 	goauth2 "golang.org/x/oauth2"
 	oauth2_google "golang.org/x/oauth2/google"
@@ -29,14 +30,15 @@ var (
 )
 
 type authPacket struct {
-	Cred      []byte
-	Err       error
-	ProjectId string
-	PNumber   int64
-	SAEmail   string
+	Cred        []byte
+	Err         error
+	ProjectId   string
+	AccessToken string
+	PNumber     int64
+	SAEmail     string
 }
 
-func CreateCredential(rackName, projectId string, optout bool) authPacket {
+func CreateCredential(rackName string, optout bool) authPacket {
 	emailOptin = !optout
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -70,32 +72,45 @@ func CreateCredential(rackName, projectId string, optout bool) authPacket {
 	open.Start(codeURL)
 
 	stop := make(chan authPacket, 1)
-	http.Handle("/", callbackHandler{rackName, projectId, handleGauthCallback, stop})
+	http.Handle("/", callbackHandler{rackName, handleGauthCallback, stop})
 
 	go http.Serve(listener, nil)
 
 	select {
 	case msg := <-stop:
 		listener.Close()
+		client, err := setIamPolicy(msg.AccessToken)
+		if err != nil {
+			return authPacket{Err: err}
+		}
+
+		data, err := NewServiceAccountPrivateKey(client, projectId)
+		if err != nil {
+			return authPacket{Err: err}
+		}
+
+		msg.Cred = data
+		msg.ProjectId = projectId
+		msg.SAEmail = serviceAccountEmail()
 		return msg
 	}
 }
 
 type callbackHandler struct {
-	rackName, projectId string
-	H                   func(*callbackHandler, http.ResponseWriter, *http.Request) ([]byte, error)
-	stop                chan authPacket
+	rackName string
+	H        func(*callbackHandler, http.ResponseWriter, *http.Request) (string, error)
+	stop     chan authPacket
 }
 
 func (h callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	data, err := h.H(&h, w, r)
+	token, err := h.H(&h, w, r)
 
 	if err != nil {
 		h.termOnError(err)
 		w.Write([]byte("Failed to authenticate. Please try again."))
 		w.Write([]byte(fmt.Sprintf("\nError: %v", err)))
 	} else {
-		h.termOnSuccess(data)
+		h.termOnSuccess(token)
 		w.Write([]byte("Successfully authenticated. Please go to your terminal."))
 	}
 }
@@ -104,74 +119,78 @@ func (h callbackHandler) termOnError(err error) {
 	h.stop <- authPacket{Err: err}
 }
 
-func (h callbackHandler) termOnSuccess(data []byte) {
+func (h callbackHandler) termOnSuccess(token string) {
 	h.stop <- authPacket{
-		Cred:      data,
-		ProjectId: projectId,
-		PNumber:   pNumber,
-		SAEmail:   service_account_email(),
+		AccessToken: token,
+		ProjectId:   projectId,
+		PNumber:     pNumber,
 	}
 }
 
 // https://developers.google.com/identity/protocols/OAuth2InstalledApp
-func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Request) ([]byte, error) {
+func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Request) (string, error) {
 	code := r.URL.Query().Get("code")
-	var cred []byte
 
 	if code == "" {
-		return cred, fmt.Errorf("invalid code")
+		return "", fmt.Errorf("invalid code")
 	}
 
 	token, err := gauthConfig.Exchange(context.Background(), code)
 	if err != nil {
-		return cred, fmt.Errorf("invalid context: %v", err)
+		return "", fmt.Errorf("invalid context: %v", err)
 	}
-
-	client := goauth2.NewClient(context.Background(), goauth2.StaticTokenSource(&goauth2.Token{
-		AccessToken: token.AccessToken,
-	}))
-
-	rmgrClient, err := crmgr.New(client)
-	if err != nil {
-		return cred, fmt.Errorf("failed to get cloudsource manager: %v", err)
-	}
-
-	presp, err := rmgrClient.Projects.List().Do()
-	if err != nil {
-		return cred, fmt.Errorf("failed to list google projects")
-	}
-
-	if len(presp.Projects) == 0 {
-		return cred, fmt.Errorf("No Google cloud project exists. Please create new Google Cloud project from web console: https://console.cloud.google.com")
-	}
-
-	projectId = ""
-	for _, p := range presp.Projects {
-		if p.ProjectId == h.projectId || p.Name == h.projectId {
-			projectId = p.ProjectId
-			pNumber = p.ProjectNumber
-			break
-		}
-	}
-
-	if projectId == "" {
-		return cred, fmt.Errorf("failed to get project %v", h.projectId)
-	}
-
-	log.Debugf("Selected ProjectId: %s", projectId)
 
 	if emailOptin {
 		go subscribeMe(token.AccessToken)
 	}
 
-	iamClient, err := iam.New(client)
+	return token.AccessToken, nil
+}
+
+func setIamPolicy(accessToken string) (*iam.Service, error) {
+	client := goauth2.NewClient(context.Background(), goauth2.StaticTokenSource(&goauth2.Token{
+		AccessToken: accessToken,
+	}))
+
+	rmgrClient, err := crmgr.New(client)
 	if err != nil {
-		return cred, fmt.Errorf("failed to create iam client: %v", err)
+		return nil, fmt.Errorf("failed to get cloudsource-manager: %v", err)
 	}
 
-	svcName := service_account_email()
+	presp, err := rmgrClient.Projects.List().Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list google projects")
+	}
 
+	if len(presp.Projects) == 0 {
+		return nil, fmt.Errorf("No Google cloud project exists. Please create new Google Cloud project from web console: https://console.cloud.google.com")
+	}
+
+	projects := make([]string, len(presp.Projects))
+	for i, p := range presp.Projects {
+		projects[i] = p.Name
+	}
+
+	fmt.Println("\nPlease choose a project to continue.")
+
+	i, _ := term.List(projects)
+	projectId = presp.Projects[i].ProjectId
+	pNumber = presp.Projects[i].ProjectNumber
+
+	if len(projectId) == 0 {
+		return nil, fmt.Errorf("Please select atleast an option.")
+	}
+
+	log.Debugf("Selected ProjectId: %s", projectId)
+
+	iamClient, err := iam.New(client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create iam client: %v", err)
+	}
+
+	svcName := fmt.Sprintf("%v@%v.iam.gserviceaccount.com", saName, projectId)
 	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%s", projectId, svcName)
+
 	_, err = iamClient.Projects.ServiceAccounts.Get(saFQN).Do()
 	if err != nil {
 		_, err = iamClient.Projects.ServiceAccounts.Create("projects/"+projectId, &iam.CreateServiceAccountRequest{
@@ -182,13 +201,13 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 		}).Do()
 
 		if err != nil {
-			return cred, fmt.Errorf("failed to create iam %q", saFQN)
+			return nil, fmt.Errorf("failed to create iam service account %q err: %v", saFQN, err)
 		}
 	}
 
 	p, err := rmgrClient.Projects.GetIamPolicy(projectId, &crmgr.GetIamPolicyRequest{}).Do()
 	if err != nil {
-		return cred, fmt.Errorf("failed to get iam policy for %q", projectId)
+		return nil, fmt.Errorf("failed to get iam policy for %q", projectId)
 	}
 
 	members := []string{fmt.Sprintf("serviceAccount:%s", svcName)}
@@ -207,16 +226,19 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 	_, err = rmgrClient.Projects.SetIamPolicy(projectId, &crmgr.SetIamPolicyRequest{Policy: p}).Do()
 	if err != nil {
 		log.Warn(err)
-		return cred, fmt.Errorf("failed to apply IAM roles")
+		return nil, fmt.Errorf("failed to apply IAM roles")
 	}
 
-	return NewServiceAccountPrivateKey(iamClient, projectId)
+	return iamClient, nil
 }
 
-func NewServiceAccountPrivateKey(iamClient *iam.Service, project string) ([]byte, error) {
+func NewServiceAccountPrivateKey(iamClient *iam.Service, pid string) ([]byte, error) {
 	cred := []byte{}
-	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%v@%v.iam.gserviceaccount.com", project, saName, project)
+	if len(projectId) == 0 {
+		projectId = pid
+	}
 
+	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%v@%v.iam.gserviceaccount.com", projectId, saName, projectId)
 	log.Debugf("creating new private key for %s", saFQN)
 
 	sKey, err := iamClient.Projects.ServiceAccounts.Keys.Create(saFQN, &iam.CreateServiceAccountKeyRequest{}).Do()
@@ -288,6 +310,6 @@ func subscribeMe(accessToken string) {
 	}
 }
 
-func service_account_email() string {
+func serviceAccountEmail() string {
 	return fmt.Sprintf("%v@%v.iam.gserviceaccount.com", saName, projectId)
 }
