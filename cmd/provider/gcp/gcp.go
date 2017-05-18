@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	"github.com/appscode/go/crypto/rand"
 	"golang.org/x/oauth2/google"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
@@ -154,7 +155,7 @@ func teardown(dmService *dm.Service, name, project string) error {
 }
 
 func TeardownStack(name, project, bucket string) error {
-	log.Infof("Deleting stack %s", name)
+	term.Printf("Deleting stack %s\n", name)
 
 	gsService := storageService(name)
 	resp, err := gsService.Objects.List(bucket).Do()
@@ -207,7 +208,7 @@ func resetDatabase(name, project string) error {
 }
 
 func waitForDpOp(svc *dm.Service, op *dm.Operation, project string, interrupt bool, teardown func() error) error {
-	log.Infof("Waiting on %s [%v]", op.OperationType, op.Name)
+	term.Printf("Waiting on %s [%v]", op.OperationType, op.Name)
 
 	cancelCh := make(chan os.Signal, 1)
 	signal.Notify(cancelCh, os.Interrupt, syscall.SIGTERM)

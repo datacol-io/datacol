@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	"k8s.io/client-go/pkg/util/validation"
@@ -55,7 +56,8 @@ func cmdAppRestart(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("Restarted")
+	term.Successln("RESTARTED")
+
 	return nil
 }
 
@@ -85,7 +87,7 @@ func cmdAppCreate(c *cli.Context) error {
 
 	errs := validation.IsDNS1123Label(name)
 	if len(errs) > 0 {
-		fmt.Printf("Invalid app name: %s\n", name)
+		term.Warningln(fmt.Sprintf("Invalid app name: %s", name))
 		for _, e := range errs {
 			log.Errorf(e)
 		}

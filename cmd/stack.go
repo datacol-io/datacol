@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -116,7 +117,7 @@ These credentials will only be used to communicate between this installer runnin
 		return err
 	}
 
-	fmt.Printf("\nDONE.\n")
+	term.Successln("\nDONE")
 
 	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stackName)
 	return nil
@@ -127,7 +128,7 @@ func cmdStackDestroy(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("\nDONE\n")
+	term.Successln("\nDONE")
 	return nil
 }
 
@@ -171,7 +172,7 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 
 	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue.\n")
 	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), opts.Project)
-	prompt(url)
+	term.Confirm(url)
 
 	res, err := gcp.InitializeStack(opts)
 	if err != nil {
