@@ -94,8 +94,7 @@ It uses various Google services (like Container engine, Cloudbuilder, Deployment
 automate all away to give you a better deployment experience.
 
 Datacol CLI will authenticate with your Google Account and install the Datacol platform into your GCP account. 
-These credentials will only be used to communicate between this installer running on your computer and the Google platform.
-`
+These credentials will only be used to communicate between this installer running on your computer and the Google platform.`
 
 	fmt.Printf(message)
 	prompt("")
@@ -169,10 +168,10 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 
 	apis := []string{"datastore.googleapis.com", "cloudbuild.googleapis.com",
 		"deploymentmanager", "iam.googleapis.com"}
-
-	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue.\n")
 	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), opts.Project)
-	term.Confirm(url)
+
+	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue. \n%s\n", url)
+	term.Confirm("Are you done ?")
 
 	res, err := gcp.InitializeStack(opts)
 	if err != nil {

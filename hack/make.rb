@@ -4,23 +4,36 @@ $commands = "cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go " +
             "cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go " + 
             "cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go"
 
-$bucket_prefix = "gs://datacol-distros"
-
-$bin_matrix = {
-  darwin: ['386', 'amd64'],
-  linux: ['arm', '386', 'amd64'],
-  windows: ['386', 'amd64']
-}
-
 $version = ENV.fetch('VERSION')
-$cmd_name = "datacol"
+$env     = ENV.fetch('DATACOL_ENV')
+
+$bin_matrix = 
+  case $env 
+  when 'prod'
+    {
+      darwin: ['386', 'amd64'],
+      linux: ['arm', '386', 'amd64'],
+      windows: ['386', 'amd64']
+    }
+  else
+    { 
+      darwin: ['amd64'], 
+      linux: ['amd64'] 
+    }
+  end
+
+$cli_name = "datacol"
 $api_name = "apictl"
+
+$bucket_prefix = $env == 'prod' ?  "gs://datacol-distros" : "gs://datacol-dev"
+
+puts "ENV: #{$env} bucket: #{$bucket_prefix}/#{$version}"
 
 def build_all
   $bin_matrix.each do |os, archs|
     with_cmd("mkdir -p dist/#{$version}")
     archs.each do |arch|
-      bin_name = "#{$cmd_name}-#{os}-#{arch}"
+      bin_name = "#{$cli_name}-#{os}-#{arch}"
       bin_name += ".exe" if os == 'windows'
 
       with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} #{$commands}")
@@ -28,6 +41,10 @@ def build_all
   end
 end
 
+def clean_version_dir
+  version_dir = "dist/#{$version}"
+  with_cmd("rm -rf #{version_dir} && mkdir -p #{version_dir}")
+end
 
 def apictl
   api_name = "apictl"
@@ -45,6 +62,7 @@ def apictl
 end
 
 def push_all
+  clean_version_dir
   apictl
   build_all
   binary_dir = "#{$bucket_prefix}/binaries"
@@ -62,9 +80,9 @@ end
 def push_zip
   version_dir = "dist/#{$version}"
 
-  { osx: 'darwin-386', linux: 'linux-amd64' }.each do |zipbin, name|
+  { osx: 'darwin-amd64', linux: 'linux-amd64' }.each do |zipbin, name|
     with_cmd("pushd #{version_dir} && \
-             cp #{$cmd_name}-#{name} datacol && \
+             cp #{$cli_name}-#{name} datacol && \
              zip #{zipbin}.zip datacol && \
              gsutil cp #{zipbin}.zip #{$bucket_prefix}/ && \
              popd")
