@@ -3,15 +3,15 @@ package client
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/appscode/go/io"
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -22,16 +22,8 @@ const (
 
 func init() {
 	root := models.ConfigPath
-	if _, err := os.Stat(root); err != nil {
-		if !os.IsNotExist(err) {
-			stdcli.Error(err)
-			return
-		} else {
-			if err := os.MkdirAll(root, 0700); err != nil {
-				stdcli.Error(err)
-				return
-			}
-		}
+	if err := io.EnsureDirectory(root); err != nil {
+		stdcli.Error(err)
 	}
 }
 
@@ -50,13 +42,19 @@ func (c *Client) SetFromEnv() {
 func NewClient(version string) (*Client, func() error) {
 	name := stdcli.GetAppStack()
 
-	v, err := ioutil.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
+	v, err := io.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	host := strings.TrimSpace(string(v))
+	host := strings.TrimSpace(v)
 
-	psc, close := GrpcClient(host)
+	p, err := io.ReadFile(filepath.Join(models.ConfigPath, name, "api_key"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	password := strings.TrimSpace(p)
+
+	psc, close := GrpcClient(host, password)
 	conn := &Client{
 		Version:               version,
 		ProviderServiceClient: psc,
@@ -66,11 +64,26 @@ func NewClient(version string) (*Client, func() error) {
 	return conn, close
 }
 
-func GrpcClient(host string) (pb.ProviderServiceClient, func() error) {
+type loginCreds struct {
+	ApiKey string
+}
+
+func (lc *loginCreds) GetRequestMetadata(c context.Context, args ...string) (map[string]string, error) {
+	return map[string]string{
+		"api_key": lc.ApiKey,
+	}, nil
+}
+
+func (c *loginCreds) RequireTransportSecurity() bool {
+	return false
+}
+
+func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) {
 	address := fmt.Sprintf("%s:%d", host, apiRpcPort)
 	log.Debugf("grpc dialing at %s", address)
 
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}))
 	if err != nil {
 		log.Fatal(fmt.Errorf("did not connect: %v", err))
 	}

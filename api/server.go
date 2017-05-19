@@ -9,6 +9,7 @@ import (
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/google"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"net"
 	"strings"
 
@@ -83,14 +84,19 @@ func (s *Server) Run() error {
 	if err != nil {
 		return err
 	}
-	grpcServer := grpc.NewServer()
+
+	// https://github.com/grpc/grpc-go/issues/106
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(s.unaryInterceptor),
+	)
+
 	pbs.RegisterProviderServiceServer(grpcServer, s)
 
 	return grpcServer.Serve(listener)
 }
 
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
-	if req.Password == s.Password {
+	if authorize(ctx, s.Password) {
 		var ip, project string
 		if metadata.OnGCE() {
 			_ip, err := metadata.ExternalIP()
@@ -284,4 +290,17 @@ func (s *Server) LogStream(ctx context.Context, req *pbs.LogStreamReq) (*pbs.Log
 	}
 
 	return &pbs.LogStreamResponse{Data: buf.Bytes()}, nil
+}
+
+func (s *Server) unaryInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	if !authorize(ctx, s.Password) {
+		return nil, grpc.Errorf(codes.Unauthenticated, "authentication required")
+	}
+
+	return handler(ctx, req)
 }
