@@ -44,7 +44,7 @@ func newServer() *Server {
 	} else {
 		password = "secret"
 		bucket = "datacol-gcs-local"
-		name = "aaa"
+		name = "demo"
 		zone = "us-east1-b"
 		projectId = "gcs-local"
 		projectNumber = ""
@@ -75,7 +75,7 @@ type Server struct {
 }
 
 func (s *Server) Run() error {
-	if _, err := configPath(s.StackName, s.Project, s.Zone); err != nil {
+	if _, err := kubeConfigPath(s.StackName, s.Project, s.Zone); err != nil {
 		return fmt.Errorf("caching kubernetes config err: %v", err)
 	}
 

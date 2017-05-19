@@ -11,22 +11,25 @@ import (
 	"syscall"
 )
 
-func configPath(s, p, z string) (string, error) {
-	c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
-	if err != nil {
-		return "", err
+func kubeConfigPath(s, p, z string) (string, error) {
+	var name string
+	if metadata.OnGCE() {
+		c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
+		if err != nil {
+			return "", err
+		}
+		name = c
+	} else {
+		// for test mode only
+		name = "demo-cluster"
 	}
 
-	cfgpath, err := google.CacheKubeConfig(s, p, z, c)
-	if err != nil {
-		return "", err
-	}
-
-	return cfgpath, nil
+	return google.CacheKubeConfig(s, p, z, name)
 }
 
 func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResponse, error) {
-	cfg, err := configPath(s.StackName, s.Project, s.Zone)
+	// todo: remove this call as we are caching the kubeconfig on first run.
+	cfg, err := kubeConfigPath(s.StackName, s.Project, s.Zone)
 	if err != nil {
 		return nil, internalError(err, "failed to fetch k8s config")
 	}
@@ -37,7 +40,7 @@ func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResp
 }
 
 func (s *Server) ProcessRun(ctx context.Context, req *pbs.ProcessRunReq) (*pbs.CmdResponse, error) {
-	cfg, err := configPath(s.StackName, s.Project, s.Zone)
+	cfg, err := kubeConfigPath(s.StackName, s.Project, s.Zone)
 	if err != nil {
 		return nil, internalError(err, "failed to fetch k8s config")
 	}

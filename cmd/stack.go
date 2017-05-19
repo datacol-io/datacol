@@ -29,7 +29,7 @@ func init() {
 			&cli.StringFlag{
 				Name:  "stack",
 				Usage: "Name of stack",
-				Value: "dev",
+				Value: "demo",
 			},
 			&cli.StringFlag{
 				Name:  "zone",

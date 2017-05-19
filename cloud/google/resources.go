@@ -133,6 +133,21 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		params["region"] = getGcpRegion(g.Zone)
 		params["zone"] = g.Zone
 		params["database"] = databaseName
+		
+		if _, ok := params["tier"]; !ok {
+			c, k := params["cpu"]
+			if !k { 
+				return nil, fmt.Errorf("missing param `--cpu`") 
+			}
+
+			m, k := params["memory"]
+			if !k { 
+				return nil, fmt.Errorf("missing param `--memory`") 
+			}
+
+			params["tier"] = fmt.Sprintf("db-custom-%s-%s", c, m)
+		}
+
 		sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
 	default:
 		log.Fatal(fmt.Errorf("%s is not supported yet.", kind))
