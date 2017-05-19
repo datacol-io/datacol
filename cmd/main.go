@@ -5,19 +5,23 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
+	"gopkg.in/urfave/cli.v2"
+
 	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/dinesh/datacol/go/env"
 )
 
 var (
 	verbose   = false
 	stackFlag *cli.StringFlag
 	appFlag   *cli.StringFlag
+	ev        env.Environment
 )
 
 func init() {
-	verbose = os.Getenv("DATACOL_DEBUG") == "1" || os.Getenv("DATACOL_DEBUG") == "true"
+	ev = env.FromHost()
+	verbose = ev.DevMode()
 
 	stackFlag = &cli.StringFlag{
 		Name:    "stack",

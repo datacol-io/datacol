@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
 	"github.com/appscode/go/crypto/rand"
+	"github.com/dinesh/datacol/go/env"
 	"golang.org/x/oauth2/google"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
@@ -36,7 +37,7 @@ type InitOptions struct {
 	NumNodes, Port                                        int
 	SAEmail                                               string
 	ClusterNotExists, Preemptible                         bool
-	API_KEY, Version, Region                              string
+	API_KEY, Version, Region, ArtifactBucket              string
 }
 
 type initResponse struct {
@@ -50,6 +51,13 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 
 	if len(opts.API_KEY) == 0 {
 		opts.API_KEY = rand.GeneratePassword()
+	}
+
+	ec := env.FromHost()
+	if ec.DevMode() {
+		opts.ArtifactBucket = "datacol-dev"
+	} else {
+		opts.ArtifactBucket = "datacol-distros"
 	}
 
 	opts.Region = getGcpRegion(opts.Zone)
@@ -360,6 +368,7 @@ resources:
     region: {{ .Region }}
     port: {{ .Port }}
     cluster_name: {{ .ClusterName }}
+    bucket: {{ .ArtifactBucket }}
 
 {{ if .ClusterNotExists }}
 - type: container-vm.jinja
@@ -433,7 +442,7 @@ resources:
             chmod +x kubectl && \
             mv kubectl /usr/local/bin
           mkdir -p /opt/datacol && \
-            curl -Ls /tmp https://storage.googleapis.com/datacol-distros/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
+            curl -Ls /tmp https://storage.googleapis.com/{{ properties['bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
           cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `

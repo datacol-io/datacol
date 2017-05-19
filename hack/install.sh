@@ -11,7 +11,7 @@ case "$unamestr" in
 esac
 
 if [[ "$PLATFORM" == 'unknown' ]]; then
-  echo "We don't provide datacol CLI for ${PLATFORM} yet. Please contact at http://datacol.io." && exit 1
+  echo "We don't provide datacol CLI for $unamestr yet. Please contact at http://datacol.io." && exit 1
 fi
 
 version=$(curl -s https://storage.googleapis.com/datacol-distros/binaries/latest.txt)

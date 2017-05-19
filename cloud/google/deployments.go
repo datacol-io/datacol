@@ -228,9 +228,9 @@ var pgsqlInstanceYAML = `
   properties:
     region: '{{ .region }}'
     databaseVersion: '{{ .db_version }}'
+    instanceType: CLOUD_SQL_INSTANCE
     settings:
-      memory: '{{ .memory }}'
-      cpu: '{{ .cpu }}'
+      tier: '{{ .tier }}'
       backupConfiguration:
         enabled: true
         binaryLogEnabled: true
@@ -247,6 +247,4 @@ var pgsqlInstanceYAML = `
   properties:
     name: {{ .database }}
     instance: $(ref.{{ .name }}.name)
-    charset: utf8mb4
-    collation: utf8mb4_general_ci
 `
