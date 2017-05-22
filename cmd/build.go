@@ -101,7 +101,12 @@ func cmdBuild(c *cli.Context) error {
 }
 
 func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, error) {
-	tar, err := createTarball(dir)
+	env, err := api.GetEnvironment(app.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	tar, err := createTarball(dir, env)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +121,7 @@ func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, er
 	return b, finishBuild(api, b)
 }
 
-func createTarball(base string) ([]byte, error) {
+func createTarball(base string, env map[string]string) ([]byte, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -133,19 +138,34 @@ func createTarball(base string) ([]byte, error) {
 	}
 
 	dockerfileName := "Dockerfile"
+	dkrexists := true
 
 	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
 		filename := "Dockerfile"
+		dkrexists = false
+
 		if _, err = os.Stat("app.yaml"); err == nil {
 			fmt.Printf("Trying to generate %s from app.yaml ...", filename)
 			if err = gnDockerFromGAE(filename); err != nil {
-				fmt.Println(" failed")
+				fmt.Println(" FAILED")
 				log.Warn(err)
 			} else {
-				fmt.Println(" done")
+				fmt.Println(" DONE")
 				dockerfileName = filename
 			}
 		}
+
+		if err = mkBuildPackDockerfile(sym, env); err != nil {
+			return nil, fmt.Errorf("generating Dockerfile err: %v", err)
+		}
+	}
+
+	if !dkrexists {
+		defer func() {
+			if err := os.Remove(filepath.Join(sym, dockerfileName)); err != nil {
+				log.Errorf("removing Dockerfile err: %v", err)
+			}
+		}()
 	}
 
 	fmt.Print("Creating tarball ...")
@@ -227,3 +247,28 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 
 	return nil
 }
+
+type herokuishOpts struct {
+	Env map[string]string
+}
+
+func mkBuildPackDockerfile(dir string, env map[string]string) error {
+	dockerfile := filepath.Join(dir, "Dockerfile")
+	content := compileTmpl(herokuishTmpl, herokuishOpts{env})
+	log.Debugf("--- generated Dockerfile ------\n %s --------", content)
+
+	if err := ioutil.WriteFile(dockerfile, []byte(content), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+var herokuishTmpl = `FROM gliderlabs/herokuish:v0.3.29
+ADD . /app
+{{- $burl := index .Env "BUILDPACK_URL" }} {{ if gt (len $burl) 0 }}
+ENV BUILDPACK_URL {{ $burl }}
+{{- end }}
+RUN /bin/herokuish buildpack build
+ENV PORT 8080
+EXPOSE 8080
+CMD ["/start", "web"]`

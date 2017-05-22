@@ -114,7 +114,7 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 		},
 		Steps: []*cloudbuild.BuildStep{
 			{
-				Name: "gcr.io/cloud-builders/docker",
+				Name: "gcr.io/cloud-builders/docker:17.05",
 				Args: []string{"build", "-t", tag, "-t", latestTag, "."},
 			},
 		},
