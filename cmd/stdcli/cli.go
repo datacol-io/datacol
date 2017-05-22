@@ -1,17 +1,17 @@
 package stdcli
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
 	"errors"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"log"
+	"fmt"
 	pb "github.com/dinesh/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"gopkg.in/urfave/cli.v2"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 	Version     string
 	Commands    []*cli.Command
 	localappdir string
-	Stack404 		error
+	Stack404    error
 )
 
 func init() {
@@ -27,7 +27,7 @@ func init() {
 	localappdir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []*cli.Command{}
-  Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")
+	Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")
 }
 
 func New() *cli.App {
@@ -199,11 +199,6 @@ func Usage(c *cli.Context) {
 }
 
 func rollbar(err error, level string) {
-	if os.Getenv("TESTING") == "1" {
-		panic(err)
-		return
-	}
-
 	rollbarAPI.Platform = "client"
 	rollbarAPI.Token = "f2feac705b1c41069ba478523ce36657"
 	var cmd string

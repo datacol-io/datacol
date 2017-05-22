@@ -368,7 +368,7 @@ resources:
     region: {{ .Region }}
     port: {{ .Port }}
     cluster_name: {{ .ClusterName }}
-    bucket: {{ .ArtifactBucket }}
+    artifact_bucket: {{ .ArtifactBucket }}
 
 {{ if .ClusterNotExists }}
 - type: container-vm.jinja
@@ -442,7 +442,7 @@ resources:
             chmod +x kubectl && \
             mv kubectl /usr/local/bin
           mkdir -p /opt/datacol && \
-            curl -Ls /tmp https://storage.googleapis.com/{{ properties['bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
+            curl -Ls /tmp https://storage.googleapis.com/{{ properties['artifact_bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
           cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `

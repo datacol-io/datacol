@@ -58,28 +58,6 @@ func handlePanic() {
 	}
 }
 
-func confirm(s string, tries int) bool {
-	r := bufio.NewReader(os.Stdin)
-
-	for ; tries > 0; tries-- {
-		fmt.Printf("%s [y/n]: ", s)
-
-		res, err := r.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Empty input (i.e. "\n")
-		if len(res) < 2 {
-			continue
-		}
-
-		return strings.ToLower(strings.TrimSpace(res))[0] == 'y'
-	}
-
-	return false
-}
-
 func prompt(s string) {
 	r := bufio.NewReader(os.Stdin)
 	fmt.Printf("%s\n\nPlease press [ENTER] or Ctrl-C to cancel", s)
@@ -217,4 +195,18 @@ func toJson(object interface{}) string {
 		log.Fatal(fmt.Errorf("dumping json: %v", err))
 	}
 	return string(dump)
+}
+
+func compileTmpl(content string, opts interface{}) string {
+	tmpl, err := template.New("ct").Parse(content)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var doc bytes.Buffer
+	if err := tmpl.Execute(&doc, opts); err != nil {
+		log.Fatal(err)
+	}
+
+	return doc.String()
 }
