@@ -41,7 +41,7 @@ func cmdLogin(c *cli.Context) error {
 	passwd := strings.TrimSpace(p)
 	host := c.String("ip")
 
-	api, close := client.GrpcClient(host)
+	api, close := client.GrpcClient(host, passwd)
 	defer close()
 
 	log.Debugf("Trying to login with [%s]", passwd)

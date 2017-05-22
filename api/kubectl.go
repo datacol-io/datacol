@@ -6,25 +6,29 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/cloud/google"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/net/context"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 )
 
 func kubeConfigPath(s, p, z string) (string, error) {
-	var name string
 	if metadata.OnGCE() {
 		c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
 		if err != nil {
 			return "", err
 		}
-		name = c
+		return google.CacheKubeConfig(s, p, z, c)
 	} else {
-		// for test mode only
-		name = "demo-cluster"
-	}
+		// for test mode only, minukube config
+		dir, err := homedir.Dir()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	return google.CacheKubeConfig(s, p, z, name)
+		return filepath.Join(dir, ".kube", "config"), nil
+	}
 }
 
 func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResponse, error) {

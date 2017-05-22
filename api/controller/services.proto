@@ -167,25 +167,25 @@ service ProviderService {
 
   rpc BuildGet(AppIdRequest) returns (models.Build) {
     option (google.api.http) = {
-      post: "/v1/builds/{id}"
+      get: "/v1/builds/{id}"
     };
   }
 
   rpc BuildDelete(AppIdRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/builds/{id}"
+      delete: "/v1/builds/{id}"
     };
   }
 
   rpc BuildList(AppRequest) returns (BuildListResponse) {
     option (google.api.http) = {
-      post: "/v1/builds/{name}"
+      get: "/v1/builds/{name}"
     };
   }
 
   rpc BuildLogs(BuildLogRequest) returns (BuildLogResponse) {
     option (google.api.http) = {
-      post: "/v1/builds/{id}/log"
+      get: "/v1/builds/{id}/logs"
     };
   }
 
@@ -223,7 +223,7 @@ service ProviderService {
 
   rpc ResourceGet(AppRequest) returns (models.Resource) {
     option (google.api.http) = {
-      post: "/v1/resources/{name}"
+      get: "/v1/resources/{name}"
     };
   }
 
