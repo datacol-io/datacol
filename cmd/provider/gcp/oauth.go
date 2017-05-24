@@ -69,7 +69,10 @@ func CreateCredential(rackName string, optout bool) authPacket {
 	codeURL := gauthConfig.AuthCodeURL("/", promptSelectAccount)
 
 	log.Debugf("Auhtorization code URL: %v", codeURL)
-	open.Start(codeURL)
+
+	if err := open.Start(codeURL); err != nil {
+		term.ExitOnError(err)
+	}
 
 	stop := make(chan authPacket, 1)
 	http.Handle("/", callbackHandler{rackName, handleGauthCallback, stop})

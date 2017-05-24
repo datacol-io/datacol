@@ -78,11 +78,8 @@ func FromString(e string) Environment {
 	case "dev":
 		return Dev
 	default:
-		if InCluster() {
-			return Prod
-		} else {
-			return Dev
-		}
+		// default to be Prod
+		return Prod
 	}
 }
 

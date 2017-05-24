@@ -21,7 +21,7 @@ var (
 
 func init() {
 	ev = env.FromHost()
-	verbose = ev.DevMode()
+	verbose = ev.DebugEnabled()
 
 	stackFlag = &cli.StringFlag{
 		Name:    "stack",
