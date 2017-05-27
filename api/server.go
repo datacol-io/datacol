@@ -85,9 +85,13 @@ func (s *Server) Run() error {
 		return err
 	}
 
+	//todo: setting the max size to be 50MB. Add streaming for code upload
+	maxMsgSize := 1024 * 1024 * 50
+
 	// https://github.com/grpc/grpc-go/issues/106
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(s.unaryInterceptor),
+		grpc.MaxMsgSize(maxMsgSize),
 	)
 
 	pbs.RegisterProviderServiceServer(grpcServer, s)

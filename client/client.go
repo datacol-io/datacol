@@ -82,7 +82,8 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 	address := fmt.Sprintf("%s:%d", host, apiRpcPort)
 	log.Debugf("grpc dialing at %s", address)
 
-	conn, err := grpc.Dial(address, grpc.WithInsecure(),
+	conn, err := grpc.Dial(address,
+		grpc.WithInsecure(),
 		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}))
 	if err != nil {
 		log.Fatal(fmt.Errorf("did not connect: %v", err))

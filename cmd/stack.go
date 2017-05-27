@@ -170,7 +170,7 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 		"deploymentmanager", "iam.googleapis.com"}
 	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), opts.Project)
 
-	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue. \n%s\n", url)
+	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue: \n%s\n", url)
 	term.Confirm("Are you done ?")
 
 	res, err := gcp.InitializeStack(opts)
