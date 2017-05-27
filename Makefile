@@ -1,7 +1,5 @@
-	# $(find . -type f -name '*.go' -not -path "./vendor/*")
-
 BUILD_CMD=cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go
-version=1.0.0-alpha.4
+version=1.0.0-alpha.5
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
