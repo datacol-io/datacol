@@ -18,7 +18,7 @@ vet:
 cmd:
 	go build -ldflags="-s -w" -i ${BUILD_CMD}
 
-apictl:
+api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go
 
 gen:
@@ -26,7 +26,7 @@ gen:
 	protoc -I $(GOPATH)/src -I ./vendor/ \
 		-I $(MODEL_PROTO_DIR) \
 		-I $(VEDNOR_GOOGLE_APIS) \
-		--go_out=plugins=grpc:$(MODEL_PROTO_DIR) \
+		--gogo_out=plugins=grpc:$(MODEL_PROTO_DIR) \
 		$(MODEL_PROTO_DIR)/*.proto
 
   #building api/controller/*.proto

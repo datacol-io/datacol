@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"io"
@@ -19,6 +18,7 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 		return nil, err
 	}
 
+	fmt.Print("Uploading ")
 	for {
 		chunk := make([]byte, chunkSize)
 		n, err := r.Read(chunk)
@@ -34,7 +34,7 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 		}
 	}
 
-	log.Debugf("Uploaded all chunks")
+	fmt.Println(" OK")
 	return stream.CloseAndRecv()
 }
 
