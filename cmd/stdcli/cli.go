@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	Version = "1.0.0-alpha.4"
+	Version = "1.0.0-alpha.5"
 	localappdir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []*cli.Command{}

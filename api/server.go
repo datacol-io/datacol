@@ -10,6 +10,7 @@ import (
 	"github.com/dinesh/datacol/cloud/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"io"
 	"net"
 	"strings"
 
@@ -159,12 +160,30 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 	return &empty.Empty{}, nil
 }
 
-func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
-	b, err := s.Provider.BuildCreate(req.App, req.Data)
-	if err != nil {
-		return nil, internalError(err, "failed to upload source.")
+func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error {
+	var data []byte
+	var app string
+
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		data = append(data, req.Data...)
+		app = req.App
 	}
-	return b, nil
+
+	log.Debugf("got all chunks")
+
+	b, err := s.Provider.BuildCreate(app, data)
+	if err != nil {
+		return internalError(err, "failed to upload source.")
+	}
+
+	return stream.SendAndClose(b)
 }
 
 func (s *Server) BuildList(ctx context.Context, req *pbs.AppRequest) (*pbs.BuildListResponse, error) {

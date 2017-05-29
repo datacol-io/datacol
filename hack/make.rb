@@ -7,8 +7,8 @@ $commands = "cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go " +
 $version = ENV.fetch('VERSION')
 $env     = ENV.fetch('DATACOL_ENV')
 
-$bin_matrix = 
-  case $env 
+$bin_matrix =
+  case $env
   when 'prod'
     {
       darwin: ['386', 'amd64'],
