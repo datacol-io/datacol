@@ -15,7 +15,7 @@ vet:
 	go vet ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
 	goimports ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
 
-build:
+cmd:
 	go build -ldflags="-s -w" -i ${BUILD_CMD}
 
 apictl:
