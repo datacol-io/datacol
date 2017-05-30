@@ -220,8 +220,9 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 func finishBuild(api *client.Client, b *pb.Build) error {
 	index := int32(0)
 
+OUTER:
 	for {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		ret, err := api.BuildLogs(context.TODO(), &pbs.BuildLogRequest{
 			App: b.App,
@@ -240,8 +241,17 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 			fmt.Println(line)
 		}
 
-		if len(lines) > 0 && lines[len(lines)-1] == "DONE" {
-			break
+		b, err := api.GetBuild(b.App, b.Id)
+		if err != nil {
+			return err
+		}
+
+		switch b.Status {
+		case "SUCCESS":
+			break OUTER
+		case "WORKING":
+		default:
+			return fmt.Errorf("Build status: %s", b.Status)
 		}
 	}
 

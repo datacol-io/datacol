@@ -924,7 +924,8 @@
           "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
     },
