@@ -30,6 +30,23 @@ func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 	if err := g.datastore().Get(ctx, key, &b); err != nil {
 		return nil, err
 	}
+
+	if b.Status == "WORKING" || b.Status == "CREATED" {
+		cb := g.cloudbuilder()
+		rb, err := cb.Projects.Builds.Get(g.Project, b.RemoteId).Do()
+		if err != nil {
+			return nil, err
+		}
+
+		if b.Status != rb.Status {
+			b.Status = rb.Status
+
+			if _, err := g.datastore().Put(ctx, key, &b); err != nil {
+				return nil, fmt.Errorf("updating build status err: %v", err)
+			}
+		}
+	}
+
 	return &b, nil
 }
 
@@ -138,7 +155,7 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 		App:       app,
 		Id:        id,
 		RemoteId:  remoteId,
-		Status:    pb.Status_CREATED,
+		Status:    "CREATED",
 		CreatedAt: timestampNow(),
 	}
 
