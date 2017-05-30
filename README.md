@@ -1,6 +1,6 @@
 ## DATACOL
 
-[Datacol](https://www.datacol.io) is provides a control layer on top of GCP that provides Heroku like workflow.
+[Datacol](https://www.datacol.io) provides a `Heroku` like control layer on top of GCP.
 
 Datacol helps you create Heroku like infrastructure for deploying container-native applications on Google Cloud. It is a deployment platform that simplifies the process developers use to build, deploy and manage their applications in the cloud.
 
