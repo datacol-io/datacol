@@ -689,7 +689,7 @@ var (
 	filter_ProviderService_LogStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"name": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_ProviderService_LogStream_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ProviderService_LogStream_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (ProviderService_LogStreamClient, runtime.ServerMetadata, error) {
 	var protoReq LogStreamReq
 	var metadata runtime.ServerMetadata
 
@@ -715,8 +715,16 @@ func request_ProviderService_LogStream_0(ctx context.Context, marshaler runtime.
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.LogStream(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
+	stream, err := client.LogStream(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
 
 }
 
@@ -1446,7 +1454,7 @@ func RegisterProviderServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 			return
 		}
 
-		forward_ProviderService_LogStream_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ProviderService_LogStream_0(ctx, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1554,5 +1562,5 @@ var (
 
 	forward_ProviderService_ProcessRun_0 = runtime.ForwardResponseMessage
 
-	forward_ProviderService_LogStream_0 = runtime.ForwardResponseMessage
+	forward_ProviderService_LogStream_0 = runtime.ForwardResponseStream
 )

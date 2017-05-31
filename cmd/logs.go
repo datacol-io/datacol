@@ -14,7 +14,8 @@ func init() {
 		Action: cmdAppLogStream,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "follow, f",
+				Name:  "follow",
+				Aliases: []string{"f"},
 				Usage: "keep streaming new log output (default)",
 			},
 			&cli.DurationFlag{

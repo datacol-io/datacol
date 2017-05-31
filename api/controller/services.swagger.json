@@ -340,7 +340,7 @@
         "operationId": "LogStream",
         "responses": {
           "200": {
-            "description": "",
+            "description": "(streaming responses)",
             "schema": {
               "$ref": "#/definitions/controllerLogStreamResponse"
             }

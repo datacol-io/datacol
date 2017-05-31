@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/golang/protobuf/ptypes"
@@ -36,7 +35,7 @@ func (c *Client) RestartApp(name string) error {
 }
 
 func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, out io.Writer) error {
-	ret, err := c.ProviderServiceClient.LogStream(ctx, &pbs.LogStreamReq{
+	stream, err := c.ProviderServiceClient.LogStream(ctx, &pbs.LogStreamReq{
 		Name:   name,
 		Since:  ptypes.DurationProto(since),
 		Follow: follow,
@@ -45,11 +44,20 @@ func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, ou
 		return err
 	}
 
-	if _, err = io.Copy(out, bytes.NewBuffer(ret.Data)); err != nil {
-		return err
-	}
+	defer stream.CloseSend()
 
-	return nil
+	for {
+		ret, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if _, err := out.Write(ret.Data); err != nil {
+			return err
+		}
+	}
 }
 
 func (c *Client) RunProcess(name string, args []string) (*pbs.CmdResponse, error) {

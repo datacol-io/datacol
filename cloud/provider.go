@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"bufio"
 	pb "github.com/dinesh/datacol/api/models"
 	"io"
 )
@@ -25,7 +26,7 @@ type Provider interface {
 	ReleaseList(string, int) (pb.Releases, error)
 	ReleaseDelete(string, string) error
 
-	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
+	LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error)
 
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)

@@ -1,6 +1,7 @@
 package google
 
 import (
+	"bufio"
 	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
@@ -98,16 +99,16 @@ func runningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
 	return podNames[0], nil
 }
 
-func (g *GCPCloud) LogStream(app string, out io.Writer, opts pb.LogStreamOptions) error {
+func (g *GCPCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {
 	ns := g.DeploymentName
 	c, err := getKubeClientset(ns)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	pod, err := runningPods(ns, app, c)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	log.Debugf("Getting logs from pod %s", pod)
@@ -127,12 +128,10 @@ func (g *GCPCloud) LogStream(app string, out io.Writer, opts pb.LogStreamOptions
 
 	rc, err := req.Stream()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	defer rc.Close()
-	_, err = io.Copy(out, rc)
-	return err
+	return bufio.NewReader(rc), rc.Close, nil
 }
 
 func (g *GCPCloud) storage() *storage.Service {
