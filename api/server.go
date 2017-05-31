@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"cloud.google.com/go/compute/metadata"
 	"fmt"
 	pbs "github.com/dinesh/datacol/api/controller"
@@ -298,21 +297,35 @@ func (s *Server) ResourceUnlink(ctx context.Context, req *pbs.AppResourceReq) (*
 	return ret, nil
 }
 
-func (s *Server) LogStream(ctx context.Context, req *pbs.LogStreamReq) (*pbs.LogStreamResponse, error) {
-	buf := new(bytes.Buffer)
+func (s *Server) LogStream(req *pbs.LogStreamReq, stream pbs.ProviderService_LogStreamServer) error {
 	since, err := ptypes.Duration(req.Since)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := s.Provider.LogStream(req.Name, buf, pb.LogStreamOptions{
+	reader, close, err := s.Provider.LogStream(req.Name, pb.LogStreamOptions{
 		Follow: req.Follow,
 		Since:  since,
-	}); err != nil {
-		return nil, err
-	}
+	})
 
-	return &pbs.LogStreamResponse{Data: buf.Bytes()}, nil
+	if err != nil {
+		return err
+	}
+	defer close()
+
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		if err := stream.Send(&pbs.LogStreamResponse{Data: line}); err != nil {
+			return err
+		}
+	}
 }
 
 func (s *Server) unaryInterceptor(
