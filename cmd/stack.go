@@ -166,8 +166,13 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 		opts.ClusterNotExists = false
 	}
 
-	apis := []string{"datastore.googleapis.com", "cloudbuild.googleapis.com",
-		"deploymentmanager", "iam.googleapis.com"}
+	apis := []string{
+		"datastore.googleapis.com",
+		"cloudbuild.googleapis.com",
+		"deploymentmanager",
+		"iam.googleapis.com",
+	}
+
 	url := fmt.Sprintf("https://console.cloud.google.com/flows/enableapi?apiid=%s&project=%s", strings.Join(apis, ","), opts.Project)
 
 	fmt.Printf("\nDatacol needs to communicate with various APIs provided by cloud platform, please enable APIs by opening following link in browser and click Continue: \n%s\n", url)
@@ -180,33 +185,27 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 
 	fmt.Printf("\nStack hostIP %s\n", res.Host)
 	fmt.Printf("Stack password: %s [Please keep is secret]\n", res.Password)
+	fmt.Println("The above configuration has been saved in your home directory at ~/.datacol/config.json")
 
 	return dumpParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
 }
 
 func teardown() error {
-	name := stdcli.CurrentStack()
-	project := stdcli.ReadSetting(name, "project")
-	bucket := stdcli.ReadSetting(name, "bucket")
-
-	if err := gcp.TeardownStack(name, project, bucket); err != nil {
+	auth, rc := stdcli.GetAuthOrDie()
+	if err := gcp.TeardownStack(auth.Name, auth.Project, auth.Bucket); err != nil {
 		return err
 	}
 
-	os.Remove(filepath.Join(pb.ConfigPath, "stack"))
-	return os.RemoveAll(filepath.Join(pb.ConfigPath, name))
+	if err := rc.DeleteAuth(); err != nil {
+		return err
+	}
+
+	return os.RemoveAll(filepath.Join(pb.ConfigPath, auth.Name))
 }
 
 func createStackDir(name string) error {
 	cfgroot := filepath.Join(pb.ConfigPath, name)
-	if err := os.MkdirAll(cfgroot, 0700); err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(filepath.Join(pb.ConfigPath, "stack"), []byte(name), 0700); err != nil {
-		return err
-	}
-	return nil
+	return os.MkdirAll(cfgroot, 0700)
 }
 
 func saveCredential(name string, data []byte) error {
@@ -220,8 +219,13 @@ func saveCredential(name string, data []byte) error {
 }
 
 func dumpParams(name, project, bucket, host, api_key string) error {
-	stdcli.WriteSetting(name, "project", project)
-	stdcli.WriteSetting(name, "api_key", api_key)
-	stdcli.WriteSetting(name, "api_host", host)
-	return stdcli.WriteSetting(name, "bucket", bucket)
+	auth := &stdcli.Auth{
+		Name:      name,
+		Project:   project,
+		Bucket:    bucket,
+		ApiServer: host,
+		ApiKey:    api_key,
+	}
+
+	return stdcli.SetAuth(auth)
 }

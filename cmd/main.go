@@ -50,12 +50,6 @@ func main() {
 	app.Run(os.Args)
 }
 
-func getClient(c *cli.Context) *client.Client {
-	conn := &client.Client{Version: c.App.Version}
-	conn.SetFromEnv()
-	return conn
-}
-
 func getApiClient(c *cli.Context) (*client.Client, func() error) {
 	return client.NewClient(c.App.Version)
 }
