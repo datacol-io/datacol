@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	ConfigPath  string
-	SvaFilename = "sva.json"
+	ConfigPath, ApprcPath string
+	SvaFilename           = "sva.json"
 )
 
 func init() {
@@ -18,6 +18,7 @@ func init() {
 		log.Fatal(err)
 	}
 	ConfigPath = filepath.Join(home, ".datacol")
+	ApprcPath = filepath.Join(ConfigPath, "config.json")
 }
 
 type Environment map[string]string

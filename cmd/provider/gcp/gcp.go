@@ -168,7 +168,7 @@ func TeardownStack(name, project, bucket string) error {
 	gsService := storageService(name)
 	resp, err := gsService.Objects.List(bucket).Do()
 	if err != nil {
-		return err
+		return fmt.Errorf("listing items inside bucket err: %v", err)
 	}
 
 	for _, obj := range resp.Items {

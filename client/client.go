@@ -4,7 +4,6 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/appscode/go/io"
@@ -35,32 +34,16 @@ type Client struct {
 	pb.ProviderServiceClient
 }
 
-func (c *Client) SetFromEnv() {
-	c.SetStack(stdcli.GetAppStack())
-}
-
 func NewClient(version string) (*Client, func() error) {
-	name := stdcli.GetAppStack()
+	auth, _ := stdcli.GetAuthOrDie()
 
-	v, err := io.ReadFile(filepath.Join(models.ConfigPath, name, "api_host"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	host := strings.TrimSpace(v)
-
-	p, err := io.ReadFile(filepath.Join(models.ConfigPath, name, "api_key"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	password := strings.TrimSpace(p)
-
-	psc, close := GrpcClient(host, password)
+	psc, close := GrpcClient(auth.ApiServer, auth.ApiKey)
 	conn := &Client{
 		Version:               version,
 		ProviderServiceClient: psc,
 	}
-	conn.SetStack(name)
 
+	conn.SetStack(fmt.Sprintf("%s@%s", auth.Name, auth.Project))
 	return conn, close
 }
 
