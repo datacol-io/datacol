@@ -15,3 +15,8 @@ Please follow this [guide](https://www.datacol.io/docs/getting-started/) to get 
 #### Community
 
 You can [join](https://slackpass.io/datacol) our Slack team for discussion and support.
+
+
+### License
+
+Datacol is available under [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
