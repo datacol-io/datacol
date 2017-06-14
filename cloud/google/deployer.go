@@ -283,6 +283,17 @@ func newContainer(payload *DeployRequest) v1.Container {
 			Name:          "http",
 			ContainerPort: int32(payload.ContainerPort.IntVal),
 		}},
+		ReadinessProbe: &v1.Probe{
+			Handler: v1.Handler{
+				TCPSocket: &v1.TCPSocketAction{
+					Port: payload.ContainerPort,
+				},
+			},
+			InitialDelaySeconds: 5,
+			TimeoutSeconds: 1,
+			PeriodSeconds: 5,
+			FailureThreshold: 1,
+		},
 		Env: envVars,
 	}
 }

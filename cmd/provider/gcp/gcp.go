@@ -399,7 +399,7 @@ resources:
     targetTags:
     - datacol
 
-- name: {{ env['deployment'] }}-compute
+- name: {{ env['deployment'] }}-datacol-bastion
   type: compute.v1.instance
   properties:
     machineType: https://www.googleapis.com/compute/v1/projects/{{ env["project"] }}/zones/{{ properties["zone"] }}/machineTypes/{{ properties["machineType"] }}

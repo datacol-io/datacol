@@ -90,10 +90,6 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 		return nil, err
 	}
 
-	if len(app.Endpoint) > 0 {
-		return app, nil
-	}
-
 	ns := g.DeploymentName
 	kube, err := getKubeClientset(ns)
 	if err != nil {
@@ -102,7 +98,10 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 
 	svc, err := kube.Core().Services(ns).Get(name)
 	if err != nil {
-		return app, nil
+		if kerrors.IsNotFound(err) {
+			return app, nil
+		}
+		return nil, err
 	}
 
 	if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
