@@ -68,6 +68,11 @@ func init() {
 				Name:  "password",
 				Usage: "api password for the stack",
 			},
+			&cli.StringFlag{
+				Name: "cluster-version",
+				Usage: "The Kubernetes version to use for the master and nodes",
+				Value: "1.6.4",
+			},
 		},
 	})
 
@@ -110,6 +115,7 @@ These credentials will only be used to communicate between this installer runnin
 		Preemptible: preemptible,
 		Version:     stdcli.Version,
 		API_KEY:     password,
+		ClusterVersion: c.String("cluster-version"),
 	}
 
 	if err := initialize(options, nodes, c.Bool("opt-out")); err != nil {

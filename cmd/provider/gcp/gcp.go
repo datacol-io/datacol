@@ -34,8 +34,8 @@ const (
 type InitOptions struct {
 	Name, Project, ClusterName, MachineType, Zone, Bucket string
 	DiskSize, ProjectNumber                               int64
-	NumNodes, Port                                        int
-	SAEmail                                               string
+	NumNodes, ControllerPort                              int
+	SAEmail, ClusterVersion                               string
 	ClusterNotExists, Preemptible                         bool
 	API_KEY, Version, Region, ArtifactBucket              string
 }
@@ -61,7 +61,7 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	}
 
 	opts.Region = getGcpRegion(opts.Zone)
-	opts.Port = 8080
+	opts.ControllerPort = 8080
 
 	imports := []*dm.ImportFile{
 		{
@@ -114,7 +114,7 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 		return nil, err
 	}
 
-	instanceName := fmt.Sprintf("%s-compute", opts.Name)
+	instanceName := fmt.Sprintf("%s-datacol-bastion", opts.Name)
 	ret, err := compute.NewInstancesService(computeService(opts.Name)).Get(
 		opts.Project,
 		opts.Zone,
@@ -331,6 +331,7 @@ resources:
       description: "cluster created by datacol.io"
       initialNodeCount: {{ properties['numNodes'] }}
       enableKubernetesAlpha: false
+      initialClusterVersion: {{ properties['version'] }}
       nodeConfig:
         preemptible: {{ properties['preemptible'] }}
         machineType: {{ properties['machineType'] }}
@@ -366,7 +367,7 @@ resources:
     stack_name: {{ .Name }}
     version: {{ .Version }}
     region: {{ .Region }}
-    port: {{ .Port }}
+    port: {{ .ControllerPort }}
     cluster_name: {{ .ClusterName }}
     artifact_bucket: {{ .ArtifactBucket }}
 
@@ -379,6 +380,7 @@ resources:
     diskSize: {{ .DiskSize }}
     machineType: {{ .MachineType }}
     preemptible: {{ .Preemptible }}
+    version: {{ .ClusterVersion }}
 {{ end }}
 `
 
