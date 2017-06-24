@@ -33,14 +33,14 @@ func toJson(object interface{}) string {
 	return string(dump)
 }
 
-func authorize(ctx context.Context, api_key string) bool {
+func authorize(ctx context.Context, key string) bool {
 	if md, ok := metadata.FromContext(ctx); ok {
-		if len(md[apiKey]) > 0 && md[apiKey][0] == api_key {
+		if len(md[apiKey]) > 0 && md[apiKey][0] == key {
 			return true
 		}
 
 		if len(md[grpcAuth]) > 0 {
-			return checkHttpAuthorization(md[grpcAuth][0], api_key)
+			return checkHttpAuthorization(md[grpcAuth][0], key)
 		}
 
 		return false

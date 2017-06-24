@@ -49,6 +49,11 @@ func init() {
 				Name:  "cluster",
 				Usage: "name for existing Kubernetes cluster in GCP",
 			},
+			&cli.IntFlag{
+				Name:  "disk-size",
+				Usage: "SSD disk size for cluster in GB",
+				Value: 10,
+			},
 			&cli.StringFlag{
 				Name:  "machine-type",
 				Usage: "name of machine-type to use for cluster",
@@ -69,7 +74,7 @@ func init() {
 				Usage: "api password for the stack",
 			},
 			&cli.StringFlag{
-				Name: "cluster-version",
+				Name:  "cluster-version",
 				Usage: "The Kubernetes version to use for the master and nodes",
 				Value: "1.6.4",
 			},
@@ -93,6 +98,7 @@ func cmdStackCreate(c *cli.Context) error {
 	cluster := c.String("cluster")
 	machineType := c.String("machine-type")
 	preemptible := c.Bool("preemptible")
+	diskSize := c.Int("disk-size")
 
 	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account. 
 It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to 
@@ -105,16 +111,16 @@ These credentials will only be used to communicate between this installer runnin
 	prompt("")
 
 	options := &gcp.InitOptions{
-		Name:        stackName,
-		ClusterName: cluster,
-		DiskSize:    10,
-		NumNodes:    nodes,
-		MachineType: machineType,
-		Zone:        zone,
-		Bucket:      bucket,
-		Preemptible: preemptible,
-		Version:     stdcli.Version,
-		API_KEY:     password,
+		Name:           stackName,
+		ClusterName:    cluster,
+		DiskSize:       diskSize,
+		NumNodes:       nodes,
+		MachineType:    machineType,
+		Zone:           zone,
+		Bucket:         bucket,
+		Preemptible:    preemptible,
+		Version:        stdcli.Version,
+		ApiKey:         password,
 		ClusterVersion: c.String("cluster-version"),
 	}
 
