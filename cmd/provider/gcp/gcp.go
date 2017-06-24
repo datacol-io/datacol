@@ -33,11 +33,11 @@ const (
 
 type InitOptions struct {
 	Name, Project, ClusterName, MachineType, Zone, Bucket string
-	DiskSize, ProjectNumber                               int64
-	NumNodes, ControllerPort                              int
+	ApiKey, Version, Region, ArtifactBucket               string
 	SAEmail, ClusterVersion                               string
+	ProjectNumber                                         int64
+	DiskSize, NumNodes, ControllerPort                    int
 	ClusterNotExists, Preemptible                         bool
-	API_KEY, Version, Region, ArtifactBucket              string
 }
 
 type initResponse struct {
@@ -49,8 +49,8 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 		opts.MachineType = ditermineMachineType(opts.NumNodes)
 	}
 
-	if len(opts.API_KEY) == 0 {
-		opts.API_KEY = rand.GeneratePassword()
+	if len(opts.ApiKey) == 0 {
+		opts.ApiKey = rand.GeneratePassword()
 	}
 
 	ec := env.FromHost()
@@ -126,7 +126,7 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	}
 
 	host := externalIp(ret)
-	return &initResponse{Host: host, Password: opts.API_KEY}, nil
+	return &initResponse{Host: host, Password: opts.ApiKey}, nil
 }
 
 func servicemanagement(name string) *smm.APIService {

@@ -290,9 +290,9 @@ func newContainer(payload *DeployRequest) v1.Container {
 				},
 			},
 			InitialDelaySeconds: 5,
-			TimeoutSeconds: 1,
-			PeriodSeconds: 5,
-			FailureThreshold: 1,
+			TimeoutSeconds:      1,
+			PeriodSeconds:       5,
+			FailureThreshold:    1,
 		},
 		Env: envVars,
 	}

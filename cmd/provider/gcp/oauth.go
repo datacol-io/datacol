@@ -166,7 +166,7 @@ func setIamPolicy(accessToken string) (*iam.Service, error) {
 	}
 
 	if len(presp.Projects) == 0 {
-		return nil, fmt.Errorf("No Google cloud project exists. Please create new Google Cloud project from web console: https://console.cloud.google.com")
+		return nil, fmt.Errorf("No Google cloud project exists. Please create new Google Cloud project from web console: https://console.cloud.google.com and retry.")
 	}
 
 	projects := make([]string, len(presp.Projects))
