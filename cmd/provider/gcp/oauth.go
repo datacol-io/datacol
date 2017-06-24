@@ -19,7 +19,7 @@ import (
 const (
 	googleOauth2ClientID     = "992213213700-ideosm7la1g4jf2rghn0n89achgstehb.apps.googleusercontent.com"
 	googleOauth2ClientSecret = "JaJjVGA5c6tSdluQdfFqNau8"
-	saName                   = "dcolctl"
+	saPrefix                 = "datacol"
 )
 
 var (
@@ -82,19 +82,19 @@ func CreateCredential(rackName string, optout bool) authPacket {
 	select {
 	case msg := <-stop:
 		listener.Close()
-		client, err := setIamPolicy(msg.AccessToken)
+		client, err := setIamPolicy(rackName, msg.AccessToken)
 		if err != nil {
 			return authPacket{Err: err}
 		}
 
-		data, err := NewServiceAccountPrivateKey(client, projectId)
+		email, data, err := NewServiceAccountPrivateKey(client, rackName, projectId)
 		if err != nil {
 			return authPacket{Err: err}
 		}
 
 		msg.Cred = data
 		msg.ProjectId = projectId
-		msg.SAEmail = serviceAccountEmail()
+		msg.SAEmail = email
 		return msg
 	}
 }
@@ -150,7 +150,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 	return token.AccessToken, nil
 }
 
-func setIamPolicy(accessToken string) (*iam.Service, error) {
+func setIamPolicy(rackName, accessToken string) (*iam.Service, error) {
 	client := goauth2.NewClient(context.Background(), goauth2.StaticTokenSource(&goauth2.Token{
 		AccessToken: accessToken,
 	}))
@@ -191,15 +191,16 @@ func setIamPolicy(accessToken string) (*iam.Service, error) {
 		return nil, fmt.Errorf("failed to create iam client: %v", err)
 	}
 
-	svcName := fmt.Sprintf("%v@%v.iam.gserviceaccount.com", saName, projectId)
-	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%s", projectId, svcName)
+	saName := fmt.Sprintf("%s-%s", saPrefix, rackName)
+	svcName := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", saName, projectId)
+	saFQN := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectId, svcName)
 
 	_, err = iamClient.Projects.ServiceAccounts.Get(saFQN).Do()
 	if err != nil {
 		_, err = iamClient.Projects.ServiceAccounts.Create("projects/"+projectId, &iam.CreateServiceAccountRequest{
 			AccountId: saName,
 			ServiceAccount: &iam.ServiceAccount{
-				DisplayName: "Datacol cli service account",
+				DisplayName: fmt.Sprintf("Service account for %s stack created by Datacol", rackName),
 			},
 		}).Do()
 
@@ -235,26 +236,29 @@ func setIamPolicy(accessToken string) (*iam.Service, error) {
 	return iamClient, nil
 }
 
-func NewServiceAccountPrivateKey(iamClient *iam.Service, pid string) ([]byte, error) {
+func NewServiceAccountPrivateKey(iamClient *iam.Service, rackName, pid string) (string, []byte, error) {
 	cred := []byte{}
 	if len(projectId) == 0 {
 		projectId = pid
 	}
 
-	saFQN := fmt.Sprintf("projects/%v/serviceAccounts/%v@%v.iam.gserviceaccount.com", projectId, saName, projectId)
+	saName := fmt.Sprintf("%s-%s", saPrefix, rackName)
+	svcName := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", saName, projectId)
+	saFQN := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectId, svcName)
+
 	log.Debugf("creating new private key for %s", saFQN)
 
 	sKey, err := iamClient.Projects.ServiceAccounts.Keys.Create(saFQN, &iam.CreateServiceAccountKeyRequest{}).Do()
 	if err != nil {
-		return cred, fmt.Errorf("failed to create iam key: %v", err)
+		return svcName, cred, fmt.Errorf("failed to create iam key: %v", err)
 	}
 
 	cred, err = base64.StdEncoding.DecodeString(sKey.PrivateKeyData)
 	if err != nil {
-		return cred, fmt.Errorf("failed to decode private key: %v", err)
+		return svcName, cred, fmt.Errorf("failed to decode private key: %v", err)
 	}
 
-	return cred, nil
+	return svcName, cred, nil
 }
 
 // Convert a map of roles->members to a list of Binding
@@ -311,8 +315,4 @@ func subscribeMe(accessToken string) {
 	if err := addToContactList(accessToken); err != nil {
 		log.WithFields(log.Fields{"project": projectId}).Debugf(err.Error())
 	}
-}
-
-func serviceAccountEmail() string {
-	return fmt.Sprintf("%v@%v.iam.gserviceaccount.com", saName, projectId)
 }

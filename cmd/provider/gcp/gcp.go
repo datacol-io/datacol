@@ -363,7 +363,7 @@ resources:
     zone: {{ .Zone }}
     bucket: {{ .Bucket }}
     sva_email: {{ .SAEmail }}
-    api_key: {{ .API_KEY }}
+    api_key: {{ .ApiKey }}
     stack_name: {{ .Name }}
     version: {{ .Version }}
     region: {{ .Region }}
