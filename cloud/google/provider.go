@@ -220,7 +220,8 @@ func svaPrivateKey(name, project string) ([]byte, error) {
 		return []byte(""), err
 	}
 
-	return gcp.NewServiceAccountPrivateKey(iamClient, project)
+	_, c, err := gcp.NewServiceAccountPrivateKey(iamClient, name, project)
+	return c, err
 }
 
 func (g *GCPCloud) datastore() *datastore.Client {
