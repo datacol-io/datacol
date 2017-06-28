@@ -11,7 +11,7 @@ all:
 	env VERSION=${version} ruby hack/make.rb
 
 vet:
-	go fmt ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
+	go fmt ./cmd ./cmd/provider/gcp ./cmd/provider/aws ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
 	go vet ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
 	goimports ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/ ./api ./api/models/ ./api/controller/
 

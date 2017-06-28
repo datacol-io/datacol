@@ -682,6 +682,10 @@
         "project": {
           "type": "string",
           "format": "string"
+        },
+        "region": {
+          "type": "string",
+          "format": "string"
         }
       }
     },

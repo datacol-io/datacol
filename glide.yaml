@@ -58,6 +58,7 @@ import:
   subpackages:
   - '...'
 - package: github.com/gogo/protobuf
+  version: d2e1ade2d719b78fe5b061b4c18a9f7111b5bdc8
   subpackages:
   - '...'
 - package: github.com/grpc/grpc-go
@@ -65,3 +66,7 @@ import:
   subpackages:
   - '...'
 - package: github.com/appscode/go-term
+- package: github.com/aws/aws-sdk-go
+  version: ^1.10.3
+  subpackages:
+  - aws

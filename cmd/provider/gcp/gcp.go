@@ -6,7 +6,6 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
-	"github.com/appscode/go/crypto/rand"
 	"github.com/dinesh/datacol/go/env"
 	"golang.org/x/oauth2/google"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
@@ -47,10 +46,6 @@ type initResponse struct {
 func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	if len(opts.MachineType) == 0 {
 		opts.MachineType = ditermineMachineType(opts.NumNodes)
-	}
-
-	if len(opts.ApiKey) == 0 {
-		opts.ApiKey = rand.GeneratePassword()
 	}
 
 	ec := env.FromHost()

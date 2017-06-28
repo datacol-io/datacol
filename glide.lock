@@ -1,5 +1,5 @@
-hash: 287821a2730a0b6204cb312339db5c9a033e9e97b1193d01c9a60c8bbccd3137
-updated: 2017-05-17T17:23:49.826682383+05:30
+hash: 11faaf94a9b4b90e7ed9ffdad8e2fabcc5e92d8e199ee2a1ec0450dd8d5cabe8
+updated: 2017-06-26T17:24:32.858407879+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -13,9 +13,15 @@ imports:
 - name: github.com/appscode/go
   version: 496a78e678c2a161788f53f94bdb0ab9c812231f
   subpackages:
+  - crypto/rand
   - env
+  - io
 - name: github.com/appscode/go-term
   version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
+- name: github.com/aws/aws-sdk-go
+  version: 72e42b13da62269f68308fb6068b7ea691a416a4
+  subpackages:
+  - aws
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/go-oidc
@@ -168,7 +174,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/stvp/rollbar
-  version: d8cae2dd0eb0ce093eca83bfd2122f31e12694a0
+  version: caefb75816bddf0dfab37b5490265c09511c962d
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:

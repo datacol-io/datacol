@@ -1,17 +1,18 @@
 package stdcli
 
 import (
-	"errors"
-	"fmt"
-	pb "github.com/dinesh/datacol/api/models"
-	rollbarAPI "github.com/stvp/rollbar"
-	"gopkg.in/urfave/cli.v2"
-	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
+	"fmt"
+	"log"
+	"errors"
 	"runtime"
 	"strings"
+	"io/ioutil"
+	"path/filepath"
+
+	"gopkg.in/urfave/cli.v2"
+	pb "github.com/dinesh/datacol/api/models"
+	rollbarAPI "github.com/stvp/rollbar"
 )
 
 var (

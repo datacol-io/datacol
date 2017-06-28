@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
+	"github.com/appscode/go/crypto/rand"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cmd/provider/aws"
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
@@ -18,27 +21,37 @@ import (
 var (
 	credNotFound    = errors.New("Invalid credentials")
 	projectNotFound = errors.New("Invalid project id")
+
+	defaultAWSRegion       = "ap-south-1"
+	defaultAWSAZone        = "ap-south-1a"
+	defaultAWSInstanceType = "t2.medium"
 )
 
 func init() {
 	stdcli.AddCommand(&cli.Command{
-		Name:   "init",
-		Usage:  "create new stack",
-		Action: cmdStackCreate,
+		Name:        "up",
+		Usage:       "[cloud-provider] [credentials.csv]",
+		Description: "create new datacol stack",
+		Action:      cmdStackCreate,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "stack",
+				Name:  "name",
 				Usage: "Name of stack",
 				Value: "demo",
 			},
 			&cli.StringFlag{
+				Name:  "region",
+				Usage: "region for stack",
+				Value: "",
+			},
+			&cli.StringFlag{
 				Name:  "zone",
-				Usage: "GCP zone for stack",
-				Value: "us-east1-b",
+				Usage: "zone for stack",
+				Value: "",
 			},
 			&cli.StringFlag{
 				Name:  "bucket",
-				Usage: "GCP storage bucket",
+				Usage: "storage bucket",
 			},
 			&cli.IntFlag{
 				Name:  "nodes",
@@ -47,7 +60,7 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "cluster",
-				Usage: "name for existing Kubernetes cluster in GCP",
+				Usage: "name for existing Kubernetes cluster (if present)",
 			},
 			&cli.IntFlag{
 				Name:  "disk-size",
@@ -56,8 +69,8 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "machine-type",
-				Usage: "name of machine-type to use for cluster",
-				Value: "n1-standard-1",
+				Usage: "type of instance to use for cluster nodes",
+				Value: "",
 			},
 			&cli.BoolFlag{
 				Name:  "preemptible",
@@ -78,17 +91,73 @@ func init() {
 				Usage: "The Kubernetes version to use for the master and nodes",
 				Value: "1.6.4",
 			},
+			&cli.StringFlag{
+				Name:  "keypair",
+				Usage: "SSH keypair name for aws",
+			},
 		},
 	})
 
 	stdcli.AddCommand(&cli.Command{
 		Name:   "destroy",
-		Usage:  "destroy a stack from GCP",
+		Usage:  "destroy the datacol stack from your cloud account",
 		Action: cmdStackDestroy,
 	})
 }
 
 func cmdStackCreate(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return fmt.Errorf("Please provide a cloud provider (aws or gcp)")
+	}
+
+	provider := c.Args().Get(0)
+	switch strings.ToLower(provider) {
+	case "gcp":
+		return cmdGCPStackCreate(c)
+	case "aws":
+		return cmdAWSStackCreate(c)
+	default:
+		return fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
+	}
+}
+
+func cmdAWSStackCreate(c *cli.Context) error {
+	var credentialsFile string
+	if c.NArg() > 1 {
+		credentialsFile = c.Args().Get(1)
+	}
+
+	stackName := c.String("name")
+	options := &aws.InitOptions{
+		Name:            stackName,
+		DiskSize:        c.Int("diskSize"),
+		NumNodes:        c.Int("nodes"),
+		MachineType:     c.String("machine-type"),
+		Zone:            c.String("zone"),
+		Region:          c.String("region"),
+		Bucket:          c.String("bucket"),
+		Version:         stdcli.Version,
+		ApiKey:          c.String("ApiKey"),
+		ClusterVersion:  c.String("cluster-version"),
+		UseSpotInstance: c.Bool("preemptible"),
+		KeyName:         c.String("keypair"),
+	}
+
+	if len(options.ApiKey) == 0 {
+		options.ApiKey = rand.GeneratePassword()
+	}
+
+	if err := initializeAWS(options, credentialsFile); err != nil {
+		return err
+	}
+
+	term.Successln("\nDONE")
+
+	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stackName)
+	return nil
+}
+
+func cmdGCPStackCreate(c *cli.Context) error {
 	stackName := c.String("stack")
 	zone := c.String("zone")
 	nodes := c.Int("nodes")
@@ -99,16 +168,6 @@ func cmdStackCreate(c *cli.Context) error {
 	machineType := c.String("machine-type")
 	preemptible := c.Bool("preemptible")
 	diskSize := c.Int("disk-size")
-
-	message := `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account. 
-It uses various Google services (like Container engine, Cloudbuilder, Deployment Manager etc) under the hood to 
-automate all away to give you a better deployment experience.
-
-Datacol CLI will authenticate with your Google Account and install the Datacol platform into your GCP account. 
-These credentials will only be used to communicate between this installer running on your computer and the Google platform.`
-
-	fmt.Printf(message)
-	prompt("")
 
 	options := &gcp.InitOptions{
 		Name:           stackName,
@@ -124,7 +183,11 @@ These credentials will only be used to communicate between this installer runnin
 		ClusterVersion: c.String("cluster-version"),
 	}
 
-	if err := initialize(options, nodes, c.Bool("opt-out")); err != nil {
+	if len(options.ApiKey) == 0 {
+		options.ApiKey = rand.GeneratePassword()
+	}
+
+	if err := initializeGCP(options, nodes, c.Bool("opt-out")); err != nil {
 		return err
 	}
 
@@ -134,16 +197,44 @@ These credentials will only be used to communicate between this installer runnin
 	return nil
 }
 
-func cmdStackDestroy(c *cli.Context) error {
-	if err := teardown(); err != nil {
+func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
+	if opts.Region == "" {
+		opts.Region = defaultAWSRegion
+	}
+	if opts.Zone == "" {
+		opts.Zone = defaultAWSAZone
+	}
+
+	if opts.MachineType == "" {
+		opts.MachineType = defaultAWSInstanceType
+	}
+
+	creds, err := aws.ReadCredentials(credentialsFile)
+	if err != nil {
 		return err
 	}
 
-	term.Successln("\nDONE")
+	if creds == nil {
+		return err
+	}
+
+	fmt.Println("Using AWS Access Key ID:", creds.Access)
+
+	if err := saveAwsCredential(opts.Name, creds); err != nil {
+		return err
+	}
+	
 	return nil
+
+	ret, err := aws.InitializeStack(opts, creds)
+	if err != nil {
+		return err
+	}
+
+	return dumpAwsAuthParams(opts.Name, opts.Region, ret.Host, ret.Password)
 }
 
-func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
+func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 	resp := gcp.CreateCredential(opts.Name, optout)
 	if resp.Err != nil {
 		return resp.Err
@@ -158,7 +249,7 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 		return projectNotFound
 	}
 
-	if err := saveCredential(opts.Name, cred); err != nil {
+	if err := saveGcpCredential(opts.Name, cred); err != nil {
 		return err
 	}
 
@@ -199,10 +290,60 @@ func initialize(opts *gcp.InitOptions, nodes int, optout bool) error {
 	fmt.Printf("Stack password: %s [Please keep is secret]\n", res.Password)
 	fmt.Println("The above configuration has been saved in your home directory at ~/.datacol/config.json")
 
-	return dumpParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
+	return dumpGcpAuthParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
 }
 
-func teardown() error {
+func cmdStackDestroy(c *cli.Context) error {
+	if !term.Ask("This is destructive action. Do you want to continue ?", false) {
+		return nil
+	}
+
+	provider := c.Args().Get(0)
+
+	switch strings.ToLower(provider) {
+	case "gcp":
+		if err := gcpTeardown(); err != nil {
+			return err
+		}
+	case "aws":
+		if err := awsTeardown(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
+	}
+
+	term.Successln("\nDONE")
+	return nil
+}
+
+func awsTeardown() error {
+	auth, rc := stdcli.GetAuthOrDie()
+	var credentialsFile string
+	
+	credentialsFile = filepath.Join(pb.ConfigPath, auth.Name, pb.AwsCredentialFile)
+	creds, err := aws.ReadCredentials(credentialsFile)
+
+	if err != nil {
+		return err
+	}
+
+	if creds == nil {
+		return err
+	}
+
+	if err := aws.TeardownStack(auth.Name, auth.Region, creds); err != nil {
+		return err
+	}
+
+	if err := rc.DeleteAuth(); err != nil {
+		return err
+	}
+
+	return os.RemoveAll(filepath.Join(pb.ConfigPath, auth.Name))
+}
+
+func gcpTeardown() error {
 	auth, rc := stdcli.GetAuthOrDie()
 	if err := gcp.TeardownStack(auth.Name, auth.Project, auth.Bucket); err != nil {
 		return err
@@ -220,17 +361,53 @@ func createStackDir(name string) error {
 	return os.MkdirAll(cfgroot, 0700)
 }
 
-func saveCredential(name string, data []byte) error {
+func saveGcpCredential(name string, data []byte) error {
 	if err := createStackDir(name); err != nil {
 		return err
 	}
 	path := filepath.Join(pb.ConfigPath, name, pb.SvaFilename)
 	log.Debugf("saving GCP credentials at %s", path)
 
-	return ioutil.WriteFile(path, data, 0777)
+	return ioutil.WriteFile(path, data, 0700)
 }
 
-func dumpParams(name, project, bucket, host, api_key string) error {
+func saveAwsCredential(name string, cred *aws.AwsCredentials) error {
+	if err := createStackDir(name); err != nil {
+		return err
+	}
+	path := filepath.Join(pb.ConfigPath, name, pb.AwsCredentialFile)
+	log.Debugf("saving AWS credentials at %s", path)
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	wr := csv.NewWriter(file)
+	defer wr.Flush()
+
+	wr.Write([]string{"AWSAccessKeyId", "AWSSecretKey"})
+	wr.Write([]string{cred.Access, cred.Secret})
+
+	if err = wr.Error(); err !=nil {
+		return fmt.Errorf("writing csv err: %v", err)
+	}
+	return nil
+}
+
+func dumpAwsAuthParams(name, region, host, api_key string) error {
+	auth := &stdcli.Auth{
+		Name:      name,
+		ApiServer: host,
+		Region:    region,
+		ApiKey:    api_key,
+	}
+
+	return stdcli.SetAuth(auth)
+}
+
+func dumpGcpAuthParams(name, project, bucket, host, api_key string) error {
 	auth := &stdcli.Auth{
 		Name:      name,
 		Project:   project,

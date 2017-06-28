@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -55,20 +54,6 @@ func handlePanic() {
 
 		stdcli.HandlePanicErr(err)
 		os.Exit(1)
-	}
-}
-
-func prompt(s string) {
-	r := bufio.NewReader(os.Stdin)
-	fmt.Printf("%s\n\nPlease press [ENTER] or Ctrl-C to cancel", s)
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-		if line == "\n" {
-			break
-		}
 	}
 }
 

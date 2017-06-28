@@ -10,6 +10,7 @@ import (
 var (
 	ConfigPath, ApprcPath string
 	SvaFilename           = "sva.json"
+	AwsCredentialFile     = "credentials.csv"
 )
 
 func init() {
