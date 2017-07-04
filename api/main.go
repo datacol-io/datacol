@@ -18,11 +18,13 @@ var (
 	port    = 8080
 	logPath string
 	debugF  bool
+	timeout int
 )
 
 func init() {
 	flag.StringVar(&logPath, "log-file", "", "path for logs")
 	flag.BoolVar(&debugF, "debug", true, "debug mode")
+	flag.IntVar(&timeout, "timeout", 2, "wait timeout for rpc proxy")
 }
 
 func runRpcServer() error {
@@ -81,7 +83,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Duration(timeout) * time.Second)
 
 	if err := run(); err != nil {
 		log.Fatal(err)

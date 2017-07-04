@@ -62,6 +62,22 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
 
+  KeyMaterial:
+    Description: Existing EC2 KeyPair Material for SSH access.
+    Type: String
+  
+  ApiKey:
+    Description: Password for Datacol Controller API 
+    Type: String
+
+  DatacolVersion:
+    Description: version of Datacol Controller API
+    Type: String
+
+  ArtifactBucket:
+    Description: Datacol artifact bucket location
+    Type: String
+
   InstanceType:
     Description: EC2 instance type for the cluster.
     Type: String
@@ -229,6 +245,11 @@ Parameters:
       and weave (https://github.com/weaveworks/weave/blob/master/site/kube-addon.md).
     Type: String
 
+  AWSAccessKey:
+    Type: String
+  AWSSecretAccessKey:
+    Type: String
+
 Mappings:
   RegionMap:
     ap-northeast-1:
@@ -236,7 +257,7 @@ Mappings:
     ap-northeast-2:
       '64': ami-93d600fd
     ap-south-1:
-      '64': ami-dd3442b2
+      '64': ami-85ef91ea
     ap-southeast-1:
       '64': ami-87b917e4
     ap-southeast-2:
@@ -438,26 +459,105 @@ Resources:
           Fn::Sub: |
             #!/bin/bash
 
-            BASTION_BOOTSTRAP_FILE=bastion_bootstrap.sh
-            BASTION_BOOTSTRAP=https://s3.amazonaws.com/quickstart-reference/linux/bastion/latest/scripts/bastion_bootstrap.sh
+            mkdir -p /opt/datacol &&
+              curl -Ls /tmp https://storage.googleapis.com/${ArtifactBucket}/binaries/${DatacolVersion}/apictl.zip > /tmp/apictl.zip &&
+              unzip /tmp/apictl.zip -d /opt/datacol &&
+              chmod +x /opt/datacol/apictl
+            
+            cat <<EOF >> /opt/datacol/${KeyName}.pem
+            ${KeyMaterial}
+            EOF
 
-            curl -s -o $BASTION_BOOTSTRAP_FILE $BASTION_BOOTSTRAP
-            chmod +x $BASTION_BOOTSTRAP_FILE
+            chmod 600 /opt/datacol/${KeyName}.pem
+            chown -R ubuntu /opt/datacol
+            systemctl daemon-reload && systemctl enable apictl
 
-            ./$BASTION_BOOTSTRAP_FILE --banner https://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/banner_message.txt --enable true
+            cat <<EOF >> /etc/environment
+            DATACOL_STACK=${AWS::StackName}
+            DATACOL_VERSION=${DatacolVersion}
+            DATACOL_API_KEY=${ApiKey}
+            AWS_REGION=${AWS::Region}
+            AWS_ACCESS_KEY_ID=${AWSAccessKey}
+            AWS_SECRET_ACCESS_KEY=${AWSSecretAccessKey}
+            EOF
 
   # Open up port 22 for SSH for the bastion host
   BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH access via port 22
+      GroupDescription: Enable SSH access via port 22, Api via port 8080 and Grpc via port 10000
       VpcId: !Ref VPC
       SecurityGroupIngress:
       - IpProtocol: tcp
         FromPort: '22'
         ToPort: '22'
         CidrIp: !Ref AdminIngressLocation
-  
+      - IpProtocol: tcp
+        FromPort: '8080'
+        ToPort: '8080'
+        CidrIp: !Ref AdminIngressLocation
+      - IpProtocol: tcp
+        FromPort: '10000'
+        ToPort: '10000'
+        CidrIp: !Ref AdminIngressLocation
+
+  ### Create apps dynamoc table
+  DynamoAppTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 
+        Fn::Join:
+          - "-" 
+          - - !Ref AWS::StackName
+            - "apps"
+      AttributeDefinitions:
+        - AttributeName: name
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "name"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+  ### Create build dynamodb table
+  DynamoBuildTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Join:
+          - "-" 
+          - - !Ref AWS::StackName
+            - "builds"
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+  ### Create releases dynamodb table
+  DynamoBuildTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Join:
+          - "-" 
+          - - !Ref AWS::StackName
+            - "releases"
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
   # Call the cluster template and supply its parameters
   # This creates a second stack that creates the actual Kubernetes cluster
   # within the new VPC
@@ -537,7 +637,6 @@ Outputs:
     Description: Command to join more nodes to this cluster.
     Value: !GetAtt K8sStack.Outputs.JoinNodes
 
-  NextSteps:
-    Description: Verify your cluster and deploy a test application. Instructions -
-      http://jump.heptio.com/aws-qs-next
-    Value: !GetAtt K8sStack.Outputs.NextSteps
+  DatacolApiKey:
+    Description: Api key for datacol CLI
+    Value: !Ref ApiKey

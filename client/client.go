@@ -4,8 +4,6 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"os"
-	"strings"
-
 	"github.com/appscode/go/io"
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
@@ -43,7 +41,7 @@ func NewClient(version string) (*Client, func() error) {
 		ProviderServiceClient: psc,
 	}
 
-	conn.SetStack(fmt.Sprintf("%s@%s", auth.Name, auth.Project))
+	conn.SetStack(auth)
 	return conn, close
 }
 
@@ -75,21 +73,22 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 	return pb.NewProviderServiceClient(conn), conn.Close
 }
 
-func (c *Client) SetStack(name string) {
-	parts := strings.Split(name, "@")
+func (c *Client) SetStack(auth *stdcli.Auth) {
+	c.StackName = auth.Name
+	c.ProjectId = auth.Project
 
-	c.StackName = parts[0]
-	if len(parts) > 1 {
-		c.ProjectId = parts[1]
-	} else {
-		c.ProjectId = os.Getenv("PROJECT_ID")
-	}
+	if len(auth.Region) == 0 {
+		// for GCP only
+		if len(c.ProjectId) == 0 {
+			c.ProjectId = os.Getenv("PROJECT_ID")
+		}
 
-	if len(c.ProjectId) == 0 {
-		c.ProjectId = stdcli.ReadSetting(c.StackName, "project")
-	}
+		if len(c.ProjectId) == 0 {
+			c.ProjectId = stdcli.ReadSetting(c.StackName, "project")
+		}
 
-	if len(c.ProjectId) == 0 {
-		log.Fatal(fmt.Errorf("GCP project-id not found. Please set `PROJECT_ID` environment variable."))
+		if len(c.ProjectId) == 0 && len(auth.Region) == 0 {
+			log.Fatal(fmt.Errorf("GCP project-id not found. Please set `PROJECT_ID` environment variable."))
+		}
 	}
 }

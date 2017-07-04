@@ -1,5 +1,5 @@
-hash: 11faaf94a9b4b90e7ed9ffdad8e2fabcc5e92d8e199ee2a1ec0450dd8d5cabe8
-updated: 2017-06-26T17:24:32.858407879+05:30
+hash: 1cc25c4883431c7591a0387e39ca4e69a6ba93b9331695590e4c07a26871b7b3
+updated: 2017-06-29T17:28:59.86557176+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -8,6 +8,8 @@ imports:
   - datastore
   - internal
   - storage
+- name: github.com/appscode/cloudid
+  version: 4c6509c052ab644b971ec14e025a954f75f989c3
 - name: github.com/appscode/errors
   version: 45337f4d7774392043ed9f8c237f9e810974dd98
 - name: github.com/appscode/go
@@ -19,9 +21,32 @@ imports:
 - name: github.com/appscode/go-term
   version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
 - name: github.com/aws/aws-sdk-go
-  version: 72e42b13da62269f68308fb6068b7ea691a416a4
+  version: 50762c1efc55dd2a05eac85fc170b0f65aeec28f
   subpackages:
   - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - internal/shareddefaults
+  - private/protocol
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/xml/xmlutil
+  - service/cloudformation
+  - service/sts
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/go-oidc
@@ -72,6 +97,8 @@ imports:
   version: 9131ab34cf20d2f6d83fdc67168a5430d1c7dc23
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/go-ini/ini
+  version: 3d73f4b845efdf9989fffd4b4e562727744a34ba
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -132,6 +159,8 @@ imports:
   subpackages:
   - internal/binarydist
   - internal/osext
+- name: github.com/jmespath/go-jmespath
+  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/joyrexus/buckets

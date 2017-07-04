@@ -12,6 +12,7 @@ import (
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
+	"github.com/dinesh/datacol/go/env"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ var (
 
 func init() {
 	stdcli.AddCommand(&cli.Command{
-		Name:        "up",
+		Name:        "init",
 		Usage:       "[cloud-provider] [credentials.csv]",
 		Description: "create new datacol stack",
 		Action:      cmdStackCreate,
@@ -91,10 +92,6 @@ func init() {
 				Usage: "The Kubernetes version to use for the master and nodes",
 				Value: "1.6.4",
 			},
-			&cli.StringFlag{
-				Name:  "keypair",
-				Usage: "SSH keypair name for aws",
-			},
 		},
 	})
 
@@ -130,7 +127,7 @@ func cmdAWSStackCreate(c *cli.Context) error {
 	stackName := c.String("name")
 	options := &aws.InitOptions{
 		Name:            stackName,
-		DiskSize:        c.Int("diskSize"),
+		DiskSize:        c.Int("disk-size"),
 		NumNodes:        c.Int("nodes"),
 		MachineType:     c.String("machine-type"),
 		Zone:            c.String("zone"),
@@ -138,13 +135,18 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		Bucket:          c.String("bucket"),
 		Version:         stdcli.Version,
 		ApiKey:          c.String("ApiKey"),
-		ClusterVersion:  c.String("cluster-version"),
 		UseSpotInstance: c.Bool("preemptible"),
-		KeyName:         c.String("keypair"),
 	}
 
 	if len(options.ApiKey) == 0 {
 		options.ApiKey = rand.GeneratePassword()
+	}
+
+	ec := env.FromHost()
+	if ec.DevMode() {
+		options.ArtifactBucket = "datacol-dev"
+	} else {
+		options.ArtifactBucket = "datacol-distros"
 	}
 
 	if err := initializeAWS(options, credentialsFile); err != nil {
@@ -187,6 +189,13 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		options.ApiKey = rand.GeneratePassword()
 	}
 
+	ec := env.FromHost()
+	if ec.DevMode() {
+		options.ArtifactBucket = "datacol-dev"
+	} else {
+		options.ArtifactBucket = "datacol-distros"
+	}
+
 	if err := initializeGCP(options, nodes, c.Bool("opt-out")); err != nil {
 		return err
 	}
@@ -224,10 +233,12 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 		return err
 	}
 	
-	return nil
-
 	ret, err := aws.InitializeStack(opts, creds)
 	if err != nil {
+		return err
+	}
+
+	if err = saveKeyPairData(opts.Name, ret.KeyPairData); err != nil {
 		return err
 	}
 
@@ -369,6 +380,12 @@ func saveGcpCredential(name string, data []byte) error {
 	log.Debugf("saving GCP credentials at %s", path)
 
 	return ioutil.WriteFile(path, data, 0700)
+}
+
+func saveKeyPairData(name, content string) error {
+	path := filepath.Join(pb.ConfigPath, name, pb.AwsKeyPemPath)
+	log.Debugf("saving keypair at %s", path)
+	return ioutil.WriteFile(path, []byte(content), 0700)
 }
 
 func saveAwsCredential(name string, cred *aws.AwsCredentials) error {

@@ -1,18 +1,21 @@
 package main
 
 import (
-	"cloud.google.com/go/compute/metadata"
+	"os"
 	"fmt"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/google"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"io"
 	"net"
 	"strings"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"cloud.google.com/go/compute/metadata"
+	"github.com/appscode/cloudid"
+	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
+	"github.com/dinesh/datacol/cloud/google"
+	daws "github.com/dinesh/datacol/cloud/aws"
 	log "github.com/Sirupsen/logrus"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -20,9 +23,30 @@ import (
 )
 
 func newServer() *Server {
-	var password, bucket, name, zone, projectId, projectNumber string
+	var password, name string
+	var provider cloud.Provider
 
-	if metadata.OnGCE() {
+	cid := cloudid.Detect()
+	switch(cid){
+	case "aws":
+		password = os.Getenv("DATACOL_API_KEY")
+		name = os.Getenv("DATACOL_STACK")
+		region := os.Getenv("AWS_REGION")
+
+		if len(name) == 0 || len(password) == 0 {
+			log.Fatal("unable to find DATACOL_STACK or DATACOL_API_KEY env vars.")
+		}
+
+		if region == "" {
+			log.Fatal("AWS_REGION env var not found")
+		}
+
+		provider = &daws.AwsCloud{
+			DeploymentName: name, 
+			Region: 			  region,
+		}
+	case "gce":
+	  var bucket, zone, projectId, projectNumber string
 		password = getAttr("DATACOL_API_KEY")
 		bucket = getAttr("DATACOL_BUCKET")
 		name = getAttr("DATACOL_STACK")
@@ -42,24 +66,19 @@ func newServer() *Server {
 			log.Fatal(err)
 		}
 
-	} else {
-		password = "secret"
-		bucket = "datacol-gcs-local"
-		name = "demo"
-		zone = "us-east1-b"
-		projectId = "gcs-local"
-		projectNumber = ""
+		provider = &google.GCPCloud{
+			Project:        projectId,
+			DeploymentName: name,
+			BucketName:     bucket,
+			Zone:           zone,
+			ProjectNumber:  projectNumber,
+		}
+
+	default:
+		log.Fatal("Unsupported cloud: %s", cid)
 	}
 
-	provider := &google.GCPCloud{
-		Project:        projectId,
-		DeploymentName: name,
-		BucketName:     bucket,
-		Zone:           zone,
-		ProjectNumber:  projectNumber,
-	}
-
-	return &Server{Provider: provider, Password: password, Project: projectId, Zone: zone, StackName: name}
+	return &Server{Provider: provider, Password: password, StackName: name}
 }
 
 func getAttr(key string) string {
@@ -72,17 +91,18 @@ func getAttr(key string) string {
 
 type Server struct {
 	cloud.Provider
-	Password, StackName, Project, Zone string
+	StackName string
+	Password string
 }
 
 func (s *Server) Run() error {
-	if _, err := kubeConfigPath(s.StackName, s.Project, s.Zone); err != nil {
+	if _, err := s.Provider.K8sConfigPath(); err != nil {
 		return fmt.Errorf("caching kubernetes config err: %v", err)
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("opening rpcPort err: %v", err)
 	}
 
 	//todo: setting the max size to be 50MB. Add streaming for code upload

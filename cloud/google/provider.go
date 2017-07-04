@@ -1,17 +1,14 @@
 package google
 
 import (
-	"bufio"
 	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -32,13 +29,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	kapi "k8s.io/client-go/pkg/api/v1"
-	klabels "k8s.io/client-go/pkg/labels"
-
 	pb "github.com/dinesh/datacol/api/models"
 	gcp "github.com/dinesh/datacol/cmd/provider/gcp"
-
-	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc"
 )
 
@@ -52,87 +44,6 @@ type GCPCloud struct {
 	Zone           string
 }
 
-func (g *GCPCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	gskey := fmt.Sprintf("%s.env", name)
-	data, err := g.gsGet(g.BucketName, gskey)
-	if err != nil {
-		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 404 {
-			return pb.Environment{}, nil
-		}
-		return nil, err
-	}
-
-	return loadEnv(data), nil
-}
-
-func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
-	gskey := fmt.Sprintf("%s.env", name)
-	return g.gsPut(g.BucketName, gskey, body)
-}
-
-func (g *GCPCloud) GetRunningPods(app string) (string, error) {
-	ns := g.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return "", err
-	}
-
-	return runningPods(ns, app, c)
-}
-
-func runningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
-	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
-	res, err := c.Core().Pods(ns).List(kapi.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return "", err
-	}
-
-	var podNames []string
-	for _, p := range res.Items {
-		podNames = append(podNames, p.Name)
-	}
-
-	if len(podNames) < 1 {
-		return "", fmt.Errorf("No pod running for %s", app)
-	}
-
-	return podNames[0], nil
-}
-
-func (g *GCPCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {
-	ns := g.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	pod, err := runningPods(ns, app, c)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	log.Debugf("Getting logs from pod %s", pod)
-
-	req := c.Core().RESTClient().Get().
-		Namespace(ns).
-		Name(pod).
-		Resource("pods").
-		SubResource("log").
-		Param("container", app).
-		Param("follow", strconv.FormatBool(opts.Follow))
-
-	if opts.Since > 0 {
-		sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
-		req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
-	}
-
-	rc, err := req.Stream()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return bufio.NewReader(rc), rc.Close, nil
-}
 
 func (g *GCPCloud) storage() *storage.Service {
 	return storageService(g.DeploymentName)

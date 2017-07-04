@@ -9,7 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"os"
+	"errors"
 	"strings"
 	"time"
 )
@@ -31,15 +33,15 @@ var (
 )
 
 type InitOptions struct {
-	Name, Zone, Region, Bucket, KeyName string
+	Name, Zone, Region, Bucket 					string
 	ApiKey, Version, ArtifactBucket     string
-	ClusterVersion, MachineType         string
+	MachineType         								string
 	DiskSize, NumNodes, ControllerPort  int
 	UseSpotInstance                     bool
 }
 
 type initResponse struct {
-	Host, Password string
+	Host, Password, KeyPairData string
 }
 
 type AwsCredentials struct {
@@ -53,9 +55,15 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 	fmt.Printf(welcomeMessage)
 	prompt("")
 
-	cf := cloudformation.New(session.New(), awsConfig(opts.Region, creds))
+	config := awsConfig(opts.Region, creds)
+	cf := cloudformation.New(session.New(), config)
 	tmpl, err := io.ReadFile("./cmd/provider/aws/formation.yaml")
 
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := createKeyPair(opts.Name, config)
 	if err != nil {
 		return nil, err
 	}
@@ -65,13 +73,19 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
 		Parameters: []*cloudformation.Parameter{
 			{ParameterKey: aws.String("AvailabilityZone"), ParameterValue: aws.String(opts.Zone)},
-			{ParameterKey: aws.String("KeyName"), ParameterValue: aws.String(opts.KeyName)},
-			// {ParameterKey: aws.String("DiskSizeGb"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.DiskSize))},
+			{ParameterKey: aws.String("KeyName"), ParameterValue: resp.KeyName},
+			{ParameterKey: aws.String("KeyMaterial"), ParameterValue: resp.KeyMaterial},
+			{ParameterKey: aws.String("ApiKey"), ParameterValue: aws.String(opts.ApiKey)},
+			{ParameterKey: aws.String("DiskSizeGb"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.DiskSize))},
 			{ParameterKey: aws.String("BastionInstanceType"), ParameterValue: aws.String(bastionType)},
 			{ParameterKey: aws.String("AdminIngressLocation"), ParameterValue: aws.String(adminIngressLoc)},
 			{ParameterKey: aws.String("NetworkingProvider"), ParameterValue: aws.String(networkProvider)},
 			{ParameterKey: aws.String("K8sNodeCapacity"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.NumNodes-1))},
 			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.MachineType)},
+			{ParameterKey: aws.String("DatacolVersion"), ParameterValue: aws.String(opts.Version)},
+			{ParameterKey: aws.String("ArtifactBucket"), ParameterValue: aws.String(opts.ArtifactBucket)},
+			{ParameterKey: aws.String("AWSAccessKey"), ParameterValue: aws.String(creds.Access)},
+			{ParameterKey: aws.String("AWSSecretAccessKey"), ParameterValue: aws.String(creds.Secret)},
 		},
 		StackName:    aws.String(opts.Name),
 		TemplateBody: aws.String(tmpl),
@@ -94,12 +108,12 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 		return nil, err
 	}
 
-	return &initResponse{Host: host, Password: opts.ApiKey}, nil
+	return &initResponse{Host: host, Password: opts.ApiKey, KeyPairData: *resp.KeyMaterial }, nil
 }
 
 func TeardownStack(stack, region string, creds *AwsCredentials) error {
 	cf := cloudformation.New(session.New(), awsConfig(region, creds))
-	fmt.Println("Deleting stack", stack, " ...")
+	fmt.Println("Deleting stack", stack, "...")
 	return destroyRack(stack, cf)
 }
 
@@ -167,6 +181,25 @@ func deleteStack(stack string, cf *cloudformation.CloudFormation) error {
 	})
 
 	return err
+}
+
+func createKeyPair(name string, config *aws.Config) (*ec2.CreateKeyPairOutput, error) {
+	service := ec2.New(session.New(), config)
+	keyName := fmt.Sprintf("datacol-%s-key", name)
+	resp, err := service.CreateKeyPair(&ec2.CreateKeyPairInput{KeyName: &keyName})
+	
+	if err != nil {
+		if strings.Contains(err.Error(), "Duplicate") {
+				delInput := &ec2.DeleteKeyPairInput{
+					KeyName: aws.String(keyName),
+				}
+				_, _ = service.DeleteKeyPair(delInput)
+				return nil, errors.New("KeyPair existed, but key material was not captured. Deleted KeyPair... will retry")
+		}
+		return nil, err 
+	}
+
+	return resp, nil
 }
 
 func waitForCompletion(stack string, cf *cloudformation.CloudFormation, isDeleting bool) (string, error) {

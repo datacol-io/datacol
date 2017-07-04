@@ -36,4 +36,5 @@ type Provider interface {
 	ResourceUnlink(string, string) (*pb.Resource, error)
 
 	GetRunningPods(string) (string, error)
+	K8sConfigPath() (string, error)
 }

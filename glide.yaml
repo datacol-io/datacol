@@ -70,3 +70,5 @@ import:
   version: ^1.10.3
   subpackages:
   - aws
+- package: github.com/appscode/cloudid
+  version: ^0.1.1

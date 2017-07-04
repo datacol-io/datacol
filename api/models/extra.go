@@ -11,6 +11,7 @@ var (
 	ConfigPath, ApprcPath string
 	SvaFilename           = "sva.json"
 	AwsCredentialFile     = "credentials.csv"
+	AwsKeyPemPath         = "key.pem"
 )
 
 func init() {
