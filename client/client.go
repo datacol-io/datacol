@@ -3,13 +3,13 @@ package client
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"os"
 	"github.com/appscode/go/io"
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"os"
 )
 
 const (

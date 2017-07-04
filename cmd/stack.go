@@ -11,8 +11,8 @@ import (
 	"github.com/dinesh/datacol/cmd/provider/aws"
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
 	"github.com/dinesh/datacol/go/env"
+	"gopkg.in/urfave/cli.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -232,7 +232,7 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 	if err := saveAwsCredential(opts.Name, creds); err != nil {
 		return err
 	}
-	
+
 	ret, err := aws.InitializeStack(opts, creds)
 	if err != nil {
 		return err
@@ -331,7 +331,7 @@ func cmdStackDestroy(c *cli.Context) error {
 func awsTeardown() error {
 	auth, rc := stdcli.GetAuthOrDie()
 	var credentialsFile string
-	
+
 	credentialsFile = filepath.Join(pb.ConfigPath, auth.Name, pb.AwsCredentialFile)
 	creds, err := aws.ReadCredentials(credentialsFile)
 
@@ -407,7 +407,7 @@ func saveAwsCredential(name string, cred *aws.AwsCredentials) error {
 	wr.Write([]string{"AWSAccessKeyId", "AWSSecretKey"})
 	wr.Write([]string{cred.Access, cred.Secret})
 
-	if err = wr.Error(); err !=nil {
+	if err = wr.Error(); err != nil {
 		return fmt.Errorf("writing csv err: %v", err)
 	}
 	return nil

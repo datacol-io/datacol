@@ -1,25 +1,25 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"cloud.google.com/go/compute/metadata"
+	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/cloudid"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/google"
 	daws "github.com/dinesh/datacol/cloud/aws"
-	log "github.com/Sirupsen/logrus"
+	"github.com/dinesh/datacol/cloud/google"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 func newServer() *Server {
@@ -27,7 +27,7 @@ func newServer() *Server {
 	var provider cloud.Provider
 
 	cid := cloudid.Detect()
-	switch(cid){
+	switch cid {
 	case "aws":
 		password = os.Getenv("DATACOL_API_KEY")
 		name = os.Getenv("DATACOL_STACK")
@@ -42,11 +42,11 @@ func newServer() *Server {
 		}
 
 		provider = &daws.AwsCloud{
-			DeploymentName: name, 
-			Region: 			  region,
+			DeploymentName: name,
+			Region:         region,
 		}
 	case "gce":
-	  var bucket, zone, projectId, projectNumber string
+		var bucket, zone, projectId, projectNumber string
 		password = getAttr("DATACOL_API_KEY")
 		bucket = getAttr("DATACOL_BUCKET")
 		name = getAttr("DATACOL_STACK")
@@ -75,7 +75,7 @@ func newServer() *Server {
 		}
 
 	default:
-		log.Fatal("Unsupported cloud: %s", cid)
+		log.Fatal(fmt.Errorf("Unsupported cloud: %s", cid))
 	}
 
 	return &Server{Provider: provider, Password: password, StackName: name}
@@ -92,7 +92,7 @@ func getAttr(key string) string {
 type Server struct {
 	cloud.Provider
 	StackName string
-	Password string
+	Password  string
 }
 
 func (s *Server) Run() error {

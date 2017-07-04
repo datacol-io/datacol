@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/io"
@@ -11,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"os"
-	"errors"
 	"strings"
 	"time"
 )
@@ -33,11 +33,11 @@ var (
 )
 
 type InitOptions struct {
-	Name, Zone, Region, Bucket 					string
-	ApiKey, Version, ArtifactBucket     string
-	MachineType         								string
-	DiskSize, NumNodes, ControllerPort  int
-	UseSpotInstance                     bool
+	Name, Zone, Region, Bucket         string
+	ApiKey, Version, ArtifactBucket    string
+	MachineType                        string
+	DiskSize, NumNodes, ControllerPort int
+	UseSpotInstance                    bool
 }
 
 type initResponse struct {
@@ -108,7 +108,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 		return nil, err
 	}
 
-	return &initResponse{Host: host, Password: opts.ApiKey, KeyPairData: *resp.KeyMaterial }, nil
+	return &initResponse{Host: host, Password: opts.ApiKey, KeyPairData: *resp.KeyMaterial}, nil
 }
 
 func TeardownStack(stack, region string, creds *AwsCredentials) error {
@@ -187,16 +187,16 @@ func createKeyPair(name string, config *aws.Config) (*ec2.CreateKeyPairOutput, e
 	service := ec2.New(session.New(), config)
 	keyName := fmt.Sprintf("datacol-%s-key", name)
 	resp, err := service.CreateKeyPair(&ec2.CreateKeyPairInput{KeyName: &keyName})
-	
+
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate") {
-				delInput := &ec2.DeleteKeyPairInput{
-					KeyName: aws.String(keyName),
-				}
-				_, _ = service.DeleteKeyPair(delInput)
-				return nil, errors.New("KeyPair existed, but key material was not captured. Deleted KeyPair... will retry")
+			delInput := &ec2.DeleteKeyPairInput{
+				KeyName: aws.String(keyName),
+			}
+			_, _ = service.DeleteKeyPair(delInput)
+			return nil, errors.New("KeyPair existed, but key material was not captured. Deleted KeyPair... will retry")
 		}
-		return nil, err 
+		return nil, err
 	}
 
 	return resp, nil

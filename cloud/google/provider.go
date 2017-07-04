@@ -44,7 +44,6 @@ type GCPCloud struct {
 	Zone           string
 }
 
-
 func (g *GCPCloud) storage() *storage.Service {
 	return storageService(g.DeploymentName)
 }
