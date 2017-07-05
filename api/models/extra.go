@@ -12,6 +12,11 @@ var (
 	SvaFilename           = "sva.json"
 	AwsCredentialFile     = "credentials.csv"
 	AwsKeyPemPath         = "key.pem"
+	SortableTime          = "20060102.150405.000000000"
+)
+
+const (
+	StatusCreated = "created"
 )
 
 func init() {

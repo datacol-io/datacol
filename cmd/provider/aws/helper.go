@@ -263,6 +263,10 @@ func friendlyName(t string) string {
 		return "KMS Key"
 	case "AWS::EC2::VPCDHCPOptionsAssociation", "AWS::EC2::DHCPOptions":
 		return ""
+	case "AWS::ECR::Repository":
+		return "ECR Repository"
+	case "AWS::CodeBuild::Project":
+		return "CodeBuild Project"
 	}
 
 	return fmt.Sprintf("Unknown: %s", t)

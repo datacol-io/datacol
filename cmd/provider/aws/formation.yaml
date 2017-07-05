@@ -75,7 +75,11 @@ Parameters:
     Type: String
 
   ArtifactBucket:
-    Description: Datacol artifact bucket location
+    Description: Name of google storage bucket to download datacol binary
+    Type: String
+
+  SettingBucket:
+    Description: bucket for storing code and environment variables
     Type: String
 
   InstanceType:
@@ -500,6 +504,84 @@ Resources:
         FromPort: '10000'
         ToPort: '10000'
         CidrIp: !Ref AdminIngressLocation
+
+  CodeS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: "Delete"
+    Properties:
+      BucketName: !Ref SettingBucket
+      AccessControl: "AuthenticatedRead"
+
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-repo"
+      RepositoryPolicyText:
+        Version: "2008-10-17"
+        Statement:
+          Sid: "AllowPullPush"
+          Effect: "Allow"
+          Principal: "*"
+          Action:
+            - "ecr:*"
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+              Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+
+  CloudBuildProject:
+    DependsOn: CodeS3Bucket
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${AWS::StackName}-code-builder"
+      TimeoutInMinutes: 15 # 10min
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Environment:
+        ComputeType: "BUILD_GENERAL1_SMALL"
+        Image: "aws/codebuild/docker:1.12.1"
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref ECRRepository
+          - Name: REGION
+            Value: !Ref AWS::Region
+          - Name: ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: IMAGE_TAG
+            Value: latest
+          - Name: APP
+            Value: test
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Source:
+        Type: "S3"
+        Location: !Sub "${SettingBucket}/source.zip"
+        BuildSpec: !Sub |
+          version: 0.2
+            phases:
+              pre_build:
+                commands:
+                  - echo Logging into Amazon ECR...
+                  - $(aws ecr get-login --region $REGION)
+              build:
+                commands:
+                  - echo Build started on `date`
+                  - echo Building the Docker image
+                  - docker build -t $IMAGE_REPO_NAME/$APP:$IMAGE_TAG .
+              post_build:
+                commands:
+                  - echo Build started on `date`
+                  - echo Pushing the Docker image...
+                  - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME/$APP:$IMAGE_TAG
+                  - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME/$APP:latest
+                  - echo ***** Build completed *****
 
   ### Create apps dynamoc table
   DynamoAppTable:

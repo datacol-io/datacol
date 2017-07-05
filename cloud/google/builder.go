@@ -223,7 +223,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Id:        generateId("R", 5),
 		App:       b.App,
 		BuildId:   b.Id,
-		Status:    pb.Status_CREATED,
+		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
 	}
 

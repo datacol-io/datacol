@@ -904,7 +904,8 @@
           "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -965,7 +966,8 @@
           "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -1000,16 +1002,10 @@
           "format": "byte"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
-    },
-    "modelsStatus": {
-      "type": "string",
-      "enum": [
-        "CREATED"
-      ],
-      "default": "CREATED"
     },
     "protobufDuration": {
       "type": "object",

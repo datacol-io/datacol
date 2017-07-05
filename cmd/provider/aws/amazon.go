@@ -84,6 +84,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.MachineType)},
 			{ParameterKey: aws.String("DatacolVersion"), ParameterValue: aws.String(opts.Version)},
 			{ParameterKey: aws.String("ArtifactBucket"), ParameterValue: aws.String(opts.ArtifactBucket)},
+			{ParameterKey: aws.String("SettingBucket"), ParameterValue: aws.String(opts.Bucket)},
 			{ParameterKey: aws.String("AWSAccessKey"), ParameterValue: aws.String(creds.Access)},
 			{ParameterKey: aws.String("AWSSecretAccessKey"), ParameterValue: aws.String(creds.Secret)},
 		},
@@ -194,7 +195,7 @@ func createKeyPair(name string, config *aws.Config) (*ec2.CreateKeyPairOutput, e
 				KeyName: aws.String(keyName),
 			}
 			_, _ = service.DeleteKeyPair(delInput)
-			return nil, errors.New("KeyPair existed, but key material was not captured. Deleted KeyPair... will retry")
+			return nil, errors.New("KeyPair existed. Deleted KeyPair... Please try again.")
 		}
 		return nil, err
 	}

@@ -23,8 +23,7 @@ var (
 	credNotFound    = errors.New("Invalid credentials")
 	projectNotFound = errors.New("Invalid project id")
 
-	defaultAWSRegion       = "ap-south-1"
-	defaultAWSAZone        = "ap-south-1a"
+	defaultAWSZone         = "ap-southeast-1a"
 	defaultAWSInstanceType = "t2.medium"
 )
 
@@ -207,15 +206,20 @@ func cmdGCPStackCreate(c *cli.Context) error {
 }
 
 func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
-	if opts.Region == "" {
-		opts.Region = defaultAWSRegion
-	}
 	if opts.Zone == "" {
-		opts.Zone = defaultAWSAZone
+		opts.Zone = defaultAWSZone
+	}
+
+	if opts.Region == "" {
+		opts.Region = getRegionFromZone(opts.Zone)
 	}
 
 	if opts.MachineType == "" {
 		opts.MachineType = defaultAWSInstanceType
+	}
+
+	if len(opts.Bucket) == 0 {
+		opts.Bucket = fmt.Sprintf("datacol-%s-settings", opts.Name)
 	}
 
 	creds, err := aws.ReadCredentials(credentialsFile)
@@ -434,4 +438,8 @@ func dumpGcpAuthParams(name, project, bucket, host, api_key string) error {
 	}
 
 	return stdcli.SetAuth(auth)
+}
+
+func getRegionFromZone(zone string) string {
+	return zone[0 : len(zone)-1]
 }
