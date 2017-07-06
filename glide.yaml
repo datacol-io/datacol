@@ -72,3 +72,4 @@ import:
   - aws
 - package: github.com/appscode/cloudid
   version: ^0.1.1
+- package: github.com/ejholmes/cloudwatch

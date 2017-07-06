@@ -2,21 +2,22 @@ package google
 
 import (
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"cloud.google.com/go/datastore"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 
+	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 )
 
@@ -178,6 +179,10 @@ func (g *GCPCloud) BuildLogs(app, id string, index int) (int, []string, error) {
 	}
 
 	return i, logs, err
+}
+
+func (g *GCPCloud) BuildLogsStream(id string) (io.Reader, error) {
+	return nil, fmt.Errorf("Not supported on GCP.")
 }
 
 func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {

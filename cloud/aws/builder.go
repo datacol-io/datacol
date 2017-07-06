@@ -3,11 +3,14 @@ package aws
 import (
 	"bytes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/ejholmes/cloudwatch"
+	"io"
 	"io/ioutil"
 	"strings"
 )
@@ -17,7 +20,7 @@ func (a *AwsCloud) dynamoBuilds() string {
 }
 
 func (a *AwsCloud) codeBuildBucket() string {
-	return fmt.Sprintf("%s-repo", a.DeploymentName)
+	return a.SettingBucket
 }
 
 func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {
@@ -81,9 +84,10 @@ func (a *AwsCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 	}
 
 	if err := a.buildSave(build); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("saving to dynamodb err: %v", err)
 	}
 
+	log.Infof("Starting the build ...")
 	ret, err := a.codebuild().StartBuild(&codebuild.StartBuildInput{
 		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{
 			{
@@ -118,6 +122,15 @@ func (a *AwsCloud) BuildLogs(app, id string, index int) (int, []string, error) {
 	}
 
 	return a.buildLogs(a.s3(), rb.Logs.GroupName, rb.Logs.StreamName, id, index)
+}
+
+func (a *AwsCloud) BuildLogsStream(id string) (io.Reader, error) {
+	rb, err := a.fetchRemoteBuild(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return cloudwatch.NewGroup(*rb.Logs.GroupName, a.cloudwatchlogs()).Open(*rb.Logs.StreamName)
 }
 
 func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {

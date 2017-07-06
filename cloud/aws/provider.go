@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -11,7 +12,7 @@ import (
 
 type AwsCloud struct {
 	DeploymentName        string
-	Region                string
+	Region, SettingBucket string
 	Access, Secret, Token string
 }
 
@@ -39,4 +40,8 @@ func (p *AwsCloud) s3() *s3.S3 {
 
 func (p *AwsCloud) codebuild() *codebuild.CodeBuild {
 	return codebuild.New(session.New(), p.config())
+}
+
+func (p *AwsCloud) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
+	return cloudwatchlogs.New(session.New(), p.config())
 }

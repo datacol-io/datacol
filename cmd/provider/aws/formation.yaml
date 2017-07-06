@@ -263,7 +263,7 @@ Mappings:
     ap-south-1:
       '64': ami-85ef91ea
     ap-southeast-1:
-      '64': ami-87b917e4
+      '64': ami-d05dd7b3
     ap-southeast-2:
       '64': ami-e6b58e85
     ca-central-1:
@@ -479,6 +479,7 @@ Resources:
             cat <<EOF >> /etc/environment
             DATACOL_STACK=${AWS::StackName}
             DATACOL_VERSION=${DatacolVersion}
+            DATACOL_BUCKET=${SettingBucket}
             DATACOL_API_KEY=${ApiKey}
             AWS_REGION=${AWS::Region}
             AWS_ACCESS_KEY_ID=${AWSAccessKey}

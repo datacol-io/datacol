@@ -44,6 +44,7 @@ func newServer() *Server {
 		provider = &daws.AwsCloud{
 			DeploymentName: name,
 			Region:         region,
+			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
 		}
 	case "gce":
 		var bucket, zone, projectId, projectNumber string
@@ -243,6 +244,28 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	}
 
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+}
+
+func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
+	reader, err := s.Provider.BuildLogsStream(req.Id)
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, 1024)
+
+	for {
+		if _, err := reader.Read(buf); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		if err := stream.Send(&pbs.LogStreamResponse{Data: buf}); err != nil {
+			return err
+		}
+	}
 }
 
 // Releases endpoints

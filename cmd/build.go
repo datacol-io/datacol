@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -218,6 +219,36 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 }
 
 func finishBuild(api *client.Client, b *pb.Build) error {
+	if api.IsGCP() {
+		return finishBuildGCP(api, b)
+	} else {
+		return finishBuildAws(api, b)
+	}
+}
+
+func finishBuildAws(api *client.Client, b *pb.Build) error {
+	stream, err := api.ProviderServiceClient.BuildLogsStream(context.TODO(), &pbs.BuildLogStreamReq{Id: b.RemoteId})
+	if err != nil {
+		return err
+	}
+	defer stream.CloseSend()
+
+	out := os.Stdout
+	for {
+		ret, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if _, err := out.Write(ret.Data); err != nil {
+			return err
+		}
+	}
+}
+
+func finishBuildGCP(api *client.Client, b *pb.Build) error {
 	index := int32(0)
 
 OUTER:

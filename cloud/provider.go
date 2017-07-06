@@ -22,6 +22,7 @@ type Provider interface {
 	BuildDelete(app, id string) error
 	BuildRelease(*pb.Build) (*pb.Release, error)
 	BuildLogs(app, id string, index int) (int, []string, error)
+	BuildLogsStream(id string) (io.Reader, error)
 
 	ReleaseList(string, int) (pb.Releases, error)
 	ReleaseDelete(string, string) error

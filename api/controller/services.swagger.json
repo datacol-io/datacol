@@ -245,6 +245,31 @@
         ]
       }
     },
+    "/v1/builds/{id}/logs/stream": {
+      "get": {
+        "operationId": "BuildLogsStream",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/controllerLogStreamResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/builds/{name}": {
       "get": {
         "operationId": "BuildList",
@@ -730,6 +755,22 @@
         "pos": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "controllerBuildLogStreamReq": {
+      "type": "object",
+      "properties": {
+        "follow": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        },
+        "since": {
+          "$ref": "#/definitions/protobufDuration"
         }
       }
     },

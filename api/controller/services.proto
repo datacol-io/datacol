@@ -94,6 +94,12 @@ message CmdResponse {
   string stdErr    = 4;
 }
 
+message BuildLogStreamReq {
+  string id = 1;
+  bool follow = 2;
+  google.protobuf.Duration since = 3;
+}
+
 message LogStreamReq {
   string name = 1;
   bool follow = 2;
@@ -187,6 +193,12 @@ service ProviderService {
   rpc BuildLogs(BuildLogRequest) returns (BuildLogResponse) {
     option (google.api.http) = {
       get: "/v1/builds/{id}/logs"
+    };
+  }
+
+  rpc BuildLogsStream(BuildLogStreamReq) returns (stream LogStreamResponse) {
+    option (google.api.http) = {
+      get: "/v1/builds/{id}/logs/stream"
     };
   }
 

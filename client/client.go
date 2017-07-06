@@ -32,6 +32,10 @@ type Client struct {
 	pb.ProviderServiceClient
 }
 
+func (c *Client) IsGCP() bool {
+	return len(c.ProjectId) > 0
+}
+
 func NewClient(version string) (*Client, func() error) {
 	auth, _ := stdcli.GetAuthOrDie()
 

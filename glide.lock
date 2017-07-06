@@ -1,5 +1,5 @@
-hash: 1cc25c4883431c7591a0387e39ca4e69a6ba93b9331695590e4c07a26871b7b3
-updated: 2017-06-29T17:28:59.86557176+05:30
+hash: 2a3384324af03fe7a0aad324423dc7ca3cac32bb1f7743de55c98d37f5bb08c1
+updated: 2017-07-06T13:18:33.138330859+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -10,6 +10,8 @@ imports:
   - storage
 - name: github.com/appscode/cloudid
   version: 4c6509c052ab644b971ec14e025a954f75f989c3
+  subpackages:
+  - internal
 - name: github.com/appscode/errors
   version: 45337f4d7774392043ed9f8c237f9e810974dd98
 - name: github.com/appscode/go
@@ -18,10 +20,12 @@ imports:
   - crypto/rand
   - env
   - io
+  - net
+  - net/httpclient
 - name: github.com/appscode/go-term
   version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
 - name: github.com/aws/aws-sdk-go
-  version: 50762c1efc55dd2a05eac85fc170b0f65aeec28f
+  version: a5f553bccbe022ff6ac8079509d9d91da1992e2e
   subpackages:
   - aws
   - aws/awserr
@@ -41,14 +45,25 @@ imports:
   - aws/signer/v4
   - internal/shareddefaults
   - private/protocol
+  - private/protocol/ec2query
+  - private/protocol/json/jsonutil
+  - private/protocol/jsonrpc
   - private/protocol/query
   - private/protocol/query/queryutil
   - private/protocol/rest
+  - private/protocol/restxml
   - private/protocol/xml/xmlutil
   - service/cloudformation
+  - service/cloudwatchlogs
+  - service/codebuild
+  - service/dynamodb
+  - service/ec2
+  - service/s3
   - service/sts
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
+- name: github.com/cenkalti/backoff
+  version: 32cd0c5b3aef12c76ed64aaf678f6c79736be7dc
 - name: github.com/coreos/go-oidc
   version: 5644a2f50e2d2d5ba0b474bc5bc55fea1925936d
   subpackages:
@@ -86,6 +101,8 @@ imports:
   - pkg/system
 - name: github.com/docker/go-units
   version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
+- name: github.com/ejholmes/cloudwatch
+  version: c2bae568a25431c6c82170dd18361a478bd1f1b5
 - name: github.com/emicklei/go-restful
   version: 89ef8af493ab468a45a42bb0d89a06fccdd2fb22
   subpackages:
@@ -131,6 +148,10 @@ imports:
   - ptypes/struct
   - ptypes/timestamp
   - ptypes/wrappers
+- name: github.com/google/go-querystring
+  version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+  subpackages:
+  - query
 - name: github.com/google/gofuzz
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
 - name: github.com/googleapis/gax-go
