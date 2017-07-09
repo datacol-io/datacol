@@ -1,5 +1,5 @@
-hash: 2a3384324af03fe7a0aad324423dc7ca3cac32bb1f7743de55c98d37f5bb08c1
-updated: 2017-07-06T13:18:33.138330859+05:30
+hash: 13b667a7ae8862db2587482637e5fbad18a24a4e0d878ab2928abed6552f8c9f
+updated: 2017-07-09T01:53:23.226249342+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -25,7 +25,7 @@ imports:
 - name: github.com/appscode/go-term
   version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
 - name: github.com/aws/aws-sdk-go
-  version: a5f553bccbe022ff6ac8079509d9d91da1992e2e
+  version: b1a7b51924b90a6ecdbaeb17e96418740ff07a1e
   subpackages:
   - aws
   - aws/awserr
@@ -180,6 +180,8 @@ imports:
   subpackages:
   - internal/binarydist
   - internal/osext
+- name: github.com/jhoonb/archivex
+  version: be4efa7ec0c38ab76d56037014c90d48d6b13037
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/jonboulle/clockwork

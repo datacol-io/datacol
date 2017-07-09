@@ -24,7 +24,7 @@ func (p *AwsCloud) K8sConfigPath() (string, error) {
 			if err != nil {
 				return ipAddr, err
 			}
-			cmd := fmt.Sprintf("scp -i %s ubuntu@%s:~/kubeconfig %s", fmt.Sprintf(pemPathRE, p.DeploymentName), ipAddr, kcpath)
+			cmd := fmt.Sprintf("scp -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@%s:~/kubeconfig %s", fmt.Sprintf(pemPathRE, p.DeploymentName), ipAddr, kcpath)
 			if _, err := exec.Command("/bin/sh", "-c", cmd).Output(); err != nil {
 				return "", err
 			}

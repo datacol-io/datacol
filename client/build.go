@@ -1,40 +1,48 @@
 package client
 
 import (
-	"bytes"
 	"fmt"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"io"
 )
 
-const chunkSize = 1024 * 1024 * 2
+const chunkSize = 1024 * 1024 * 1
 
 func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
-	r := bytes.NewReader(data)
 	stream, err := c.ProviderServiceClient.BuildCreate(ctx)
+	defer stream.CloseSend()
 
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Print("Uploading ")
-	for {
-		chunk := make([]byte, chunkSize)
-		n, err := r.Read(chunk)
-		if n == 0 && err == io.EOF {
+	numChunks := len(data)/chunkSize + 1
+	fmt.Print("Uploading source ")
+
+	for i := 0; i < numChunks; i++ {
+		maxEnd := intMin((i+1)*chunkSize, len(data[i*chunkSize:]))
+
+		chunk := data[i*chunkSize : maxEnd]
+		if len(chunk) == 0 && err == io.EOF {
 			break
 		}
 
 		fmt.Print(".")
-		if err := stream.Send(&pbs.CreateBuildRequest{Data: chunk, App: app.Name}); err != nil {
+		size := intMin(chunkSize, len(chunk))
+
+		if err := stream.Send(&pbs.CreateBuildRequest{
+			Data: chunk,
+			Size: int32(size),
+			App:  app.Name,
+		}); err != nil {
 			if err == io.EOF {
 				return nil, err
 			}
 		}
 	}
 
-	fmt.Println(" OK")
+	fmt.Printf(" OK\n")
 	return stream.CloseAndRecv()
 }
 

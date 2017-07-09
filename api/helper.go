@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"io"
 	"strings"
 )
 
@@ -65,4 +66,19 @@ func checkHttpAuthorization(value, expected string) bool {
 	}
 
 	return pair[1] == expected
+}
+
+func writeToFd(fd io.Writer, data []byte) error {
+	w := 0
+	n := len(data)
+	for {
+		nw, err := fd.Write(data[w:])
+		if err != nil {
+			return err
+		}
+		w += nw
+		if nw >= n {
+			return nil
+		}
+	}
 }

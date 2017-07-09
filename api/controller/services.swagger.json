@@ -805,6 +805,10 @@
         "data": {
           "type": "string",
           "format": "byte"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },

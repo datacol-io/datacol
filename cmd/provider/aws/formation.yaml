@@ -251,7 +251,16 @@ Parameters:
 
   AWSAccessKey:
     Type: String
+
   AWSSecretAccessKey:
+    Type: String
+
+  CreateK8sCluster:
+    Default: false
+    Description: Create a kubernetes stack or not (mostly used for development purpose.)
+    AllowedValues:
+      - true
+      - false
     Type: String
 
 Mappings:
@@ -290,6 +299,10 @@ Conditions:
     Fn::Equals:
     - !Ref AWS::Region
     - "us-east-1"
+  ShouldCreateK8s: 
+    Fn::Equals:
+    - true
+    - !Ref CreateK8sCluster
 
 Resources:
   # Resources for new VPC
@@ -486,6 +499,8 @@ Resources:
             AWS_SECRET_ACCESS_KEY=${AWSSecretAccessKey}
             EOF
 
+            systemctl start apictl
+
   # Open up port 22 for SSH for the bastion host
   BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -532,10 +547,44 @@ Resources:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
-          Effect: Allow
-          Principal:
-              Service: codebuild.amazonaws.com
-          Action: sts:AssumeRole
+          - 
+            Effect: Allow
+            Principal:
+              Service: 
+                - codebuild.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Policies: 
+        -
+          PolicyName: !Sub "${AWS::StackName}-cb-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - "ecr:GetAuthorizationToken"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                Resource: 
+                  - !Sub "arn:aws:s3:::${SettingBucket}/*"
+              - Effect: Allow
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}/*"
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
 
   CloudBuildProject:
     DependsOn: CodeS3Bucket
@@ -545,7 +594,7 @@ Resources:
       TimeoutInMinutes: 15 # 10min
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Environment:
-        ComputeType: "BUILD_GENERAL1_SMALL"
+        ComputeType: "BUILD_GENERAL1_MEDIUM"
         Image: "aws/codebuild/docker:1.12.1"
         Type: "LINUX_CONTAINER"
         EnvironmentVariables:
@@ -566,25 +615,27 @@ Resources:
         Location: !Sub "${SettingBucket}/source.zip"
         BuildSpec: !Sub |
           version: 0.2
-            phases:
-              pre_build:
-                commands:
-                  - echo Logging into Amazon ECR...
-                  - $(aws ecr get-login --region $REGION)
-              build:
-                commands:
-                  - echo Build started on `date`
-                  - echo Building the Docker image
-                  - docker build -t $IMAGE_REPO_NAME/$APP:$IMAGE_TAG .
-              post_build:
-                commands:
-                  - echo Build started on `date`
-                  - echo Pushing the Docker image...
-                  - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME/$APP:$IMAGE_TAG
-                  - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME/$APP:latest
-                  - echo ***** Build completed *****
+          phases:
+            pre_build:
+              commands:
+                - echo Logging into Amazon ECR...
+                - $(aws ecr get-login --region $REGION)
+            build:
+              commands:
+                - echo Build started on `date`
+                - echo Building the Docker image
+                - docker build -t $IMAGE_REPO_NAME/$APP:$IMAGE_TAG .
+                - echo Build started on `date`
+                - echo Pushing the Docker image...
+                - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$APP-$IMAGE_TAG
+                - echo ***** Build completed *****
+            post_build:
+              commands:
+                - echo "Pushing Docker image"
+                - docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$APP-$IMAGE_TAG
+                - echo ***** Image Pushed *****
 
-  ### Create apps dynamoc table
+  # Create apps dynamodb table
   DynamoAppTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -598,6 +649,25 @@ Resources:
           AttributeType: "S"
       KeySchema:
         - AttributeName: "name"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+  ## Create releases dynamodb table
+  DynamoReleaseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Join:
+          - "-" 
+          - - !Ref AWS::StackName
+            - "releases"
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
           KeyType: "HASH"
       ProvisionedThroughput:
         ReadCapacityUnits: "5"
@@ -622,30 +692,12 @@ Resources:
         ReadCapacityUnits: "5"
         WriteCapacityUnits: "5"
 
-  ### Create releases dynamodb table
-  DynamoBuildTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName:
-        Fn::Join:
-          - "-" 
-          - - !Ref AWS::StackName
-            - "releases"
-      AttributeDefinitions:
-        - AttributeName: "id"
-          AttributeType: "S"
-      KeySchema:
-        - AttributeName: "id"
-          KeyType: "HASH"
-      ProvisionedThroughput:
-        ReadCapacityUnits: "5"
-        WriteCapacityUnits: "5"
-
   # Call the cluster template and supply its parameters
   # This creates a second stack that creates the actual Kubernetes cluster
   # within the new VPC
   K8sStack:
     Type: AWS::CloudFormation::Stack
+    Condition: ShouldCreateK8s
     Properties:
       TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}/templates/kubernetes-cluster.template"
       Parameters:
@@ -680,6 +732,7 @@ Outputs:
     Value: !GetAtt BastionHost.PublicDnsName
 
   SSHProxyCommand:
+    Condition: ShouldCreateK8s
     Description: Run locally - SSH command to proxy to the master instance
       through the bastion host, to access port 8080 (command to SSH to the master Kubernetes node).
     Value: !Sub >-
@@ -691,6 +744,7 @@ Outputs:
       ubuntu@${K8sStack.Outputs.MasterPrivateIp}
 
   GetKubeConfigCommand:
+    Condition: ShouldCreateK8s
     Description: Run locally - SCP command to download the Kubernetes configuration
       file for accessing the new cluster via kubectl, a Kubernetes command line tool.
       Creates a "kubeconfig" file in the current directory. Then, you can run
@@ -705,18 +759,22 @@ Outputs:
 
   # Outputs forwarded from the k8s template
   MasterInstanceId:
+    Condition: ShouldCreateK8s
     Description: InstanceId of the master EC2 instance.
     Value: !GetAtt K8sStack.Outputs.MasterInstanceId
 
   MasterPrivateIp:
+    Condition: ShouldCreateK8s
     Description: Private IP address of the master.
     Value: !GetAtt K8sStack.Outputs.MasterPrivateIp
 
   NodeGroupInstanceId:
+    Condition: ShouldCreateK8s
     Description: InstanceId of the newly-created NodeGroup.
     Value: !GetAtt K8sStack.Outputs.NodeGroupInstanceId
 
   JoinNodes:
+    Condition: ShouldCreateK8s
     Description: Command to join more nodes to this cluster.
     Value: !GetAtt K8sStack.Outputs.JoinNodes
 

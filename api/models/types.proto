@@ -32,7 +32,6 @@ message Release {
   int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
 }
 
-
 message Resource {
   string name                   = 1 [(gogoproto.moretags) = "datastore:\"name\""];
   string kind                   = 2 [(gogoproto.moretags) = "datastore:\"kind\""];

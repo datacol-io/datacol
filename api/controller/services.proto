@@ -41,6 +41,7 @@ message AuthResponse {
 message CreateBuildRequest {
   string app = 1;
   bytes data = 2;
+  int32 size = 3;
 }
 
 message AppIdRequest {

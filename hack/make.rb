@@ -27,7 +27,7 @@ $api_name = "apictl"
 
 $bucket_prefix = $env == 'prod' ?  "gs://datacol-distros" : "gs://datacol-dev"
 
-puts "ENV: #{$env} bucket: #{$bucket_prefix}/#{$version}"
+puts "ENV:#{$env} bucket:#{$bucket_prefix}/#{$version}"
 
 def build_all
   $bin_matrix.each do |os, archs|

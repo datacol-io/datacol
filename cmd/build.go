@@ -26,7 +26,7 @@ import (
 func init() {
 	stdcli.AddCommand(&cli.Command{
 		Name:   "build",
-		Usage:  "build an app from Dockerfile or app.yaml(App-Engine)",
+		Usage:  "build an app from Dockerfile or app.yaml (App-Engine)",
 		Action: cmdBuild,
 		Subcommands: []*cli.Command{
 			{
@@ -232,9 +232,30 @@ func finishBuildAws(api *client.Client, b *pb.Build) error {
 		return err
 	}
 	defer stream.CloseSend()
-
 	out := os.Stdout
+
+	ticker := time.NewTicker(time.Second * 2)
+	defer ticker.Stop()
+
+	buildStatus := b.Status
+
+	go func() {
+		for _ = range ticker.C {
+			newb, _ := api.GetBuild(b.App, b.Id)
+			if newb.Status != buildStatus {
+				buildStatus = newb.Status
+				break
+			}
+		}
+	}()
+
 	for {
+		if buildStatus != "IN_PROGRESS" {
+			fmt.Println("Build Id:", b.Id)
+			fmt.Println("Build status:", buildStatus)
+			break
+		}
+
 		ret, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
@@ -246,6 +267,7 @@ func finishBuildAws(api *client.Client, b *pb.Build) error {
 			return err
 		}
 	}
+	return nil
 }
 
 func finishBuildGCP(api *client.Client, b *pb.Build) error {

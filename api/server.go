@@ -1,13 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"net"
-	"os"
-	"strings"
-
 	"cloud.google.com/go/compute/metadata"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/cloudid"
 	pbs "github.com/dinesh/datacol/api/controller"
@@ -20,6 +15,11 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"io"
+	"io/ioutil"
+	"net"
+	"os"
+	"strings"
 )
 
 func newServer() *Server {
@@ -98,7 +98,7 @@ type Server struct {
 
 func (s *Server) Run() error {
 	if _, err := s.Provider.K8sConfigPath(); err != nil {
-		return fmt.Errorf("caching kubernetes config err: %v", err)
+		log.Warn(fmt.Errorf("caching kubernetes config err: %v", err))
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
@@ -181,8 +181,12 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 }
 
 func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error {
-	var data []byte
 	var app string
+	fd, err := ioutil.TempFile(os.TempDir(), "upload-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(fd.Name())
 
 	for {
 		req, err := stream.Recv()
@@ -192,13 +196,15 @@ func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error
 			}
 			return err
 		}
-		data = append(data, req.Data...)
+
+		if err = writeToFd(fd, req.Data); err != nil {
+			return err
+		}
+
 		app = req.App
 	}
 
-	log.Debugf("got all chunks")
-
-	b, err := s.Provider.BuildCreate(app, data)
+	b, err := s.Provider.BuildCreate(app, fd.Name())
 	if err != nil {
 		return internalError(err, "failed to upload source.")
 	}
@@ -248,19 +254,22 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 
 func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
 	reader, err := s.Provider.BuildLogsStream(req.Id)
+
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 0, 4*1024)
 
 	for {
-		if _, err := reader.Read(buf); err != nil {
-			if err == io.EOF {
+		n, err := reader.Read(buf[:cap(buf)])
+		if err != nil {
+			if n == 0 || err == io.EOF {
 				return nil
 			}
 			return err
 		}
+		buf = buf[:n]
 
 		if err := stream.Send(&pbs.LogStreamResponse{Data: buf}); err != nil {
 			return err

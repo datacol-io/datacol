@@ -16,7 +16,7 @@ type Provider interface {
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error
 
-	BuildCreate(app string, data []byte) (*pb.Build, error)
+	BuildCreate(app, filename string) (*pb.Build, error)
 	BuildList(app string, limit int) (pb.Builds, error)
 	BuildGet(app, id string) (*pb.Build, error)
 	BuildDelete(app, id string) error
