@@ -2,9 +2,11 @@ package aws
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 func (a *AwsCloud) dynamoApps() string {
@@ -71,7 +73,7 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 
 	res, err := a.dynamodb().GetItem(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetching from dynamodb err: %v", err)
 	}
 
 	if res.Item == nil {
@@ -79,7 +81,18 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 	}
 
 	app := a.appFromItem(res.Item)
-	return app, nil
+
+	kc, err := getKubeClientset(a.DeploymentName)
+	if err != nil {
+		log.Warn(err)
+		return app, nil
+	}
+
+	if app.Endpoint, err = sched.GetServiceEndpoint(kc, a.DeploymentName, name); err != nil {
+		return app, err
+	}
+
+	return app, a.saveApp(app)
 }
 
 func (a *AwsCloud) AppDelete(name string) error {
@@ -93,4 +106,28 @@ func (a *AwsCloud) AppDelete(name string) error {
 		return err
 	}
 	return nil
+}
+
+func (p *AwsCloud) saveApp(a *pb.App) error {
+	req := &dynamodb.PutItemInput{
+		Item: map[string]*dynamodb.AttributeValue{
+			"app": {S: aws.String(a.Name)},
+		},
+		TableName: aws.String(p.dynamoApps()),
+	}
+
+	if a.Status != "" {
+		req.Item["status"] = &dynamodb.AttributeValue{S: aws.String(a.Status)}
+	}
+
+	if a.Endpoint != "" {
+		req.Item["endpoint"] = &dynamodb.AttributeValue{S: aws.String(a.Endpoint)}
+	}
+
+	if a.ReleaseId != "" {
+		req.Item["release_id"] = &dynamodb.AttributeValue{S: aws.String(a.ReleaseId)}
+	}
+
+	_, err := p.dynamodb().PutItem(req)
+	return err
 }

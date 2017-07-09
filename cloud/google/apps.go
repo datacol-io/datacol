@@ -1,18 +1,17 @@
 package google
 
 import (
-	"fmt"
 	"time"
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	"k8s.io/client-go/pkg/api/v1"
 
+	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	kerrors "k8s.io/client-go/pkg/api/errors"
 	kapi "k8s.io/client-go/pkg/api/v1"
 	klabels "k8s.io/client-go/pkg/labels"
-
-	pb "github.com/dinesh/datacol/api/models"
 )
 
 const appKind = "App"
@@ -76,8 +75,8 @@ func (g *GCPCloud) AppRestart(app string) error {
 		return err
 	}
 
-	waitUntilUpdated(kube, ns, app)
-	waitUntilReady(kube, ns, app)
+	sched.WaitUntilUpdated(kube, ns, app)
+	sched.WaitUntilReady(kube, ns, app)
 
 	return nil
 }
@@ -91,30 +90,13 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 	}
 
 	ns := g.DeploymentName
-	kube, err := getKubeClientset(ns)
+	kc, err := getKubeClientset(ns)
 	if err != nil {
 		return app, nil
 	}
 
-	svc, err := kube.Core().Services(ns).Get(name)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return app, nil
-		}
-		return nil, err
-	}
-
-	if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
-		ing := svc.Status.LoadBalancer.Ingress[0]
-		if len(ing.Hostname) > 0 {
-			app.Endpoint = ing.Hostname
-		} else {
-			port := 80
-			if len(svc.Spec.Ports) > 0 {
-				port = int(svc.Spec.Ports[0].Port)
-			}
-			app.Endpoint = fmt.Sprintf("%s:%d", ing.IP, port)
-		}
+	if app.Endpoint, err = sched.GetServiceEndpoint(kc, ns, name); err != nil {
+		return app, nil
 	}
 
 	_, err = g.datastore().Put(ctx, key, app)
@@ -180,7 +162,7 @@ func (g *GCPCloud) deleteAppFromCluster(name string) error {
 		return err
 	}
 
-	waitUntilUpdated(kube, ns, name)
+	sched.WaitUntilUpdated(kube, ns, name)
 
 	if err = kube.Extensions().Deployments(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
 		return err

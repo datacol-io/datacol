@@ -1,10 +1,9 @@
-package google
+package kube
 
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"sort"
-	"strings"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -54,13 +53,8 @@ type DeployResponse struct {
 	NodePort int           `json:"nodePort"`
 }
 
-func newDeployer(name string) (*Deployer, error) {
-	c, err := getKubeClientset(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Deployer{c}, nil
+func NewDeployer(c *kubernetes.Clientset) (*Deployer, error) {
+	return &Deployer{Client: c}, nil
 }
 
 func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
@@ -102,8 +96,8 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 
 	dpname := svc.ObjectMeta.Name
 
-	waitUntilUpdated(d.Client, payload.Environment, dpname)
-	waitUntilReady(d.Client, payload.Environment, dpname)
+	WaitUntilUpdated(d.Client, payload.Environment, dpname)
+	WaitUntilReady(d.Client, payload.Environment, dpname)
 
 	log.Infof("Deployment completed: %+v", svc.ObjectMeta.Name)
 	return res, nil
@@ -335,160 +329,7 @@ func newIngress(payload *DeployResponse) *v1beta1.Ingress {
 	}
 }
 
-var (
-	sqlSecretName         = "cloudsql-secret"
-	cloudsqlContainerName = "cloudsql-proxy"
-	cloudsqlImage         = "gcr.io/cloudsql-docker/gce-proxy:1.09"
-	sqlCredVolName        = "cloudsql-instance-credentials"
-)
-
-func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
-	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
-	if err := c.Core().Secrets(ns).Delete(secretName, &v1.DeleteOptions{}); err != nil {
-		return nil
-	}
-
-	dp, err := c.Extensions().Deployments(ns).Get(name)
-	if err != nil {
-		return err
-	}
-
-	found := false
-	for i, ctnr := range dp.Spec.Template.Spec.Containers {
-		for ctnr.Name == cloudsqlContainerName {
-			containers := dp.Spec.Template.Spec.Containers
-			dp.Spec.Template.Spec.Containers = append(containers[:i], containers[i+1:]...)
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("resource %s not liked with %s", process, name)
-	}
-
-	found = false
-	vls := []v1.Volume{}
-	for _, v := range dp.Spec.Template.Spec.Volumes {
-		if v.Name != sqlCredVolName && v.Name != "cloudsql" {
-			vls = append(vls, v)
-		}
-	}
-
-	dp.Spec.Template.Spec.Volumes = vls
-	if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
-	}
-	return nil
-}
-
-func setupCloudProxy(c *kubernetes.Clientset, ns, project, name string, options map[string]string) error {
-	dp, err := c.Extensions().Deployments(ns).Get(name)
-	if err != nil {
-		return err
-	}
-
-	cred, err := svaPrivateKey(name, project)
-	if err != nil {
-		return err
-	}
-
-	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
-	if _, err := c.Core().Secrets(ns).Create(&v1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name: secretName,
-		},
-		Data: map[string][]byte{
-			"credentials.json": cred,
-		},
-	}); err != nil {
-		if !kerrors.IsAlreadyExists(err) {
-			return err
-		}
-	}
-
-	dp = mergeSqlManifest(dp, secretName, options)
-	if _, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
-	}
-	return nil
-}
-
-func mergeSqlManifest(dp *v1beta1.Deployment, secretName string, options map[string]string) *v1beta1.Deployment {
-	containers := dp.Spec.Template.Spec.Containers
-	parts := strings.Split(options["DATABASE_URL"], "://")
-	port := getDefaultPort(parts[0])
-
-	sqlContainer := v1.Container{
-		Command: []string{"/cloud_sql_proxy", "--dir=/cloudsql",
-			fmt.Sprintf("-instances=%s=tcp:%d", options["INSTANCE_NAME"], port),
-			"-credential_file=/secrets/cloudsql/credentials.json"},
-		Name:            cloudsqlContainerName,
-		Image:           cloudsqlImage,
-		ImagePullPolicy: "IfNotPresent",
-		VolumeMounts: []v1.VolumeMount{
-			v1.VolumeMount{
-				Name:      sqlCredVolName,
-				MountPath: "/secrets/cloudsql",
-				ReadOnly:  true,
-			},
-			v1.VolumeMount{
-				Name:      "cloudsql",
-				MountPath: "/cloudsql",
-			},
-		},
-	}
-
-	found := false
-	for i, c := range containers {
-		if c.Name == cloudsqlContainerName {
-			containers[i] = sqlContainer
-			found = true
-		}
-	}
-
-	if !found {
-		containers = append(containers, sqlContainer)
-	}
-
-	dp.Spec.Template.Spec.Containers = containers
-
-	if !found {
-		volfound := false
-		dpvolumes := dp.Spec.Template.Spec.Volumes
-
-		for _, v := range dpvolumes {
-			if v.Name == sqlCredVolName {
-				volfound = true
-			}
-		}
-
-		if !volfound {
-			volumes := []v1.Volume{
-				v1.Volume{
-					Name: sqlCredVolName,
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
-							SecretName: secretName,
-						},
-					},
-				},
-				v1.Volume{
-					Name: "cloudsql",
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-			}
-
-			dp.Spec.Template.Spec.Volumes = append(dpvolumes, volumes...)
-		}
-	}
-
-	return dp
-}
-
-func waitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
+func WaitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
 	log.Debugf("waiting for Deployment %s to get a newer generation (30s timeout)", name)
 	for i := 0; i < 30; i++ {
 		dp, err := c.Extensions().Deployments(ns).Get(name)
@@ -508,7 +349,7 @@ func waitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
 	}
 }
 
-func waitUntilReady(c *kubernetes.Clientset, ns, name string) {
+func WaitUntilReady(c *kubernetes.Clientset, ns, name string) {
 	dp, err := c.Extensions().Deployments(ns).Get(name)
 	if err != nil {
 		log.Fatal(err)
@@ -664,4 +505,23 @@ func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]
 			))
 		}
 	}
+}
+
+func RunningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
+	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
+	res, err := c.Core().Pods(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return "", err
+	}
+
+	var podNames []string
+	for _, p := range res.Items {
+		podNames = append(podNames, p.Name)
+	}
+
+	if len(podNames) < 1 {
+		return "", fmt.Errorf("No pod running for %s", app)
+	}
+
+	return podNames[0], nil
 }

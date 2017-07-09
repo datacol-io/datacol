@@ -1,47 +1,82 @@
 package aws
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"io/ioutil"
+	"strings"
+
 	pb "github.com/dinesh/datacol/api/models"
 	"io"
-	"k8s.io/client-go/kubernetes"
-	kapi "k8s.io/client-go/pkg/api/v1"
-	klabels "k8s.io/client-go/pkg/labels"
 )
 
 func (a *AwsCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	return nil, nil
-}
-
-func (a *AwsCloud) EnvironmentSet(name string, body io.Reader) error {
-	return nil
-}
-
-func (a *AwsCloud) GetRunningPods(app string) (string, error) {
-	ns := a.DeploymentName
-	c, err := getKubeClientset(ns)
+	s3key := fmt.Sprintf("%s.env", name)
+	data, err := a.s3Get(a.SettingBucket, s3key)
 	if err != nil {
-		return "", err
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
+			return pb.Environment{}, nil
+		}
+		return nil, err
 	}
 
-	return runningPods(ns, app, c)
+	return loadEnv(data), nil
 }
 
-func runningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
-	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
-	res, err := c.Core().Pods(ns).List(kapi.ListOptions{LabelSelector: selector.String()})
+func (a *AwsCloud) EnvironmentSet(name string, r io.Reader) error {
+	s3key := fmt.Sprintf("%s.env", name)
+	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		return "", err
+		return err
+	}
+	return a.s3Put(a.SettingBucket, s3key, data)
+}
+
+func (a *AwsCloud) s3Get(bucket, key string) ([]byte, error) {
+	log.Debugf("Fetching data from s3://%s/%s", bucket, key)
+
+	res, err := a.s3().GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	var podNames []string
-	for _, p := range res.Items {
-		podNames = append(podNames, p.Name)
+	return ioutil.ReadAll(res.Body)
+}
+
+func (a *AwsCloud) s3Put(bucket, key string, data []byte) error {
+	req := &s3.PutObjectInput{
+		Body:          bytes.NewReader(data),
+		Bucket:        aws.String(bucket),
+		ContentLength: aws.Int64(int64(len(data))),
+		Key:           aws.String(key),
 	}
 
-	if len(podNames) < 1 {
-		return "", fmt.Errorf("No pod running for %s", app)
+	_, err := a.s3().PutObject(req)
+
+	return err
+}
+
+func loadEnv(data []byte) pb.Environment {
+	e := pb.Environment{}
+
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		parts := strings.SplitN(scanner.Text(), "=", 2)
+
+		if len(parts) == 2 {
+			if key := strings.TrimSpace(parts[0]); key != "" {
+				e[key] = parts[1]
+			}
+		}
 	}
 
-	return podNames[0], nil
+	return e
 }

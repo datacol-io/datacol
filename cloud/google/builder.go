@@ -20,6 +20,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 const (
@@ -200,8 +201,12 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, err := getKubeClientset(g.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
 
-	deployer, err := newDeployer(g.DeploymentName)
+	deployer, err := sched.NewDeployer(c)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +220,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		port = p
 	}
 
-	ret, err := deployer.Run(&DeployRequest{
+	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
 		Replicas:      1,

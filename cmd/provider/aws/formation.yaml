@@ -256,7 +256,7 @@ Parameters:
     Type: String
 
   CreateK8sCluster:
-    Default: false
+    Default: true
     Description: Create a kubernetes stack or not (mostly used for development purpose.)
     AllowedValues:
       - true
@@ -494,6 +494,7 @@ Resources:
             DATACOL_VERSION=${DatacolVersion}
             DATACOL_BUCKET=${SettingBucket}
             DATACOL_API_KEY=${ApiKey}
+            AWS_ACCOUNT_ID=${AWS::AccountId}
             AWS_REGION=${AWS::Region}
             AWS_ACCESS_KEY_ID=${AWSAccessKey}
             AWS_SECRET_ACCESS_KEY=${AWSSecretAccessKey}

@@ -1,6 +1,9 @@
 package aws
 
 import (
+	"encoding/json"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/docker/docker/pkg/archive"
@@ -54,4 +57,12 @@ func untarPath(src, dst string) error {
 
 	defaultArchiver := archive.Archiver{Untar: archive.Untar, UIDMaps: nil, GIDMaps: nil}
 	return defaultArchiver.Untar(fd, dst, &archive.TarOptions{NoLchown: true})
+}
+
+func toJson(object interface{}) string {
+	dump, err := json.MarshalIndent(object, " ", "  ")
+	if err != nil {
+		log.Fatal(fmt.Errorf("dumping json: %v", err))
+	}
+	return string(dump)
 }

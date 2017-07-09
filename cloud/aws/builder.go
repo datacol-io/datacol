@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	"github.com/ejholmes/cloudwatch"
 	"io"
 	"io/ioutil"
@@ -16,6 +17,10 @@ import (
 	"strings"
 	"time"
 )
+
+func (a *AwsCloud) ecrRepository() string {
+	return fmt.Sprintf("%s-repo", a.DeploymentName)
+}
 
 func (a *AwsCloud) codebuildProjectName() string {
 	return fmt.Sprintf("%s-code-builder", a.DeploymentName)
@@ -27,6 +32,16 @@ func (a *AwsCloud) dynamoBuilds() string {
 
 func (a *AwsCloud) codeBuildBucket() string {
 	return a.SettingBucket
+}
+
+func (g *AwsCloud) GetRunningPods(app string) (string, error) {
+	ns := g.DeploymentName
+	c, err := getKubeClientset(ns)
+	if err != nil {
+		return "", err
+	}
+
+	return sched.RunningPods(ns, app, c)
 }
 
 func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {
@@ -117,6 +132,9 @@ func (a *AwsCloud) BuildCreate(app, gzipPath string) (*pb.Build, error) {
 			{
 				Name:  aws.String("APP"),
 				Value: aws.String(build.App),
+			}, {
+				Name:  aws.String("IMAGE_TAG"),
+				Value: aws.String(build.Id),
 			},
 		},
 	})
@@ -171,11 +189,6 @@ func (a *AwsCloud) BuildLogsStream(id string) (io.Reader, error) {
 	log.Debugf("Will start streaming from stream: %s", *rb.Logs.StreamName)
 
 	return cloudwatch.NewGroup(*rb.Logs.GroupName, a.cloudwatchlogs()).Open(*rb.Logs.StreamName)
-}
-
-func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
-
-	return nil, nil
 }
 
 func (a *AwsCloud) buildFromItem(item map[string]*dynamodb.AttributeValue) *pb.Build {

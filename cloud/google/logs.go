@@ -4,6 +4,7 @@ import (
 	"bufio"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	"math"
 	"strconv"
 	"time"
@@ -16,7 +17,7 @@ func (g *GCPCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reade
 		return nil, nil, err
 	}
 
-	pod, err := runningPods(ns, app, c)
+	pod, err := sched.RunningPods(ns, app, c)
 	if err != nil {
 		return nil, nil, err
 	}
