@@ -111,7 +111,7 @@ func (a *AwsCloud) AppDelete(name string) error {
 func (p *AwsCloud) saveApp(a *pb.App) error {
 	req := &dynamodb.PutItemInput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"app": {S: aws.String(a.Name)},
+			"name": {S: aws.String(a.Name)},
 		},
 		TableName: aws.String(p.dynamoApps()),
 	}

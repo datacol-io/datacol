@@ -153,7 +153,6 @@ func cmdAWSStackCreate(c *cli.Context) error {
 	}
 
 	term.Successln("\nDONE")
-
 	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stackName)
 	return nil
 }
@@ -246,7 +245,15 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 		return err
 	}
 
-	return dumpAwsAuthParams(opts.Name, opts.Region, ret.Host, ret.Password)
+	if err = dumpAwsAuthParams(opts.Name, opts.Region, ret.Host, ret.Password); err != nil {
+		return err
+	}
+
+	fmt.Printf("\nStack hostIP %s\n", ret.Host)
+	fmt.Printf("Stack password: %s [Please keep is secret]\n", ret.Password)
+	fmt.Println("The above configuration has been saved in your home directory at ~/.datacol/config.json")
+
+	return nil
 }
 
 func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
