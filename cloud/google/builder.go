@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -247,12 +248,36 @@ func getBuildID(op *cloudbuild.Operation) (string, error) {
 
 func buildLogs(service *storage.Service, bucket, bid string, index int) (int, []string, error) {
 	key := fmt.Sprintf("log-%s.txt", bid)
-	resp, err := service.Objects.Get(bucket, key).Download()
+	log.Debugf("fetching logs from gs://%s/%s", bucket, bid)
 	lines := []string{}
 
-	if err != nil {
-		return index, lines, err
+	// container builder might take little time to download source from storage bucket.
+	// We will loop for 5 minutes and check the status after 1 second.
+
+	timeout := time.After(5 * time.Minute)
+	tick := time.Tick(1 * time.Second)
+	var resp *http.Response
+	var err error
+
+Loop:
+	for {
+		select {
+		case <-tick:
+			resp, err = service.Objects.Get(bucket, key).Download()
+			if err != nil {
+				if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 404 {
+					fmt.Print(".")
+				} else {
+					return index, lines, fmt.Errorf("fetching body err: %v", err)
+				}
+			} else {
+				break Loop
+			}
+		case <-timeout:
+			return index, lines, fmt.Errorf("Timeout for fetching logs. err: %s", err)
+		}
 	}
+
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
