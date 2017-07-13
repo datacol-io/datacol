@@ -2,7 +2,6 @@ package aws
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
@@ -37,19 +36,14 @@ func (p *AwsCloud) K8sConfigPath() (string, error) {
 }
 
 func (p *AwsCloud) masterPrivateIp() (string, error) {
-	out, err := p.cloudformation().DescribeStacks(&cloudformation.DescribeStacksInput{
-		StackName: &p.DeploymentName,
-	})
-
+	s, err := p.describeStack()
 	if err != nil {
 		return "", err
 	}
 
-	for _, s := range out.Stacks {
-		for _, o := range s.Outputs {
-			if o.OutputKey != nil && privateIpAttr == *o.OutputKey {
-				return *o.OutputValue, nil
-			}
+	for _, o := range s.Outputs {
+		if o.OutputKey != nil && privateIpAttr == *o.OutputKey {
+			return *o.OutputValue, nil
 		}
 	}
 

@@ -175,8 +175,11 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 		exports["DATABASE_URL"] = fmt.Sprintf("%s://%s:%s@%s/%s", kind, kind, passwd, hostName, databaseName)
 	}
 
-	rs.Exports = jsonEncode(exports)
-	rs.Parameters = jsonEncode(params)
+	// rs.Exports = jsonEncode(exports)
+	// rs.Parameters = jsonEncode(params)
+
+	rs.Exports = exports
+	rs.Parameters = params
 
 	log.Debugf("storing %s details into datastore.", toJson(rs))
 
@@ -205,7 +208,9 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 			return nil, err
 		}
 
-		rsvars := jsonDecode(rs.Exports)
+		// rsvars := jsonDecode(rs.Exports)
+		rsvars := rs.Exports
+
 		if err = setupCloudProxy(kube, ns, g.Project, app, rsvars); err != nil {
 			return nil, err
 		}

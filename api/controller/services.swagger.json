@@ -1031,8 +1031,11 @@
           }
         },
         "exports": {
-          "type": "string",
-          "format": "byte"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
         },
         "kind": {
           "type": "string",
@@ -1042,13 +1045,30 @@
           "type": "string",
           "format": "string"
         },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        },
         "parameters": {
-          "type": "string",
-          "format": "byte"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
         },
         "status": {
           "type": "string",
           "format": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
         }
       }
     },

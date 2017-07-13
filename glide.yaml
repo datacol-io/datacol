@@ -74,3 +74,5 @@ import:
   version: ^0.1.1
 - package: github.com/ejholmes/cloudwatch
 - package: github.com/jhoonb/archivex
+- package: github.com/jteeuwen/go-bindata
+  version: ^3.0.7

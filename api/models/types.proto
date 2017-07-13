@@ -38,8 +38,10 @@ message Resource {
   string status                 = 3 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
   string URL                    = 4 [(gogoproto.moretags) = "datastore:\"URL,noindex\""];
   repeated string apps          = 5 [(gogoproto.moretags) = "datastore:\"apps,noindex\""];
-  bytes exports                 = 6 [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
-  bytes parameters              = 7 [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
+  map<string,string> exports    = 6 [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
+  map<string,string> parameters = 7 [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
+  map<string,string> outputs    = 8 [(gogoproto.moretags) = "datastore:\"-\""];
+  map<string,string> tags       = 9 [(gogoproto.moretags) = "datastore:\"-\""];
 }
 
 message ResourceVar {

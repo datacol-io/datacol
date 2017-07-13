@@ -22,6 +22,7 @@ api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go
 
 gen:
+	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && gsed -i 's/main/aws/g' cloud/aws/templates.go
 	## building api/models/*.proto
 	protoc -I $(GOPATH)/src -I ./vendor/ \
 		-I $(MODEL_PROTO_DIR) \

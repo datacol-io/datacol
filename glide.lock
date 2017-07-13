@@ -1,5 +1,5 @@
-hash: 13b667a7ae8862db2587482637e5fbad18a24a4e0d878ab2928abed6552f8c9f
-updated: 2017-07-09T01:53:23.226249342+05:30
+hash: 30c7acf8a9a50e2eabe9268301444ffce769612a6cf4eb602f53f8ea2dfdc96b
+updated: 2017-07-13T12:28:01.120020225+05:30
 imports:
 - name: cloud.google.com/go
   version: debdc0ca0113dd546ebebeb2000c9d938059f41d
@@ -25,7 +25,7 @@ imports:
 - name: github.com/appscode/go-term
   version: 620ebcf71e8e9dd59363149cd05ce8d3d57231e6
 - name: github.com/aws/aws-sdk-go
-  version: b1a7b51924b90a6ecdbaeb17e96418740ff07a1e
+  version: b709581f82a77c0ff00790d1446c05719fed714d
   subpackages:
   - aws
   - aws/awserr
@@ -188,6 +188,8 @@ imports:
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/joyrexus/buckets
   version: 95fcbf1aabe464641d7180b55a99650486f1edf9
+- name: github.com/jteeuwen/go-bindata
+  version: bbd0c6e271208dce66d8fda4bc536453cd27fc4a
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/mailru/easyjson

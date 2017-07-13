@@ -13,17 +13,19 @@ import (
 )
 
 type ResourceType struct {
-	name, args string
+	name, gcpArgs, awsArgs string
 }
 
 var resourceTypes = []ResourceType{
 	{
-		"mysql",
-		"--tier=db-g1-small,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
+		name:    "mysql",
+		gcpArgs: "--tier=db-g1-small,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
+		awsArgs: "--allocated-storage=10,--database=db-name,--instance-type=db.t2.micro,--multi-az,--password=example,--private,--username=example,--version=5.7.16",
 	},
 	{
-		"postgres",
-		"--cpu=1,--memory=3840,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
+		name:    "postgres",
+		gcpArgs: "--cpu=1,--memory=3840,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
+		awsArgs: "--allocated-storage=10,--database=db-name,--instance-type=db.t2.micro,--max-connections={DBInstanceClassMemory/15000000},--multi-az,--password=example,--private,--username=example,--version=9.5.2",
 	},
 }
 
@@ -111,9 +113,14 @@ func cmdResourceInfo(c *cli.Context) error {
 	}
 
 	fmt.Printf("%s ", rs.Name)
-	for k, v := range jsonDecode(rs.Exports) {
+
+	for k, v := range rs.Exports {
 		fmt.Printf("%s=%s", k, v)
 	}
+
+	// for k, v := range jsonDecode(rs.Exports) {
+	// 	fmt.Printf("%s=%s", k, v)
+	// }
 
 	fmt.Printf("\n")
 	return nil
@@ -143,7 +150,7 @@ func cmdResourceCreate(c *cli.Context) error {
 		return err
 	}
 
-	args := append(strings.Split(t.args, ","), c.Args().Tail()...)
+	args := append(strings.Split(t.awsArgs, ","), c.Args().Tail()...)
 	stdcli.EnsureOnlyFlags(c, args)
 	options := stdcli.FlagsToOptions(c, args)
 

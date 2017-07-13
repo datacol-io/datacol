@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
@@ -44,4 +45,22 @@ func (p *AwsCloud) codebuild() *codebuild.CodeBuild {
 
 func (p *AwsCloud) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
 	return cloudwatchlogs.New(session.New(), p.config())
+}
+
+func (p *AwsCloud) describeStack() (*cloudformation.Stack, error) {
+	out, err := p.cloudformation().DescribeStacks(&cloudformation.DescribeStacksInput{
+		StackName: aws.String(p.DeploymentName),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range out.Stacks {
+		if s.StackName != nil && *s.StackName == p.DeploymentName {
+			return s, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No stack found by name: %s", p.DeploymentName)
 }
