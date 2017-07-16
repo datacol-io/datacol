@@ -33,15 +33,17 @@ message Release {
 }
 
 message Resource {
-  string name                   = 1 [(gogoproto.moretags) = "datastore:\"name\""];
-  string kind                   = 2 [(gogoproto.moretags) = "datastore:\"kind\""];
-  string status                 = 3 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
-  string URL                    = 4 [(gogoproto.moretags) = "datastore:\"URL,noindex\""];
-  repeated string apps          = 5 [(gogoproto.moretags) = "datastore:\"apps,noindex\""];
-  map<string,string> exports    = 6 [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
-  map<string,string> parameters = 7 [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
-  map<string,string> outputs    = 8 [(gogoproto.moretags) = "datastore:\"-\""];
-  map<string,string> tags       = 9 [(gogoproto.moretags) = "datastore:\"-\""];
+  string name                   = 1  [(gogoproto.moretags) = "datastore:\"name\""];
+  string kind                   = 2  [(gogoproto.moretags) = "datastore:\"kind\""];
+  string status                 = 3  [(gogoproto.moretags) = "datastore:\"status,noindex\""];
+  string status_reason          = 4  [(gogoproto.moretags) = "datastore:\"status_reason,noindex\""];
+  string URL                    = 5  [(gogoproto.moretags) = "datastore:\"URL,noindex\""];
+  string stack                  = 6  [(gogoproto.moretags) = "datastore:\"-\""];
+  repeated string apps          = 7  [(gogoproto.moretags) = "datastore:\"apps,noindex\""];
+  map<string,string> exports    = 8  [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
+  map<string,string> parameters = 9  [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
+  map<string,string> outputs    = 10 [(gogoproto.moretags) = "datastore:\"-\""];
+  map<string,string> tags       = 11 [(gogoproto.moretags) = "datastore:\"-\""];
 }
 
 message ResourceVar {

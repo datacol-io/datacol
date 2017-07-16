@@ -1059,7 +1059,15 @@
             "format": "string"
           }
         },
+        "stack": {
+          "type": "string",
+          "format": "string"
+        },
         "status": {
+          "type": "string",
+          "format": "string"
+        },
+        "status_reason": {
           "type": "string",
           "format": "string"
         },

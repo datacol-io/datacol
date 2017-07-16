@@ -110,6 +110,12 @@ func cmdAppCreate(c *cli.Context) error {
 		return err
 	}
 
+	// todo: better way to hardcode stackname for app. we use <stack>-app-<name> for cloudformation.
+
+	if api.IsAWS() {
+		exitOnError(waitForAwsResource("app-"+name, "CREATE", api))
+	}
+
 	fmt.Printf("%s is created.\n", app.Name)
 	return nil
 }
@@ -143,6 +149,10 @@ func cmdAppDelete(c *cli.Context) error {
 
 	if err = api.DeleteApp(name); err != nil {
 		return err
+	}
+
+	if api.IsAWS() {
+		exitOnError(waitForAwsResource("app-"+name, "DELETE", api))
 	}
 
 	if err = stdcli.RmSettingDir(abs); err != nil {

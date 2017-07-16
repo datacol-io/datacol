@@ -47,9 +47,13 @@ func (p *AwsCloud) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
 	return cloudwatchlogs.New(session.New(), p.config())
 }
 
-func (p *AwsCloud) describeStack() (*cloudformation.Stack, error) {
+func (p *AwsCloud) describeStack(name string) (*cloudformation.Stack, error) {
+	if name == "" {
+		name = p.DeploymentName
+	}
+
 	out, err := p.cloudformation().DescribeStacks(&cloudformation.DescribeStacksInput{
-		StackName: aws.String(p.DeploymentName),
+		StackName: aws.String(name),
 	})
 
 	if err != nil {
@@ -57,10 +61,28 @@ func (p *AwsCloud) describeStack() (*cloudformation.Stack, error) {
 	}
 
 	for _, s := range out.Stacks {
-		if s.StackName != nil && *s.StackName == p.DeploymentName {
+		if s.StackName != nil && *s.StackName == name {
 			return s, nil
 		}
 	}
 
-	return nil, fmt.Errorf("No stack found by name: %s", p.DeploymentName)
+	return nil, fmt.Errorf("No stack found by name: %s", name)
+}
+
+func (p *AwsCloud) describeStacks(input *cloudformation.DescribeStacksInput) ([]*cloudformation.Stack, error) {
+	out, err := p.cloudformation().DescribeStacks(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return out.Stacks, nil
+}
+
+func (p *AwsCloud) describeStackEvents(input *cloudformation.DescribeStackEventsInput) (*cloudformation.DescribeStackEventsOutput, error) {
+	res, err := p.cloudformation().DescribeStackEvents(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

@@ -19,7 +19,8 @@ Metadata:
     - Label:
         default: Required
       Parameters:
-      - AvailabilityZone
+      - Zone0
+      - Zone1
       - AdminIngressLocation
       - KeyName
     - Label:
@@ -36,7 +37,9 @@ Metadata:
     ParameterLabels:
       KeyName:
         default: SSH Key
-      AvailabilityZone:
+      Zone0:
+        default: Availability Zone
+      Zone1:
         default: Availability Zone
       AdminIngressLocation:
         default: Admin Ingress Location
@@ -183,9 +186,14 @@ Parameters:
     - d2.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
 
-  AvailabilityZone:
-    Description: The Availability Zone for this cluster. Heptio recommends
+  Zone0:
+    Description: The default Availability Zone for this stack. Datacol recommends
       that you run one cluster per AZ and use tooling to coordinate across AZs.
+    Type: AWS::EC2::AvailabilityZone::Name
+    ConstraintDescription: must be the name of an AWS Availability Zone
+
+  Zone1:
+    Description: The second Availability Zone for this stack.
     Type: AWS::EC2::AvailabilityZone::Name
     ConstraintDescription: must be the name of an AWS Availability Zone
 
@@ -262,6 +270,31 @@ Parameters:
       - true
       - false
     Type: String
+
+  VPCCIDR:
+    Type: String
+    Default: "10.0.0.0/16"
+    Description: "VPC CIDR block"
+  
+  Subnet0CIDR:
+    Type: String
+    Default: "10.0.1.0/24"
+    Description: "Public subnet 0 CIDR block"
+
+  Subnet1CIDR:
+    Type: String
+    Default: "10.0.2.0/24"
+    Description: "Public subnet 1 CIDR block"
+
+  SubnetPrivate0CIDR:
+    Type: String
+    Default: "10.0.3.0/24"
+    Description: "Private subnet 0 CIDR block"
+
+  SubnetPrivate1CIDR:
+    Type: String
+    Default: "10.0.4.0/24"
+    Description: "Private subnet 1 CIDR block"
 
 Mappings:
   RegionMap:
@@ -348,24 +381,25 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  PrivateSubnet:
+  ## configuring public and private subnets inside zone-a
+  PrivateSubnet0:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: '10.0.0.0/19'
-      AvailabilityZone: !Ref AvailabilityZone
+      CidrBlock: !Ref SubnetPrivate0CIDR
+      AvailabilityZone: !Ref Zone0
       Tags:
       - Key: Name
         Value: Private subnet
       - Key: Network
         Value: Private
 
-  PublicSubnet:
+  PublicSubnet0:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: '10.0.128.0/20'
-      AvailabilityZone: !Ref AvailabilityZone
+      CidrBlock: !Ref Subnet0CIDR
+      AvailabilityZone: !Ref Zone0
       Tags:
       - Key: Name
         Value: Public subnet
@@ -375,30 +409,22 @@ Resources:
         Value: !Ref AWS::StackName
       MapPublicIpOnLaunch: true
 
-  # The NAT IP for the private subnet, as seen from within the public one
-  NATEIP:
+  # The NAT IP for the private subnet, as seen from within the public one for zone-a
+  NATEIP0:
     DependsOn: VPCGatewayAttachment
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
 
-  # The NAT gateway for the private subnet
-  NATGateway:
+  # The NAT gateway for the private subnet for zone-a
+  NATGateway0:
     DependsOn: VPCGatewayAttachment
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NATEIP.AllocationId
-      SubnetId: !Ref PublicSubnet
+      AllocationId: !GetAtt NATEIP0.AllocationId
+      SubnetId: !Ref PublicSubnet0
 
-  PublicSubnetRoute:
-    DependsOn: VPCGatewayAttachment
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PublicSubnetRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PrivateSubnetRouteTable:
+  PrivateSubnet0RouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -408,21 +434,21 @@ Resources:
       - Key: Network
         Value: Private
 
-  PrivateSubnetRoute:
+  PrivateSubnet0Route:
     DependsOn: VPCGatewayAttachment
     Type: AWS::EC2::Route
     Properties:
-      RouteTableId: !Ref PrivateSubnetRouteTable
+      RouteTableId: !Ref PrivateSubnet0RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway
+      NatGatewayId: !Ref NATGateway0
 
-  PrivateSubnetRouteTableAssociation:
+  PrivateSubnet0RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PrivateSubnet
-      RouteTableId: !Ref PrivateSubnetRouteTable
+      SubnetId: !Ref PrivateSubnet0
+      RouteTableId: !Ref PrivateSubnet0RouteTable
 
-  PublicSubnetRouteTable:
+  PublicSubnet0RouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -432,19 +458,114 @@ Resources:
       - Key: Network
         Value: Public
 
-  PublicSubnetRoute:
+  PublicSubnet0Route:
     DependsOn: VPCGatewayAttachment
     Type: AWS::EC2::Route
     Properties:
-      RouteTableId: !Ref PublicSubnetRouteTable
+      RouteTableId: !Ref PublicSubnet0RouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnetRouteTableAssociation:
+  PublicSubnet0RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicSubnetRouteTable
+      SubnetId: !Ref PublicSubnet0
+      RouteTableId: !Ref PublicSubnet0RouteTable
+
+
+  ## configuring public and private subnets inside zone-b
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetPrivate1CIDR
+      AvailabilityZone: !Ref Zone1
+      Tags:
+      - Key: Name
+        Value: Private subnet
+      - Key: Network
+        Value: Private
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref Subnet1CIDR
+      AvailabilityZone: !Ref Zone1
+      Tags:
+      - Key: Name
+        Value: Public subnet
+      - Key: Network
+        Value: Public
+      MapPublicIpOnLaunch: true
+
+  # The NAT IP for the private subnet, as seen from within the public one for zone-a
+  NATEIP1:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # The NAT gateway for the private subnet for zone-a
+  NATGateway1:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATEIP1.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  PrivateSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Private subnets
+      - Key: Network
+        Value: Private
+
+  PrivateSubnet1Route:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+
+  PublicSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Public Subnets
+      - Key: Network
+        Value: Public
+
+  PublicSubnet1Route:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicSubnet1RouteTable
+  
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SettingBucket
 
   # Taken from github.com/aws-quickstart/quickstart-linux-bastion.  We don't
   # call it directly because that quickstart forces 2 bastion hosts and we only
@@ -462,9 +583,9 @@ Resources:
       - AssociatePublicIpAddress: true
         DeleteOnTermination: true
         DeviceIndex: 0
-        SubnetId: !Ref PublicSubnet
-        # This address is chosen because our public subnet begins at 10.0.128.0/20
-        PrivateIpAddress: '10.0.128.5'
+        SubnetId: !Ref PublicSubnet0
+        # This address is chosen because our public subnet begins at 10.0.1.0/24
+        PrivateIpAddress: '10.0.1.5'
         GroupSet:
         - Ref: BastionSecurityGroup
       Tags:
@@ -494,10 +615,11 @@ Resources:
             DATACOL_VERSION=${DatacolVersion}
             DATACOL_BUCKET=${SettingBucket}
             DATACOL_API_KEY=${ApiKey}
-            AWS_VPC_ID=${PublicSubnet.VpcId}
-            AWS_SUBNET=${PublicSubnet}
-            AWS_SUBNET_PRIVATE=${PrivateSubnet}
+            AWS_VPC_ID=${PublicSubnet0.VpcId}
+            AWS_SUBNETS=${PublicSubnet0},${PublicSubnet1}
+            AWS_SUBNETS_PRIVATE=${PrivateSubnet0},${PrivateSubnet1}
             AWS_SECURITY_GROUP=${BastionSecurityGroup.GroupId}
+            AWS_VPC_CIDR=${VPC.CidrBlock}
             AWS_ACCOUNT_ID=${AWS::AccountId}
             AWS_REGION=${AWS::Region}
             AWS_ACCESS_KEY_ID=${AWSAccessKey}
@@ -525,124 +647,6 @@ Resources:
         FromPort: '10000'
         ToPort: '10000'
         CidrIp: !Ref AdminIngressLocation
-      - IpProtocol: tcp
-        FromPort: '3306'
-        ToPort: '3306'
-        CidrIp: !Ref AdminIngressLocation
-
-  CodeS3Bucket:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: "Delete"
-    Properties:
-      BucketName: !Ref SettingBucket
-      AccessControl: "AuthenticatedRead"
-
-  ECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub "${AWS::StackName}-repo"
-      RepositoryPolicyText:
-        Version: "2008-10-17"
-        Statement:
-          Sid: "AllowPullPush"
-          Effect: "Allow"
-          Principal: "*"
-          Action:
-            - "ecr:*"
-
-  CodeBuildRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - 
-            Effect: Allow
-            Principal:
-              Service: 
-                - codebuild.amazonaws.com
-            Action: 
-              - sts:AssumeRole
-      Policies: 
-        -
-          PolicyName: !Sub "${AWS::StackName}-cb-policy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "logs:CreateLogGroup"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                Resource: "arn:aws:logs:*:*:*"
-              - Effect: Allow
-                Action:
-                  - "ecr:GetAuthorizationToken"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "s3:GetObject"
-                Resource: 
-                  - !Sub "arn:aws:s3:::${SettingBucket}/*"
-              - Effect: Allow
-                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}/*"
-                Action:
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:PutImage
-                  - ecr:InitiateLayerUpload
-                  - ecr:UploadLayerPart
-                  - ecr:CompleteLayerUpload
-
-  CloudBuildProject:
-    DependsOn: CodeS3Bucket
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub "${AWS::StackName}-code-builder"
-      TimeoutInMinutes: 15 # 10min
-      ServiceRole: !GetAtt CodeBuildRole.Arn
-      Environment:
-        ComputeType: "BUILD_GENERAL1_MEDIUM"
-        Image: "aws/codebuild/docker:1.12.1"
-        Type: "LINUX_CONTAINER"
-        EnvironmentVariables:
-          - Name: IMAGE_REPO_NAME
-            Value: !Ref ECRRepository
-          - Name: REGION
-            Value: !Ref AWS::Region
-          - Name: ACCOUNT_ID
-            Value: !Ref AWS::AccountId
-          - Name: IMAGE_TAG
-            Value: latest
-          - Name: APP
-            Value: test
-      Artifacts:
-        Type: "NO_ARTIFACTS"
-      Source:
-        Type: "S3"
-        Location: !Sub "${SettingBucket}/source.zip"
-        BuildSpec: !Sub |
-          version: 0.2
-          phases:
-            pre_build:
-              commands:
-                - echo Logging into Amazon ECR...
-                - $(aws ecr get-login --region $REGION)
-            build:
-              commands:
-                - echo Build started on `date`
-                - echo Building the Docker image
-                - docker build -t $IMAGE_REPO_NAME/$APP:$IMAGE_TAG .
-                - echo Build started on `date`
-                - echo Pushing the Docker image...
-                - docker tag $IMAGE_REPO_NAME/$APP:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$APP-$IMAGE_TAG
-                - echo ***** Build completed *****
-            post_build:
-              commands:
-                - echo "Pushing Docker image"
-                - docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$APP-$IMAGE_TAG
-                - echo ***** Image Pushed *****
 
   # Create apps dynamodb table
   DynamoAppTable:
@@ -711,10 +715,10 @@ Resources:
       TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}/templates/kubernetes-cluster.template"
       Parameters:
         VPCID: !Ref VPC
-        AvailabilityZone: !Ref AvailabilityZone
+        AvailabilityZone: !Ref Zone0
         InstanceType: !Ref InstanceType
         DiskSizeGb: !Ref DiskSizeGb
-        ClusterSubnetId: !Ref PrivateSubnet
+        ClusterSubnetId: !Ref PrivateSubnet0
         # Direct SSH access only from the bastion host itself
         SSHLocation: !Sub "${BastionHost.PrivateIp}/32"
         ApiLbLocation: !Ref AdminIngressLocation
@@ -724,14 +728,30 @@ Resources:
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         ClusterAssociation: !Ref AWS::StackName
         NetworkingProvider: !Ref NetworkingProvider
-        LoadBalancerSubnetId: !Ref PublicSubnet
+        LoadBalancerSubnetId: !Ref PublicSubnet0
 
 Outputs:
   # Outputs from VPC creation
   VPCID:
     Description: ID of the newly-created EC2 VPC.
     Value: !Ref VPC
+  
+  Subnets:
+    Description: "List of public subnets"
+    Value: 
+      Fn::Join:
+        - "," 
+        - - !Ref PublicSubnet0
+          - !Ref PublicSubnet1
 
+  SubnetsPrivate:
+    Description: "List of private subnets"
+    Value: 
+      Fn::Join:
+        - "," 
+        - - !Ref PrivateSubnet0
+          - !Ref PrivateSubnet1
+ 
   BastionHostPublicIp:
     Description: IP Address of the bastion host for the newly-created EC2 VPC.
     Value: !GetAtt BastionHost.PublicIp

@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"os"
 	"strings"
 	"time"
@@ -33,7 +34,7 @@ var (
 )
 
 type InitOptions struct {
-	Name, Zone, Region, Bucket         string
+	Name, Region, Zone, Bucket         string
 	ApiKey, Version, ArtifactBucket    string
 	MachineType                        string
 	DiskSize, NumNodes, ControllerPort int
@@ -69,10 +70,13 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 	}
 
 	log.Debugf("Creating stack with %+v", opts)
+	zone1 := getAwsZone1(opts.Zone)
+
 	req := &cloudformation.CreateStackInput{
 		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
 		Parameters: []*cloudformation.Parameter{
-			{ParameterKey: aws.String("AvailabilityZone"), ParameterValue: aws.String(opts.Zone)},
+			{ParameterKey: aws.String("Zone0"), ParameterValue: aws.String(opts.Zone)},
+			{ParameterKey: aws.String("Zone1"), ParameterValue: aws.String(zone1)},
 			{ParameterKey: aws.String("KeyName"), ParameterValue: resp.KeyName},
 			{ParameterKey: aws.String("KeyMaterial"), ParameterValue: resp.KeyMaterial},
 			{ParameterKey: aws.String("ApiKey"), ParameterValue: aws.String(opts.ApiKey)},
@@ -112,10 +116,37 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 	return &initResponse{Host: host, Password: opts.ApiKey, KeyPairData: *resp.KeyMaterial}, nil
 }
 
-func TeardownStack(stack, region string, creds *AwsCredentials) error {
-	cf := cloudformation.New(session.New(), awsConfig(region, creds))
+func TeardownStack(stack, bucket, region string, creds *AwsCredentials) error {
+	config := awsConfig(region, creds)
+	cf := cloudformation.New(session.New(), config)
+
+	fmt.Println("Deleting objects from", bucket, "bucket ...")
+	emptyAssetBucket(bucket, config)
+
 	fmt.Println("Deleting stack", stack, "...")
 	return destroyRack(stack, cf)
+}
+
+func emptyAssetBucket(bucket string, config *aws.Config) error {
+	svc := s3.New(session.New(), config)
+	out, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+	})
+	if err != nil {
+		return err
+	}
+
+	keys := make([]*s3.ObjectIdentifier, len(out.Contents))
+	for i, obj := range out.Contents {
+		keys[i] = &s3.ObjectIdentifier{Key: obj.Key}
+	}
+
+	_, err = svc.DeleteObjects(&s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &s3.Delete{Objects: keys},
+	})
+
+	return err
 }
 
 func destroyRack(rackName string, cf *cloudformation.CloudFormation) error {
@@ -255,4 +286,17 @@ func awsConfig(region string, creds *AwsCredentials) *aws.Config {
 	}
 
 	return config
+}
+
+func getAwsZone1(z string) string {
+	suffix := z[len(z)-1]
+	var newsuffix string
+
+	if suffix == 'a' {
+		newsuffix = "b"
+	} else {
+		newsuffix = "a"
+	}
+
+	return z[0:len(z)-1] + newsuffix
 }

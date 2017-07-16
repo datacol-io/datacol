@@ -36,6 +36,10 @@ func (c *Client) IsGCP() bool {
 	return len(c.ProjectId) > 0
 }
 
+func (c *Client) IsAWS() bool {
+	return !c.IsGCP()
+}
+
 func NewClient(version string) (*Client, func() error) {
 	auth, _ := stdcli.GetAuthOrDie()
 

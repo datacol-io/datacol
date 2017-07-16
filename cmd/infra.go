@@ -3,13 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
-	"math/rand"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/appscode/go/crypto/rand"
+	"github.com/dinesh/datacol/client"
+	"github.com/dinesh/datacol/cmd/stdcli"
+	"gopkg.in/urfave/cli.v2"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type ResourceType struct {
@@ -20,28 +23,34 @@ var resourceTypes = []ResourceType{
 	{
 		name:    "mysql",
 		gcpArgs: "--tier=db-g1-small,--activation-policy=ALWAYS,--db-version=MYSQL_5_7",
-		awsArgs: "--allocated-storage=10,--database=db-name,--instance-type=db.t2.micro,--multi-az,--password=example,--private,--username=example,--version=5.7.16",
+		awsArgs: "--allocated-storage=10,--database=app,--instance-type=db.t2.micro,--multi-az=false,--password,--private=false,--username=app,--version=5.7.16",
 	},
 	{
 		name:    "postgres",
 		gcpArgs: "--cpu=1,--memory=3840,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
-		awsArgs: "--allocated-storage=10,--database=db-name,--instance-type=db.t2.micro,--max-connections={DBInstanceClassMemory/15000000},--multi-az,--password=example,--private,--username=example,--version=9.5.2",
+		awsArgs: "--allocated-storage=10,--database=app,--instance-type=db.t2.micro,--max-connections={DBInstanceClassMemory/15000000},--multi-az=false,--password=,--private,--username=app,--version=9.6.1",
+	},
+	{
+		name:    "redis",
+		gcpArgs: "",
+		awsArgs: "--automatic-failover-enabled,--database=app,--instance-type=cache.t2.micro,--num-cache-clusters=1,--private=false",
 	},
 }
 
 func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	stdcli.AddCommand(&cli.Command{
 		Name:   "infra",
 		Usage:  "Managed GCP stack resources and infrastructure",
 		Action: cmdResourceList,
 		Subcommands: []*cli.Command{
 			{
-				Name:            "create",
-				Usage:           "create a new resource",
-				Action:          cmdResourceCreate,
-				Flags:           []cli.Flag{stackFlag},
+				Name:   "create",
+				Usage:  "create a new resource",
+				Action: cmdResourceCreate,
+				Flags: []cli.Flag{
+					stackFlag,
+					&cli.BoolFlag{Name: "wait", Aliases: []string{"w"}},
+				},
 				SkipFlagParsing: true,
 			},
 			{
@@ -75,22 +84,31 @@ func init() {
 }
 
 func cmdResourceList(c *cli.Context) error {
-	client, close := getApiClient(c)
+	api, close := getApiClient(c)
 	defer close()
 
-	resp, err := client.ListResources()
+	resp, err := api.ListResources()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Name: %s\n", client.StackName)
-	fmt.Printf("GCP Project: %s\n", client.ProjectId)
+	fmt.Printf("Name: %s\n", api.StackName)
+
+	if api.IsGCP() {
+		fmt.Printf("GCP Project: %s\n", api.ProjectId)
+	}
+
+	if api.IsAWS() {
+		// fmt.Printf("Host: %s\n", client.ApiServer)
+		// fmt.Printf("Region: %s\n", client.Region)
+	}
+
 	fmt.Println("\nResource:")
 
 	for _, r := range resp {
 		kind := r.Kind
 		if _, err := checkResourceType(kind); err == nil {
-			fmt.Printf("%s:%s\n", kind, r.Name)
+			fmt.Println(r.Name)
 		}
 	}
 
@@ -104,23 +122,19 @@ func cmdResourceInfo(c *cli.Context) error {
 		stdcli.Usage(c)
 	}
 
-	client, close := getApiClient(c)
+	api, close := getApiClient(c)
 	defer close()
 
-	rs, err := client.GetResource(name)
+	rs, err := api.GetResource(name)
 	if err != nil {
 		return err
-	}
-
-	fmt.Printf("%s ", rs.Name)
-
-	for k, v := range rs.Exports {
-		fmt.Printf("%s=%s", k, v)
 	}
 
 	// for k, v := range jsonDecode(rs.Exports) {
 	// 	fmt.Printf("%s=%s", k, v)
 	// }
+
+	fmt.Printf("%s", toJson(rs))
 
 	fmt.Printf("\n")
 	return nil
@@ -132,12 +146,18 @@ func cmdResourceDelete(c *cli.Context) error {
 		log.Errorf("no name given. Usage: \n")
 		stdcli.Usage(c)
 	}
-	client, close := getApiClient(c)
+	api, close := getApiClient(c)
 	defer close()
 
-	err := client.DeleteResource(name)
+	err := api.DeleteResource(name)
 	if err != nil {
 		return err
+	}
+
+	if api.IsAWS() {
+		if err := waitForAwsResource(name, "DELETE", api); err != nil {
+			return err
+		}
 	}
 
 	fmt.Println("\nDELETED")
@@ -160,7 +180,11 @@ func cmdResourceCreate(c *cli.Context) error {
 	}
 
 	if options["name"] == "" {
-		options["name"] = fmt.Sprintf("%s-%d", t.name, (rand.Intn(89999) + 1000))
+		options["name"] = withIntSuffix(t.name)
+	}
+
+	if v, ok := options["password"]; ok && len(v) <= 8 {
+		options["password"] = rand.GeneratePassword()
 	}
 
 	fmt.Printf("Creating %s (%s", options["name"], t.name)
@@ -171,15 +195,21 @@ func cmdResourceCreate(c *cli.Context) error {
 	fmt.Printf(")... ")
 	fmt.Printf("\n")
 
-	client, close := getApiClient(c)
+	api, close := getApiClient(c)
 	defer close()
 
-	rs, err := client.CreateResource(t.name, options)
+	rs, err := api.CreateResource(t.name, options)
 	if err != nil {
 		return err
 	}
 
 	log.Debugf("Resource: %v", toJson(rs))
+
+	if api.IsAWS() {
+		if err := waitForAwsResource(t.name, "CREATE", api); err != nil {
+			return err
+		}
+	}
 	fmt.Println("\nCREATED")
 	return nil
 }
@@ -237,4 +267,38 @@ func jsonDecode(b []byte) map[string]string {
 		log.Fatal(fmt.Errorf("unmarshaling %+v err:%v", opts, err))
 	}
 	return opts
+}
+
+func waitForAwsResource(name, event string, c *client.Client) error {
+	tick := time.Tick(time.Second * 2)
+	timeout := time.After(time.Minute * 5)
+	fmt.Printf("Waiting for %s ", name)
+	failedEv := event + "_FAILED"
+	completedEv := event + "_COMPLETE"
+Loop:
+	for {
+		select {
+		case <-tick:
+			rs, err := c.GetResource(name)
+			if err != nil {
+				if event == "DELETE" {
+					return nil
+				}
+				return err
+			}
+
+			fmt.Print(".")
+			if rs.Status == failedEv {
+				return fmt.Errorf("%s failed because of \"%s\"", event, rs.StatusReason)
+			}
+			if rs.Status == completedEv {
+				break Loop
+			}
+		case <-timeout:
+			fmt.Print("timeout (5 minutes). Skipping")
+			break Loop
+		}
+	}
+
+	return nil
 }

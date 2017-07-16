@@ -45,17 +45,20 @@ func (a *AwsCloud) AppList() (pb.Apps, error) {
 }
 
 func (a *AwsCloud) AppCreate(name string) (*pb.App, error) {
-	app := &pb.App{Name: name, Status: pb.StatusCreated}
-	req := &dynamodb.PutItemInput{
-		Item: map[string]*dynamodb.AttributeValue{
-			"name":   {S: aws.String(app.Name)},
-			"status": {S: aws.String(app.Status)},
-		},
-		TableName: aws.String(a.dynamoApps()),
+	if _, err := a.AppGet(name); err == nil {
+		return nil, fmt.Errorf("Duplicate app: %s", name)
 	}
 
-	_, err := a.dynamodb().PutItem(req)
-	return app, err
+	if _, err := a.ResourceCreate(stackNameForApp(name), "app", map[string]string{
+		"AppName":      name,
+		"StackName":    a.DeploymentName,
+		"BucketPrefix": fmt.Sprintf("%s/%s", a.SettingBucket, name),
+	}); err != nil {
+		return nil, fmt.Errorf("creating environment for %s. err: %v", name, err)
+	}
+
+	app := &pb.App{Name: name, Status: pb.StatusCreated}
+	return app, a.saveApp(app)
 }
 
 func (a *AwsCloud) AppRestart(app string) error {
@@ -63,6 +66,11 @@ func (a *AwsCloud) AppRestart(app string) error {
 }
 
 func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
+	cfname := cfNameForApp(a.DeploymentName, name)
+	if _, err := a.describeStack(cfname); err != nil {
+		return nil, fmt.Errorf("no such app found: %s", name)
+	}
+
 	req := &dynamodb.GetItemInput{
 		ConsistentRead: aws.Bool(true),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -96,6 +104,10 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 }
 
 func (a *AwsCloud) AppDelete(name string) error {
+	if err := a.ResourceDelete(stackNameForApp(name)); err != nil {
+		return err
+	}
+
 	_, err := a.dynamodb().DeleteItem(&dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"name": {S: aws.String(name)},
@@ -130,4 +142,12 @@ func (p *AwsCloud) saveApp(a *pb.App) error {
 
 	_, err := p.dynamodb().PutItem(req)
 	return err
+}
+
+func stackNameForApp(a string) string {
+	return fmt.Sprintf("app-%s", a)
+}
+
+func cfNameForApp(a, b string) string {
+	return fmt.Sprintf("%s-app-%s", a, b)
 }

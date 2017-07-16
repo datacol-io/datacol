@@ -25,7 +25,9 @@ func (a *AwsCloud) ReleaseDelete(app, id string) error {
 }
 
 func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
-	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s-%s", os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(), b.App, b.Id)
+	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
+		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(b.App), b.Id,
+	)
 	log.Debugf("---- Docker Image: %s", image)
 
 	envVars, err := a.EnvironmentGet(b.App)

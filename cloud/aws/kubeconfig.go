@@ -36,7 +36,7 @@ func (p *AwsCloud) K8sConfigPath() (string, error) {
 }
 
 func (p *AwsCloud) masterPrivateIp() (string, error) {
-	s, err := p.describeStack()
+	s, err := p.describeStack("")
 	if err != nil {
 		return "", err
 	}

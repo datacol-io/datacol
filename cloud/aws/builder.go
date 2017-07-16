@@ -18,12 +18,12 @@ import (
 	"time"
 )
 
-func (a *AwsCloud) ecrRepository() string {
-	return fmt.Sprintf("%s-repo", a.DeploymentName)
+func (a *AwsCloud) ecrRepository(n string) string {
+	return fmt.Sprintf("%s-%s-repo", a.DeploymentName, n)
 }
 
-func (a *AwsCloud) codebuildProjectName() string {
-	return fmt.Sprintf("%s-code-builder", a.DeploymentName)
+func (a *AwsCloud) codebuildProjectName(n string) string {
+	return fmt.Sprintf("%s-%s-code-builder", a.DeploymentName, n)
 }
 
 func (a *AwsCloud) dynamoBuilds() string {
@@ -109,7 +109,7 @@ func (a *AwsCloud) BuildCreate(app, gzipPath string) (*pb.Build, error) {
 	if _, err := a.s3().PutObject(&s3.PutObjectInput{
 		Body:   fileBytes,
 		Bucket: aws.String(a.codeBuildBucket()),
-		Key:    aws.String("source.zip"),
+		Key:    aws.String(app + "/source.zip"),
 	}); err != nil {
 		return nil, fmt.Errorf("uploading source to s3 err: %v", err)
 	}
@@ -127,7 +127,7 @@ func (a *AwsCloud) BuildCreate(app, gzipPath string) (*pb.Build, error) {
 
 	log.Infof("Starting the build ...")
 	ret, err := a.codebuild().StartBuild(&codebuild.StartBuildInput{
-		ProjectName: aws.String(a.codebuildProjectName()),
+		ProjectName: aws.String(a.codebuildProjectName(app)),
 		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{
 			{
 				Name:  aws.String("APP"),

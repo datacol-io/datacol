@@ -15,8 +15,12 @@ import (
 	"io"
 )
 
+func (a *AwsCloud) s3KeyForEnv(name string) string {
+	return fmt.Sprintf("%s/.env", name)
+}
+
 func (a *AwsCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	s3key := fmt.Sprintf("%s.env", name)
+	s3key := a.s3KeyForEnv(name)
 	data, err := a.s3Get(a.SettingBucket, s3key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
@@ -29,11 +33,11 @@ func (a *AwsCloud) EnvironmentGet(name string) (pb.Environment, error) {
 }
 
 func (a *AwsCloud) EnvironmentSet(name string, r io.Reader) error {
-	s3key := fmt.Sprintf("%s.env", name)
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
+	s3key := a.s3KeyForEnv(name)
 	return a.s3Put(a.SettingBucket, s3key, data)
 }
 

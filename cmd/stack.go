@@ -46,7 +46,7 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "zone",
-				Usage: "zone for stack",
+				Usage: "default availability zone for stack",
 				Value: "",
 			},
 			&cli.StringFlag{
@@ -354,7 +354,7 @@ func awsTeardown() error {
 		return err
 	}
 
-	if err := aws.TeardownStack(auth.Name, auth.Region, creds); err != nil {
+	if err := aws.TeardownStack(auth.Name, auth.Bucket, auth.Region, creds); err != nil {
 		return err
 	}
 
