@@ -1,25 +1,27 @@
 package gcp
 
 import (
-	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
-	"golang.org/x/oauth2/google"
-	csm "google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/compute/v1"
-	dm "google.golang.org/api/deploymentmanager/v2"
-	"google.golang.org/api/googleapi"
-	"google.golang.org/api/option"
-	smm "google.golang.org/api/servicemanagement/v1"
-	"google.golang.org/api/storage/v1"
-	"google.golang.org/grpc"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"cloud.google.com/go/datastore"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
+	"google.golang.org/api/storage/v1"
+	"google.golang.org/grpc"
+
+	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
+	csm "google.golang.org/api/cloudresourcemanager/v1"
+	dm "google.golang.org/api/deploymentmanager/v2"
+	smm "google.golang.org/api/servicemanagement/v1"
 )
 
 const (

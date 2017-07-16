@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (

@@ -92,6 +92,7 @@ func cmdResourceList(c *cli.Context) error {
 		return err
 	}
 
+	fmt.Printf("Cloud: %s\n", api.Provider())
 	fmt.Printf("Name: %s\n", api.StackName)
 
 	if api.IsGCP() {
@@ -165,12 +166,22 @@ func cmdResourceDelete(c *cli.Context) error {
 }
 
 func cmdResourceCreate(c *cli.Context) error {
+	api, close := getApiClient(c)
+	defer close()
+
 	t, err := checkResourceType(c.Args().First())
 	if err != nil {
 		return err
 	}
 
-	args := append(strings.Split(t.awsArgs, ","), c.Args().Tail()...)
+	var arguments string
+	if api.IsGCP() {
+		arguments = t.gcpArgs
+	} else {
+		arguments = t.awsArgs
+	}
+
+	args := append(strings.Split(arguments, ","), c.Args().Tail()...)
 	stdcli.EnsureOnlyFlags(c, args)
 	options := stdcli.FlagsToOptions(c, args)
 
@@ -194,9 +205,6 @@ func cmdResourceCreate(c *cli.Context) error {
 	}
 	fmt.Printf(")... ")
 	fmt.Printf("\n")
-
-	api, close := getApiClient(c)
-	defer close()
 
 	rs, err := api.CreateResource(t.name, options)
 	if err != nil {

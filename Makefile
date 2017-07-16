@@ -23,6 +23,8 @@ api:
 
 gen:
 	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && gsed -i 's/main/aws/g' cloud/aws/templates.go
+	go-bindata -o cloud/google/templates.go cloud/google/templates/ && gsed -i 's/main/google/g' cloud/google/templates.go
+
 	## building api/models/*.proto
 	protoc -I $(GOPATH)/src -I ./vendor/ \
 		-I $(MODEL_PROTO_DIR) \

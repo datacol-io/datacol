@@ -7,9 +7,10 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/skratchdot/open-golang/open"
+
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
-	"github.com/skratchdot/open-golang/open"
 	goauth2 "golang.org/x/oauth2"
 	oauth2_google "golang.org/x/oauth2/google"
 	crmgr "google.golang.org/api/cloudresourcemanager/v1"

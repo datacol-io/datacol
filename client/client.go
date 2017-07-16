@@ -40,6 +40,17 @@ func (c *Client) IsAWS() bool {
 	return !c.IsGCP()
 }
 
+func (c *Client) Provider() string {
+	if c.IsAWS() {
+		return "AWS"
+	}
+	if c.IsGCP() {
+		return "GCP"
+	}
+
+	return "Unknown"
+}
+
 func NewClient(version string) (*Client, func() error) {
 	auth, _ := stdcli.GetAuthOrDie()
 

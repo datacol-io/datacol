@@ -3,19 +3,20 @@ package gcp
 import (
 	"bufio"
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"context"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	"google.golang.org/api/compute/v1"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 	"text/template"
+
+	"cloud.google.com/go/datastore"
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
+	"google.golang.org/api/compute/v1"
 )
 
 func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {

@@ -23,8 +23,10 @@ var (
 	credNotFound    = errors.New("Invalid credentials")
 	projectNotFound = errors.New("Invalid project id")
 
+	defaultGcpZone         = "asia-southeast1-a"
 	defaultAWSZone         = "ap-southeast-1a"
 	defaultAWSInstanceType = "t2.medium"
+	defaultGCPInstanceType = "n1-standard-1"
 )
 
 func init() {
@@ -158,7 +160,7 @@ func cmdAWSStackCreate(c *cli.Context) error {
 }
 
 func cmdGCPStackCreate(c *cli.Context) error {
-	stackName := c.String("stack")
+	stackName := c.String("name")
 	zone := c.String("zone")
 	nodes := c.Int("nodes")
 	bucket := c.String("bucket")
@@ -181,6 +183,22 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		Version:        stdcli.Version,
 		ApiKey:         password,
 		ClusterVersion: c.String("cluster-version"),
+	}
+
+	if options.Zone == "" {
+		options.Zone = defaultGcpZone
+	}
+
+	if options.Region == "" {
+		options.Region = getGcpRegionFromZone(options.Zone)
+	}
+
+	if options.MachineType == "" {
+		options.MachineType = defaultGCPInstanceType
+	}
+
+	if len(options.Bucket) == 0 {
+		options.Bucket = fmt.Sprintf("datacol-%s", options.Name)
 	}
 
 	if len(options.ApiKey) == 0 {
@@ -210,7 +228,7 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 	}
 
 	if opts.Region == "" {
-		opts.Region = getRegionFromZone(opts.Zone)
+		opts.Region = getAwsRegionFromZone(opts.Zone)
 	}
 
 	if opts.MachineType == "" {
@@ -447,6 +465,10 @@ func dumpGcpAuthParams(name, project, bucket, host, api_key string) error {
 	return stdcli.SetAuth(auth)
 }
 
-func getRegionFromZone(zone string) string {
+func getAwsRegionFromZone(zone string) string {
 	return zone[0 : len(zone)-1]
+}
+
+func getGcpRegionFromZone(zone string) string {
+	return zone[0 : len(zone)-2]
 }

@@ -1,0 +1,24 @@
+- type: sqladmin.v1beta4.instance
+  name: '{{ .name }}'
+  properties:
+    region: '{{ .region }}'
+    databaseVersion: '{{ .db_version }}'
+    instanceType: CLOUD_SQL_INSTANCE
+    settings:
+      tier: '{{ .tier }}'
+      backupConfiguration:
+        enabled: true
+        binaryLogEnabled: true
+      ipConfiguration:
+        ipv4Enabled: false
+        requireSsl: false
+      dataDiskSizeGb: 10
+      dataDiskType: PD_SSD
+      activationPolicy: '{{ .activation_policy }}'
+      locationPreference:
+        zone: {{ .zone }}
+- type: sqladmin.v1beta4.database
+  name: {{ .name }}-{{ .database }}
+  properties:
+    name: {{ .database }}
+    instance: $(ref.{{ .name }}.name)

@@ -65,10 +65,10 @@ func (g *GCPCloud) ResourceDelete(name string) error {
 	}
 
 	c, err := yaml.Marshal(mc)
-	content := string(c)
 	if err != nil {
 		return err
 	}
+	content := string(c)
 
 	log.Debugf("content: %+v", content)
 	if err := g.updateDeployment(service, dp, manifest, content); err != nil {
@@ -122,13 +122,11 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
 	rs := &pb.Resource{Name: name, Kind: kind}
 
-	var sqlj2 string
 	switch kind {
 	case "mysql":
 		params["region"] = getGcpRegion(g.Zone)
 		params["zone"] = g.Zone
 		params["database"] = databaseName
-		sqlj2 = compileTmpl(mysqlInstanceYAML, params)
 	case "postgres":
 		params["region"] = getGcpRegion(g.Zone)
 		params["zone"] = g.Zone
@@ -148,9 +146,13 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 			params["tier"] = fmt.Sprintf("db-custom-%s-%s", c, m)
 		}
 
-		sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
 	default:
 		log.Fatal(fmt.Errorf("%s is not supported yet.", kind))
+	}
+
+	sqlj2, err := buildTemplate(kind, params)
+	if err != nil {
+		return nil, err
 	}
 
 	content := manifest.ExpandedConfig + sqlj2
