@@ -2,10 +2,44 @@ package kube
 
 import (
 	"fmt"
+
 	"k8s.io/client-go/kubernetes"
+
+	log "github.com/Sirupsen/logrus"
 	kerrors "k8s.io/client-go/pkg/api/errors"
 	kapi "k8s.io/client-go/pkg/api/v1"
 )
+
+func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) error {
+	dp, err := c.Extensions().Deployments(ns).Get(app)
+	if err != nil {
+		return err
+	}
+
+	for i, c := range dp.Spec.Template.Spec.Containers {
+		if c.Name == app {
+			envVars := []kapi.EnvVar{}
+			for key, value := range env {
+				if len(key) > 0 {
+					envVars = append(envVars, kapi.EnvVar{Name: key, Value: value})
+				}
+			}
+			log.Debugf("setting env vars:\n %s", toJson(env))
+			c.Env = envVars
+
+			dp.Spec.Template.Spec.Containers[i] = c
+		}
+	}
+
+	if _, err := c.Extensions().Deployments(ns).Update(dp); err != nil {
+		return err
+	}
+
+	WaitUntilUpdated(c, ns, app)
+	WaitUntilReady(c, ns, app)
+
+	return nil
+}
 
 func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error) {
 	var endpoint = ""

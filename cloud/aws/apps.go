@@ -2,9 +2,12 @@ package aws
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
@@ -63,7 +66,21 @@ func (a *AwsCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, er
 }
 
 func (a *AwsCloud) AppRestart(app string) error {
-	return nil
+	log.Debugf("Restarting %s", app)
+	ns := a.DeploymentName
+
+	kube, err := getKubeClientset(ns)
+	if err != nil {
+		return err
+	}
+
+	env, err := a.EnvironmentGet(app)
+	if err != nil {
+		return err
+	}
+
+	env["_RESTARTED"] = time.Now().Format("20060102150405")
+	return sched.SetPodEnv(kube, ns, app, env)
 }
 
 func (a *AwsCloud) AppGet(name string) (*pb.App, error) {

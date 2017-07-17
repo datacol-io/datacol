@@ -5,8 +5,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-	"k8s.io/client-go/pkg/api/v1"
-
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	kerrors "k8s.io/client-go/pkg/api/errors"
@@ -44,41 +42,13 @@ func (g *GCPCloud) AppRestart(app string) error {
 		return err
 	}
 
-	dp, err := kube.Extensions().Deployments(ns).Get(app)
-	if err != nil {
-		return err
-	}
-
 	env, err := g.EnvironmentGet(app)
 	if err != nil {
 		return err
 	}
 
 	env["_RESTARTED"] = time.Now().Format("20060102150405")
-
-	for i, c := range dp.Spec.Template.Spec.Containers {
-		if c.Name == app {
-			envVars := []v1.EnvVar{}
-			for key, value := range env {
-				if len(key) > 0 {
-					envVars = append(envVars, v1.EnvVar{Name: key, Value: value})
-				}
-			}
-			log.Debugf("setting env vars:\n %s", toJson(env))
-			c.Env = envVars
-
-			dp.Spec.Template.Spec.Containers[i] = c
-		}
-	}
-
-	if _, err := kube.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
-	}
-
-	sched.WaitUntilUpdated(kube, ns, app)
-	sched.WaitUntilReady(kube, ns, app)
-
-	return nil
+	return sched.SetPodEnv(kube, ns, app, env)
 }
 
 func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
