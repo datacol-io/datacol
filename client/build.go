@@ -10,7 +10,7 @@ import (
 const chunkSize = 1024 * 1024 * 1
 
 func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
-	stream, err := c.ProviderServiceClient.BuildCreate(ctx)
+	stream, err := c.ProviderServiceClient.BuildImport(ctx)
 	defer stream.CloseSend()
 
 	if err != nil {
@@ -44,6 +44,13 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 
 	fmt.Printf(" OK\n")
 	return stream.CloseAndRecv()
+}
+
+func (c *Client) CreateBuildGit(app *pb.App, version string) (*pb.Build, error) {
+	return c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
+		App:     app.Name,
+		Version: version,
+	})
 }
 
 func (c *Client) GetBuilds(app string) (pb.Builds, error) {

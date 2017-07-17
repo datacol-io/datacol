@@ -19,6 +19,7 @@ message ListRequest {
 
 message AppRequest {
   string name = 1;
+  string repo_url = 2;
 }
 
 message AppListResponse {
@@ -42,6 +43,7 @@ message CreateBuildRequest {
   string app = 1;
   bytes data = 2;
   int32 size = 3;
+  string version = 4;
 }
 
 message AppIdRequest {
@@ -161,9 +163,15 @@ service ProviderService {
   }
 
   //Build Api
-  rpc BuildCreate(stream CreateBuildRequest) returns (models.Build) {
+  rpc BuildCreate(CreateBuildRequest) returns (models.Build) {
     option (google.api.http) = {
       post: "/v1/builds"
+    };
+  }
+
+  rpc BuildImport(stream CreateBuildRequest) returns (models.Build) {
+    option (google.api.http) = {
+      post: "/v1/builds/import"
     };
   }
 

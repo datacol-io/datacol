@@ -172,6 +172,22 @@
         ]
       }
     },
+    "/v1/builds/import": {
+      "post": {
+        "operationId": "BuildImport",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsBuild"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/builds/{id}": {
       "get": {
         "operationId": "BuildGet",
@@ -668,6 +684,10 @@
         "name": {
           "type": "string",
           "format": "string"
+        },
+        "repo_url": {
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -809,6 +829,10 @@
         "size": {
           "type": "integer",
           "format": "int32"
+        },
+        "version": {
+          "type": "string",
+          "format": "string"
         }
       }
     },

@@ -20,7 +20,13 @@ func init() {
 			&cli.Command{
 				Name:   "create",
 				Action: cmdAppCreate,
-				Flags:  []cli.Flag{appFlag},
+				Flags: []cli.Flag{
+					appFlag,
+					&cli.StringFlag{
+						Name:  "repo-url",
+						Usage: "Repository url (github or codecommit)",
+					},
+				},
 			},
 			&cli.Command{
 				Name:   "delete",
@@ -97,7 +103,8 @@ func cmdAppCreate(c *cli.Context) error {
 	api, close := getApiClient(c)
 	defer close()
 
-	app, err := api.CreateApp(name)
+	app, err := api.CreateApp(name, c.String("repo-url"))
+
 	if err != nil {
 		return err
 	}

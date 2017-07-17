@@ -146,7 +146,9 @@ func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthRespo
 }
 
 func (s *Server) AppCreate(ctx context.Context, req *pbs.AppRequest) (*pb.App, error) {
-	return s.Provider.AppCreate(req.Name)
+	return s.Provider.AppCreate(req.Name, &pb.AppCreateOptions{
+		RepoUrl: req.RepoUrl,
+	})
 }
 
 func (s *Server) AppGet(ctx context.Context, req *pbs.AppRequest) (*pb.App, error) {
@@ -180,7 +182,13 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 	return &empty.Empty{}, nil
 }
 
-func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error {
+func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
+	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
+		Version: req.Version,
+	})
+}
+
+func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error {
 	var app string
 	fd, err := ioutil.TempFile(os.TempDir(), "upload-")
 	if err != nil {
@@ -204,7 +212,7 @@ func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error
 		app = req.App
 	}
 
-	b, err := s.Provider.BuildCreate(app, fd.Name())
+	b, err := s.Provider.BuildImport(app, fd.Name())
 	if err != nil {
 		return internalError(err, "failed to upload source.")
 	}

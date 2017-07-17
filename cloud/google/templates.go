@@ -2,7 +2,6 @@
 // sources:
 // cloud/google/templates/config.j2
 // cloud/google/templates/container-vm.j2
-// cloud/google/templates/kubeconfig.tmpl
 // cloud/google/templates/mysql.tmpl
 // cloud/google/templates/postgres.tmpl
 // cloud/google/templates/registry.j2
@@ -113,26 +112,6 @@ func cloudGoogleTemplatesContainerVmJ2() (*asset, error) {
 	return a, nil
 }
 
-var _cloudGoogleTemplatesKubeconfigTmpl = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x01\x00\x00\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00")
-
-func cloudGoogleTemplatesKubeconfigTmplBytes() ([]byte, error) {
-	return bindataRead(
-		_cloudGoogleTemplatesKubeconfigTmpl,
-		"cloud/google/templates/kubeconfig.tmpl",
-	)
-}
-
-func cloudGoogleTemplatesKubeconfigTmpl() (*asset, error) {
-	bytes, err := cloudGoogleTemplatesKubeconfigTmplBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "cloud/google/templates/kubeconfig.tmpl", size: 0, mode: os.FileMode(420), modTime: time.Unix(1500217549, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
 var _cloudGoogleTemplatesMysqlTmpl = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x74\x52\xc1\x6a\xdc\x30\x10\xbd\xfb\x2b\xe6\x50\x48\x7b\xc8\xd2\xc0\x1e\x8a\x6e\x65\xbd\x84\xc2\xe2\xa4\x38\xed\x55\x48\xf2\xd8\x1d\xa2\x95\x1c\x49\x36\x6c\x82\xff\xbd\x58\xd2\xda\x9b\x36\x7b\xb2\xfc\xde\x9b\x37\x23\xcd\xbb\x85\x70\xea\x91\x81\x7f\xd1\xa2\x39\x92\xd9\x8c\x77\x12\x83\xd8\x6e\xc8\xf8\x20\x8c\xc2\x02\xc0\x88\x23\x32\xb8\x79\x7b\x83\xcd\x7c\x84\x69\xba\x29\x00\x7a\x67\x7b\x74\x81\xd0\xb3\x02\x00\xc0\x61\x47\xd6\x64\x5d\xfa\xc9\x4a\x80\x46\x04\x21\x85\xc7\xdf\xe8\xfc\x2a\x6a\x24\x1f\x13\xb0\x08\xcf\x5d\x9f\xe2\x50\xbb\xc3\xc3\xaf\x92\xd7\x3f\x0f\xfc\x47\x55\x3f\x7d\xaf\x76\xfb\x28\x92\x42\x3d\xa3\x69\x92\xa6\xde\xef\x1e\xaa\x92\xdf\xef\xab\xc8\x79\x0c\x81\x4c\x97\x67\x02\x08\x84\x2e\xb7\x9b\x8f\x4b\xa3\xe4\x32\xf4\x3b\x6b\x5a\xea\x06\x27\xc2\x3c\x57\xa6\x00\xd0\x08\xa9\xb1\x61\xd0\x0a\xed\x71\x81\x25\x19\xe1\x4e\x07\xdb\xed\x3f\xe2\xe9\x9a\x1b\xf5\xe3\x76\xa9\x08\x6e\x58\x0d\x1d\xbe\x0c\xe4\xb0\xf6\xfa\x1d\x31\xbf\x57\x49\xfe\xb9\xa6\x57\xbc\x97\x0c\xee\xbe\xfe\x43\xa4\xbb\x3f\x96\xbc\xae\xcb\x4c\x09\x15\x68\x8c\x8d\x1f\xad\x26\x75\xca\xb7\x5e\x61\xde\x47\xfc\xe2\x09\xb4\x55\xa9\xc0\x61\x8b\x0e\x8d\xc2\x75\xe6\x57\x6b\x90\xc1\xec\x30\x9f\x60\x9a\x8a\xab\x51\x39\x6f\x77\x89\xca\x45\x52\x6e\xe3\xa2\xb3\x60\x76\xf9\x3f\x38\x6b\xcd\x7b\xdd\x9a\x06\x06\x9f\x3e\x3b\x6c\x37\x17\xbe\xf1\xfb\x25\xaa\xd4\x1f\xe1\x3c\x06\x06\x43\x68\xbf\x1d\xe5\x36\x81\x56\xeb\xb4\x85\x33\xcc\x3b\x34\xe8\x84\xe6\x8a\x8a\xbf\x01\x00\x00\xff\xff\xc5\x63\xff\x46\xf6\x02\x00\x00")
 
 func cloudGoogleTemplatesMysqlTmplBytes() ([]byte, error) {
@@ -148,7 +127,7 @@ func cloudGoogleTemplatesMysqlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 758, mode: os.FileMode(420), modTime: time.Unix(1500217770, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 758, mode: os.FileMode(420), modTime: time.Unix(1500220644, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -168,7 +147,7 @@ func cloudGoogleTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 674, mode: os.FileMode(420), modTime: time.Unix(1500217629, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 674, mode: os.FileMode(420), modTime: time.Unix(1500220644, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -247,7 +226,6 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"cloud/google/templates/config.j2": cloudGoogleTemplatesConfigJ2,
 	"cloud/google/templates/container-vm.j2": cloudGoogleTemplatesContainerVmJ2,
-	"cloud/google/templates/kubeconfig.tmpl": cloudGoogleTemplatesKubeconfigTmpl,
 	"cloud/google/templates/mysql.tmpl": cloudGoogleTemplatesMysqlTmpl,
 	"cloud/google/templates/postgres.tmpl": cloudGoogleTemplatesPostgresTmpl,
 	"cloud/google/templates/registry.j2": cloudGoogleTemplatesRegistryJ2,
@@ -298,7 +276,6 @@ var _bintree = &bintree{nil, map[string]*bintree{
 			"templates": &bintree{nil, map[string]*bintree{
 				"config.j2": &bintree{cloudGoogleTemplatesConfigJ2, map[string]*bintree{}},
 				"container-vm.j2": &bintree{cloudGoogleTemplatesContainerVmJ2, map[string]*bintree{}},
-				"kubeconfig.tmpl": &bintree{cloudGoogleTemplatesKubeconfigTmpl, map[string]*bintree{}},
 				"mysql.tmpl": &bintree{cloudGoogleTemplatesMysqlTmpl, map[string]*bintree{}},
 				"postgres.tmpl": &bintree{cloudGoogleTemplatesPostgresTmpl, map[string]*bintree{}},
 				"registry.j2": &bintree{cloudGoogleTemplatesRegistryJ2, map[string]*bintree{}},

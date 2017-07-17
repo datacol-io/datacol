@@ -44,15 +44,16 @@ func (a *AwsCloud) AppList() (pb.Apps, error) {
 	return apps, nil
 }
 
-func (a *AwsCloud) AppCreate(name string) (*pb.App, error) {
+func (a *AwsCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, error) {
 	if _, err := a.AppGet(name); err == nil {
 		return nil, fmt.Errorf("Duplicate app: %s", name)
 	}
 
 	if _, err := a.ResourceCreate(stackNameForApp(name), "app", map[string]string{
-		"AppName":      name,
-		"StackName":    a.DeploymentName,
-		"BucketPrefix": fmt.Sprintf("%s/%s", a.SettingBucket, name),
+		"AppName":       name,
+		"StackName":     a.DeploymentName,
+		"BucketPrefix":  fmt.Sprintf("%s/%s", a.SettingBucket, name),
+		"RepositoryUrl": req.RepoUrl,
 	}); err != nil {
 		return nil, fmt.Errorf("creating environment for %s. err: %v", name, err)
 	}

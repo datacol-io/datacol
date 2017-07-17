@@ -1,7 +1,6 @@
 package google
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -82,26 +81,11 @@ func (g *GCPCloud) ReleaseDelete(app, id string) error {
 	return g.datastore().Delete(ctx, key)
 }
 
-func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
-	service := g.storage()
-	bucket := g.BucketName
-
-	log.Infof("Pushing code to gs://%s/%s", bucket, gskey)
-
-	object := &storage.Object{
-		Bucket:      bucket,
-		Name:        gskey,
-		ContentType: "application/gzip",
-	}
-
-	if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil {
-		return fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
-	}
-
-	return nil
+func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
+	return nil, fmt.Errorf("not implemented.")
 }
 
-func (g *GCPCloud) BuildCreate(app, filename string) (*pb.Build, error) {
+func (g *GCPCloud) BuildImport(app, filename string) (*pb.Build, error) {
 	service := g.storage()
 	bucket := g.BucketName
 	id := generateId("B", 5)

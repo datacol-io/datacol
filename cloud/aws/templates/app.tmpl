@@ -1,26 +1,41 @@
 {{ define "resource" }}
   {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Parameters":{
+    "Parameters": {
       "AppName": {
         "Type": "String",
         "Description": "Name of application"
       },
-      "BucketPrefix":{
+      "BucketPrefix": {
         "Type": "String",
         "Description": "path prefix of bucket to look for source-code"
       },
       "StackName": {
         "Type": "String",
         "Description": "Name of base stack name"
+      },
+      "RepositoryUrl": {
+        "Type": "String",
+        "Description": "Name of codecommit repository"
       }
     },
-    "Resources":{
-      "ECRRepository":{
+    "Conditions": {
+      "HaveCodeCommit": {
+        "Fn::Not": [{
+          "Fn::Equals": [{"Ref": "RepositoryUrl"}, "false"]
+        }]
+      }
+    },
+    "Resources": {
+      "ECRRepository": {
         "Type": "AWS::ECR::Repository",
         "Properties": {
-          "RepositoryName": { 
-            "Fn::Join": ["-", [{ "Ref": "StackName" }, { "Ref": "AppName"}, "repo" ]]
+          "RepositoryName": {
+            "Fn::Join": ["-", [{
+              "Ref": "StackName"
+            }, {
+              "Ref": "AppName"
+            }, "repo"]]
           },
           "RepositoryPolicyText": {
             "Version": "2008-10-17",
@@ -38,67 +53,69 @@
         "Properties": {
           "AssumeRolePolicyDocument": {
             "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal":{
-                  "Service": ["codebuild.amazonaws.com"]
-                },
-                "Action": ["sts:AssumeRole"]
-              }
-            ]
-          },
-          "Policies":[
-            { 
-              "PolicyName": {
-                "Fn::Join": ["-", [{ "Ref": "StackName"}, { "Ref": "AppName"}, "policy"]]
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["codebuild.amazonaws.com"]
               },
-              "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement":[
-                  {
-                    "Effect": "Allow",
-                    "Action":[
-                        "logs:CreateLogGroup",
-                        "logs:CreateLogStream",
-                        "logs:PutLogEvents"
-                    ],
-                    "Resource": "arn:aws:logs:*:*:*"
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": ["ecr:GetAuthorizationToken"],
-                    "Resource": "*"
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": ["s3:GetObject"],
-                    "Resource": { 
-                      "Fn::Sub": "arn:aws:s3:::${BucketPrefix}/*" 
-                    }
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Resource": {
-                      "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}/*"
-                    },
-                    "Action":[
-                      "ecr:GetDownloadUrlForLayer",
-                      "ecr:BatchGetImage",
-                      "ecr:BatchCheckLayerAvailability",
-                      "ecr:PutImage",
-                      "ecr:InitiateLayerUpload",
-                      "ecr:UploadLayerPart",
-                      "ecr:CompleteLayerUpload"
-                    ]
+              "Action": ["sts:AssumeRole"]
+            }]
+          },
+          "Policies": [{
+            "PolicyName": {
+              "Fn::Join": ["-", [{
+                "Ref": "StackName"
+              }, {
+                "Ref": "AppName"
+              }, "policy"]]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [{
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetAuthorizationToken",
+                    "codecommit:GitPull"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject"],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:s3:::${BucketPrefix}/*"
                   }
-                ]
-              }
+                },
+                {
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}/*"
+                  },
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:PutImage",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload"
+                  ]
+                }
+              ]
             }
-          ]
+          }]
         }
       },
-      "CloudBuildProject":{
+      "CloudBuildProject": {
         "Type": "AWS::CodeBuild::Project",
         "Properties": {
           "Name": {
@@ -112,41 +129,58 @@
             "ComputeType": "BUILD_GENERAL1_MEDIUM",
             "Image": "aws/codebuild/docker:1.12.1",
             "Type": "LINUX_CONTAINER",
-            "EnvironmentVariables": [
-              {
+            "EnvironmentVariables": [{
                 "Name": "IMAGE_REPO_NAME",
-                "Value": { "Ref" : "ECRRepository" }
+                "Value": {
+                  "Ref": "ECRRepository"
+                }
               },
               {
                 "Name": "REGION",
-                "Value": { "Ref": "AWS::Region" }
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
               },
               {
                 "Name": "ACCOUNT_ID",
-                "Value": { "Ref": "AWS::AccountId" }
-              }, 
+                "Value": {
+                  "Ref": "AWS::AccountId"
+                }
+              },
               {
                 "Name": "IMAGE_TAG",
                 "Value": "latest"
               },
               {
                 "Name": "APP",
-                "Value": { "Ref": "AppName" }
+                "Value": {
+                  "Ref": "AppName"
+                }
               }
             ]
           },
-          "Artifacts":{
+          "Artifacts": {
             "Type": "NO_ARTIFACTS"
           },
           "Source": {
-            "Type": "S3",
-            "Location": { "Fn::Sub": "${BucketPrefix}/source.zip" },
+            "Type": {
+              "Fn::If": ["HaveCodeCommit", "CODECOMMIT", "S3"]
+            },
+            "Location": {
+              "Fn::If": [
+                "HaveCodeCommit", {
+                  "Ref": "RepositoryUrl"
+                }, {
+                  "Fn::Sub": "${BucketPrefix}/source.zip"
+                }
+              ]
+            },
             "BuildSpec": {
               "Fn::Join": ["\n", [
                 "version: 0.2",
                 "phases:",
                 " pre_build:",
-                "   commands:", 
+                "   commands:",
                 "     - echo Logging into Amazon ECR...",
                 "     - $(aws ecr get-login --region $REGION)",
                 " build:",
@@ -161,8 +195,7 @@
                 "     - echo Pushing Docker image",
                 "     - docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG",
                 "     - echo ***** Image Pushed *****"
-                ]
-              ]
+              ]]
             }
           }
         }

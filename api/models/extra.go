@@ -45,3 +45,14 @@ type LogStreamOptions struct {
 	Follow bool
 	Since  time.Duration
 }
+
+type AppCreateOptions struct {
+	RepoUrl string
+	Auth    map[string]string
+}
+
+type CreateBuildOptions struct {
+	Version     string
+	Auther      string
+	Description string
+}

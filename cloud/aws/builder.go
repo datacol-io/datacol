@@ -87,7 +87,7 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	return nil, nil
 }
 
-func (a *AwsCloud) BuildCreate(app, gzipPath string) (*pb.Build, error) {
+func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
 	zipPath, err := convertGzipToZip(gzipPath)
 	if err != nil {
 		return nil, fmt.Errorf("converting gzip to zip archive. err: %v", err)
@@ -125,37 +125,22 @@ func (a *AwsCloud) BuildCreate(app, gzipPath string) (*pb.Build, error) {
 		return nil, fmt.Errorf("saving to dynamodb err: %v", err)
 	}
 
-	log.Infof("Starting the build ...")
-	ret, err := a.codebuild().StartBuild(&codebuild.StartBuildInput{
-		ProjectName: aws.String(a.codebuildProjectName(app)),
-		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{
-			{
-				Name:  aws.String("APP"),
-				Value: aws.String(build.App),
-			}, {
-				Name:  aws.String("IMAGE_TAG"),
-				Value: aws.String(build.Id),
-			},
-		},
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	build.RemoteId = *ret.Build.Id
-	build.Status = *ret.Build.BuildStatus
-
-	log.Debugf("persisting build: %+v", build)
-	if err = a.buildSave(build); err != nil {
-		return nil, err
-	}
-
-	return build, nil
+	return build, a.startBuild(build, &pb.CreateBuildOptions{})
 }
 
-func (a *AwsCloud) BuildImport(key string, tarf []byte) error {
-	return nil
+func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
+	build := &pb.Build{
+		App:       app,
+		Id:        generateId("B", 5),
+		Status:    pb.StatusCreated,
+		CreatedAt: timestampNow(),
+	}
+
+	if err := a.buildSave(build); err != nil {
+		return nil, fmt.Errorf("saving to dynamodb err: %v", err)
+	}
+
+	return build, a.startBuild(build, req)
 }
 
 func (a *AwsCloud) BuildLogs(app, id string, index int) (int, []string, error) {
@@ -261,4 +246,33 @@ func (a *AwsCloud) buildLogs(svc *s3.S3, bucket, key *string, bid string, index 
 	}
 
 	return len(parts) - 1, lines, nil
+}
+
+func (a *AwsCloud) startBuild(build *pb.Build, req *pb.CreateBuildOptions) error {
+	log.Infof("Starting the build ...")
+
+	ret, err := a.codebuild().StartBuild(&codebuild.StartBuildInput{
+		ProjectName:   aws.String(a.codebuildProjectName(build.App)),
+		SourceVersion: aws.String(req.Version),
+		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{
+			{
+				Name:  aws.String("APP"),
+				Value: aws.String(build.App),
+			}, {
+				Name:  aws.String("IMAGE_TAG"),
+				Value: aws.String(build.Id),
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	build.RemoteId = *ret.Build.Id
+	build.Status = *ret.Build.BuildStatus
+
+	log.Debugf("Persisting build: %+v", build)
+
+	return a.buildSave(build)
 }

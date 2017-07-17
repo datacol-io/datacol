@@ -27,7 +27,7 @@ func (g *GCPCloud) AppList() (pb.Apps, error) {
 	return apps, nil
 }
 
-func (g *GCPCloud) AppCreate(name string) (*pb.App, error) {
+func (g *GCPCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, error) {
 	app := &pb.App{Name: name, Status: pb.StatusCreated}
 	ctx, key := g.nestedKey(appKind, name)
 	_, err := g.datastore().Put(ctx, key, app)
