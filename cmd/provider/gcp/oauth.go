@@ -7,9 +7,10 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/skratchdot/open-golang/open"
+
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
-	"github.com/skratchdot/open-golang/open"
 	goauth2 "golang.org/x/oauth2"
 	oauth2_google "golang.org/x/oauth2/google"
 	crmgr "google.golang.org/api/cloudresourcemanager/v1"
@@ -20,6 +21,12 @@ const (
 	googleOauth2ClientID     = "992213213700-ideosm7la1g4jf2rghn0n89achgstehb.apps.googleusercontent.com"
 	googleOauth2ClientSecret = "JaJjVGA5c6tSdluQdfFqNau8"
 	saPrefix                 = "datacol"
+	welcomeMessage           = `Welcome to Datacol CLI. This command will guide you through creating a new infrastructure inside your Google account. 
+It uses various Google services (like Container engine, Container builder, Deployment Manager etc) under the hood to 
+automate all away to give you a better deployment experience.
+
+Datacol CLI will authenticate with your Google Account and install the Datacol platform into your GCP account. 
+These credentials will only be used to communicate between this installer running on your computer and the Google platform.`
 )
 
 var (
@@ -39,6 +46,9 @@ type authPacket struct {
 }
 
 func CreateCredential(rackName string, optout bool) authPacket {
+	fmt.Printf(welcomeMessage)
+	prompt("")
+
 	emailOptin = !optout
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

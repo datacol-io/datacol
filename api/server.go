@@ -1,38 +1,65 @@
 package main
 
 import (
-	"cloud.google.com/go/compute/metadata"
 	"fmt"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/google"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"io"
+	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"cloud.google.com/go/compute/metadata"
+	"github.com/dinesh/datacol/cloud"
+	"github.com/dinesh/datacol/cloud/google"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
+	daws "github.com/dinesh/datacol/cloud/aws"
 )
 
 func newServer() *Server {
-	var password, bucket, name, zone, projectId, projectNumber string
+	var password, name string
+	var provider cloud.Provider
 
-	if metadata.OnGCE() {
-		password = getAttr("DATACOL_API_KEY")
-		bucket = getAttr("DATACOL_BUCKET")
-		name = getAttr("DATACOL_STACK")
-		z, err := metadata.Zone()
-		if err != nil {
-			log.Fatal(err)
+	cid, ok := os.LookupEnv("DATACOL_PROVIDER")
+	if !ok {
+		log.Fatalf("Missing provider env var.")
+	}
+
+	switch cid {
+	case "aws":
+		password = os.Getenv("DATACOL_API_KEY")
+		name = os.Getenv("DATACOL_STACK")
+		region := os.Getenv("AWS_REGION")
+
+		if len(name) == 0 || len(password) == 0 {
+			log.Fatal("unable to find DATACOL_STACK or DATACOL_API_KEY env vars.")
 		}
-		zone = z
 
-		projectId, err = metadata.ProjectID()
+		if region == "" {
+			log.Fatal("AWS_REGION env var not found")
+		}
+
+		provider = &daws.AwsCloud{
+			DeploymentName: name,
+			Region:         region,
+			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
+		}
+	case "gcp":
+		var bucket, zone, projectId, projectNumber string
+		password = os.Getenv("DATACOL_API_KEY")
+		bucket = os.Getenv("DATACOL_BUCKET")
+		name = os.Getenv("DATACOL_STACK")
+		zone = os.Getenv("GCP_DEFAULT_ZONE")
+		region := os.Getenv("GCP_REGION")
+
+		projectId, err := metadata.ProjectID()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -42,47 +69,36 @@ func newServer() *Server {
 			log.Fatal(err)
 		}
 
-	} else {
-		password = "secret"
-		bucket = "datacol-gcs-local"
-		name = "demo"
-		zone = "us-east1-b"
-		projectId = "gcs-local"
-		projectNumber = ""
+		provider = &google.GCPCloud{
+			Project:        projectId,
+			DeploymentName: name,
+			BucketName:     bucket,
+			DefaultZone:    zone,
+			Region:         region,
+			ProjectNumber:  projectNumber,
+		}
+
+	default:
+		log.Fatal(fmt.Errorf("Unsupported cloud: %s", cid))
 	}
 
-	provider := &google.GCPCloud{
-		Project:        projectId,
-		DeploymentName: name,
-		BucketName:     bucket,
-		Zone:           zone,
-		ProjectNumber:  projectNumber,
-	}
-
-	return &Server{Provider: provider, Password: password, Project: projectId, Zone: zone, StackName: name}
-}
-
-func getAttr(key string) string {
-	v, err := metadata.InstanceAttributeValue(key)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return v
+	return &Server{Provider: provider, Password: password, StackName: name}
 }
 
 type Server struct {
 	cloud.Provider
-	Password, StackName, Project, Zone string
+	StackName string
+	Password  string
 }
 
 func (s *Server) Run() error {
-	if _, err := kubeConfigPath(s.StackName, s.Project, s.Zone); err != nil {
-		return fmt.Errorf("caching kubernetes config err: %v", err)
+	if _, err := s.Provider.K8sConfigPath(); err != nil {
+		log.Warn(fmt.Errorf("caching kubernetes config err: %v", err))
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("opening rpcPort err: %v", err)
 	}
 
 	//todo: setting the max size to be 50MB. Add streaming for code upload
@@ -125,7 +141,9 @@ func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthRespo
 }
 
 func (s *Server) AppCreate(ctx context.Context, req *pbs.AppRequest) (*pb.App, error) {
-	return s.Provider.AppCreate(req.Name)
+	return s.Provider.AppCreate(req.Name, &pb.AppCreateOptions{
+		RepoUrl: req.RepoUrl,
+	})
 }
 
 func (s *Server) AppGet(ctx context.Context, req *pbs.AppRequest) (*pb.App, error) {
@@ -159,9 +177,19 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 	return &empty.Empty{}, nil
 }
 
-func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error {
-	var data []byte
+func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
+	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
+		Version: req.Version,
+	})
+}
+
+func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error {
 	var app string
+	fd, err := ioutil.TempFile(os.TempDir(), "upload-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(fd.Name())
 
 	for {
 		req, err := stream.Recv()
@@ -171,13 +199,15 @@ func (s *Server) BuildCreate(stream pbs.ProviderService_BuildCreateServer) error
 			}
 			return err
 		}
-		data = append(data, req.Data...)
+
+		if err = writeToFd(fd, req.Data); err != nil {
+			return err
+		}
+
 		app = req.App
 	}
 
-	log.Debugf("got all chunks")
-
-	b, err := s.Provider.BuildCreate(app, data)
+	b, err := s.Provider.BuildImport(app, fd.Name())
 	if err != nil {
 		return internalError(err, "failed to upload source.")
 	}
@@ -223,6 +253,31 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	}
 
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+}
+
+func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
+	reader, err := s.Provider.BuildLogsStream(req.Id)
+
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, 0, 4*1024)
+
+	for {
+		n, err := reader.Read(buf[:cap(buf)])
+		if err != nil {
+			if n == 0 || err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		buf = buf[:n]
+
+		if err := stream.Send(&pbs.LogStreamResponse{Data: buf}); err != nil {
+			return err
+		}
+	}
 }
 
 // Releases endpoints

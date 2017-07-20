@@ -10,6 +10,13 @@ import (
 var (
 	ConfigPath, ApprcPath string
 	SvaFilename           = "sva.json"
+	AwsCredentialFile     = "credentials.csv"
+	AwsKeyPemPath         = "key.pem"
+	SortableTime          = "20060102.150405.000000000"
+)
+
+const (
+	StatusCreated = "created"
 )
 
 func init() {
@@ -37,4 +44,15 @@ type ReleaseOptions struct {
 type LogStreamOptions struct {
 	Follow bool
 	Since  time.Duration
+}
+
+type AppCreateOptions struct {
+	RepoUrl string
+	Auth    map[string]string
+}
+
+type CreateBuildOptions struct {
+	Version     string
+	Auther      string
+	Description string
 }

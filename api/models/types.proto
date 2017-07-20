@@ -9,13 +9,9 @@ option (gogoproto.sizer_all) = true;
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 
-enum Status {
-  CREATED = 0;
-}
-
 message App {
   string name       = 1 [(gogoproto.moretags) = "datastore:\"name\""];
-  Status status     = 2 [(gogoproto.moretags) = "datastore:\"status\""];
+  string status     = 2 [(gogoproto.moretags) = "datastore:\"status\""];
   string release_id = 3 [(gogoproto.moretags) = "datastore:\"release_id,noindex\""];
   string endpoint   = 4 [(gogoproto.moretags) = "datastore:\"endpoint,noindex\""];
 }
@@ -32,19 +28,22 @@ message Release {
   string id        = 1 [(gogoproto.moretags) = "datastore:\"id\""];
   string app       = 2 [(gogoproto.moretags) = "datastore:\"app\""];
   string build_id  = 3 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
-  Status status    = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
+  string status    = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
   int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
 }
 
-
 message Resource {
-  string name                   = 1 [(gogoproto.moretags) = "datastore:\"name\""];
-  string kind                   = 2 [(gogoproto.moretags) = "datastore:\"kind\""];
-  Status status                 = 3 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
-  string URL                    = 4 [(gogoproto.moretags) = "datastore:\"URL,noindex\""];
-  repeated string apps          = 5 [(gogoproto.moretags) = "datastore:\"apps,noindex\""];
-  bytes exports                 = 6 [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
-  bytes parameters              = 7 [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
+  string name                   = 1  [(gogoproto.moretags) = "datastore:\"name\""];
+  string kind                   = 2  [(gogoproto.moretags) = "datastore:\"kind\""];
+  string status                 = 3  [(gogoproto.moretags) = "datastore:\"status,noindex\""];
+  string status_reason          = 4  [(gogoproto.moretags) = "datastore:\"status_reason,noindex\""];
+  string URL                    = 5  [(gogoproto.moretags) = "datastore:\"URL,noindex\""];
+  string stack                  = 6  [(gogoproto.moretags) = "datastore:\"-\""];
+  repeated string apps          = 7  [(gogoproto.moretags) = "datastore:\"apps,noindex\""];
+  map<string,string> exports    = 8  [(gogoproto.moretags) = "datastore:\"exports,noindex\""];
+  map<string,string> parameters = 9  [(gogoproto.moretags) = "datastore:\"parameters,noindex\""];
+  map<string,string> outputs    = 10 [(gogoproto.moretags) = "datastore:\"-\""];
+  map<string,string> tags       = 11 [(gogoproto.moretags) = "datastore:\"-\""];
 }
 
 message ResourceVar {

@@ -172,6 +172,22 @@
         ]
       }
     },
+    "/v1/builds/import": {
+      "post": {
+        "operationId": "BuildImport",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsBuild"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/builds/{id}": {
       "get": {
         "operationId": "BuildGet",
@@ -228,6 +244,31 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controllerBuildLogResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/builds/{id}/logs/stream": {
+      "get": {
+        "operationId": "BuildLogsStream",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/controllerLogStreamResponse"
             }
           }
         },
@@ -643,6 +684,10 @@
         "name": {
           "type": "string",
           "format": "string"
+        },
+        "repo_url": {
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -680,6 +725,10 @@
           "format": "string"
         },
         "project": {
+          "type": "string",
+          "format": "string"
+        },
+        "region": {
           "type": "string",
           "format": "string"
         }
@@ -729,6 +778,22 @@
         }
       }
     },
+    "controllerBuildLogStreamReq": {
+      "type": "object",
+      "properties": {
+        "follow": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "id": {
+          "type": "string",
+          "format": "string"
+        },
+        "since": {
+          "$ref": "#/definitions/protobufDuration"
+        }
+      }
+    },
     "controllerCmdResponse": {
       "type": "object",
       "properties": {
@@ -760,6 +825,14 @@
         "data": {
           "type": "string",
           "format": "byte"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "version": {
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -900,7 +973,8 @@
           "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -961,7 +1035,8 @@
           "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
         }
       }
     },
@@ -980,8 +1055,11 @@
           }
         },
         "exports": {
-          "type": "string",
-          "format": "byte"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
         },
         "kind": {
           "type": "string",
@@ -991,21 +1069,40 @@
           "type": "string",
           "format": "string"
         },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        },
         "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
+        },
+        "stack": {
           "type": "string",
-          "format": "byte"
+          "format": "string"
         },
         "status": {
-          "$ref": "#/definitions/modelsStatus"
+          "type": "string",
+          "format": "string"
+        },
+        "status_reason": {
+          "type": "string",
+          "format": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "string"
+          }
         }
       }
-    },
-    "modelsStatus": {
-      "type": "string",
-      "enum": [
-        "CREATED"
-      ],
-      "default": "CREATED"
     },
     "protobufDuration": {
       "type": "object",

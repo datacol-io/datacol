@@ -7,11 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/appscode/go/crypto/rand"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"html/template"
 	"io/ioutil"
 	"path"
@@ -19,6 +14,13 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/appscode/go/crypto/rand"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
+
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {
@@ -68,18 +70,23 @@ func loadTmpl(name string) string {
 	return string(content)
 }
 
-func compileTmpl(content string, opts interface{}) string {
-	tmpl, err := template.New("ct").Parse(content)
+func buildTemplate(kind string, opts interface{}) (ret string, err error) {
+	content, err := Asset(fmt.Sprintf("cloud/google/templates/%s.tmpl", kind))
 	if err != nil {
-		log.Fatal(err)
+		return ret, err
+	}
+
+	tmpl, err := template.New("ct").Parse(string(content))
+	if err != nil {
+		return ret, err
 	}
 
 	var doc bytes.Buffer
 	if err := tmpl.Execute(&doc, opts); err != nil {
-		log.Fatal(err)
+		return ret, err
 	}
 
-	return doc.String()
+	return doc.String(), nil
 }
 
 func toJson(object interface{}) string {

@@ -1,19 +1,22 @@
 package gcp
 
 import (
+	"bufio"
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"context"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	"google.golang.org/api/compute/v1"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 	"text/template"
+
+	"cloud.google.com/go/datastore"
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
+	"google.golang.org/api/compute/v1"
 )
 
 func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {
@@ -90,4 +93,18 @@ func serviceKey(path string) []byte {
 	}
 
 	return value
+}
+
+func prompt(s string) {
+	r := bufio.NewReader(os.Stdin)
+	fmt.Printf("%s\n\nPlease press [ENTER] or Ctrl-C to cancel", s)
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		if line == "\n" {
+			break
+		}
+	}
 }

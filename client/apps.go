@@ -20,8 +20,11 @@ func (c *Client) GetApp(name string) (*pb.App, error) {
 	return c.ProviderServiceClient.AppGet(ctx, &pbs.AppRequest{Name: name})
 }
 
-func (c *Client) CreateApp(name string) (*pb.App, error) {
-	return c.ProviderServiceClient.AppCreate(ctx, &pbs.AppRequest{Name: name})
+func (c *Client) CreateApp(name, repo string) (*pb.App, error) {
+	return c.ProviderServiceClient.AppCreate(ctx, &pbs.AppRequest{
+		Name:    name,
+		RepoUrl: repo,
+	})
 }
 
 func (c *Client) DeleteApp(name string) error {

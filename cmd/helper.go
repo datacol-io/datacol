@@ -1,21 +1,37 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
 
+	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"gopkg.in/yaml.v2"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
+func exitOnError(err error) {
+	if err != nil {
+		term.Fatalln(err)
+	}
+}
+
+func withIntSuffix(seed string) string {
+	return fmt.Sprintf("%s-%d", seed, (rand.Intn(89999) + 1000))
+}
 
 var (
 	crashing = false
@@ -55,20 +71,6 @@ func handlePanic() {
 
 		stdcli.HandlePanicErr(err)
 		os.Exit(1)
-	}
-}
-
-func prompt(s string) {
-	r := bufio.NewReader(os.Stdin)
-	fmt.Printf("%s\n\nPlease press [ENTER] or Ctrl-C to cancel", s)
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-		if line == "\n" {
-			break
-		}
 	}
 }
 

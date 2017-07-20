@@ -1,0 +1,36 @@
+resources:
+  - type: sqladmin.v1beta4.instance
+    name: '{{ .name }}'
+    properties:
+      region: '{{ .region }}'
+      databaseVersion: '{{ .db_version }}'
+      instanceType: CLOUD_SQL_INSTANCE
+      settings:
+        tier: '{{ .tier }}'
+        backupConfiguration:
+          enabled: true
+        locationPreference:
+          zone: {{ .zone }}
+
+  - type: sqladmin.v1beta4.database
+    name: {{ .name }}-{{ .database }}
+    properties:
+      name: {{ .database }}
+      instance: $(ref.{{ .name }}.name)
+
+  - type: sqladmin.v1beta4.user
+    name: {{ .name }}-user
+    properties:
+      name: {{ .username }}
+      password: {{ .password }}
+      instance: $(ref.{{ .name }}.name)
+
+outputs:
+  - name: EnvPostgresInstance
+    value: $(ref.{{ .name }}.name)
+  - name: EnvPostgresDatabase
+    value: {{ .database }}
+  - name: EnvPostgresPassword
+    value: {{ .password }}
+  - name: EnvPostgresUsername
+    value: {{ .username }}

@@ -19,6 +19,7 @@ message ListRequest {
 
 message AppRequest {
   string name = 1;
+  string repo_url = 2;
 }
 
 message AppListResponse {
@@ -35,11 +36,14 @@ message AuthResponse {
   string host = 1;
   string name = 2;
   string project = 3;
+  string region = 4;
 }
 
 message CreateBuildRequest {
   string app = 1;
   bytes data = 2;
+  int32 size = 3;
+  string version = 4;
 }
 
 message AppIdRequest {
@@ -91,6 +95,12 @@ message CmdResponse {
   string err       = 2;
   string stdOut    = 3;
   string stdErr    = 4;
+}
+
+message BuildLogStreamReq {
+  string id = 1;
+  bool follow = 2;
+  google.protobuf.Duration since = 3;
 }
 
 message LogStreamReq {
@@ -153,9 +163,15 @@ service ProviderService {
   }
 
   //Build Api
-  rpc BuildCreate(stream CreateBuildRequest) returns (models.Build) {
+  rpc BuildCreate(CreateBuildRequest) returns (models.Build) {
     option (google.api.http) = {
       post: "/v1/builds"
+    };
+  }
+
+  rpc BuildImport(stream CreateBuildRequest) returns (models.Build) {
+    option (google.api.http) = {
+      post: "/v1/builds/import"
     };
   }
 
@@ -186,6 +202,12 @@ service ProviderService {
   rpc BuildLogs(BuildLogRequest) returns (BuildLogResponse) {
     option (google.api.http) = {
       get: "/v1/builds/{id}/logs"
+    };
+  }
+
+  rpc BuildLogsStream(BuildLogStreamReq) returns (stream LogStreamResponse) {
+    option (google.api.http) = {
+      get: "/v1/builds/{id}/logs/stream"
     };
   }
 

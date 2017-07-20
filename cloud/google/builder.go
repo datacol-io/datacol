@@ -1,23 +1,25 @@
 package google
 
 import (
-	"bytes"
-	"cloud.google.com/go/datastore"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"cloud.google.com/go/datastore"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 
+	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 const (
@@ -79,26 +81,11 @@ func (g *GCPCloud) ReleaseDelete(app, id string) error {
 	return g.datastore().Delete(ctx, key)
 }
 
-func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
-	service := g.storage()
-	bucket := g.BucketName
-
-	log.Infof("Pushing code to gs://%s/%s", bucket, gskey)
-
-	object := &storage.Object{
-		Bucket:      bucket,
-		Name:        gskey,
-		ContentType: "application/gzip",
-	}
-
-	if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil {
-		return fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
-	}
-
-	return nil
+func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
+	return nil, fmt.Errorf("not implemented.")
 }
 
-func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
+func (g *GCPCloud) BuildImport(app, filename string) (*pb.Build, error) {
 	service := g.storage()
 	bucket := g.BucketName
 	id := generateId("B", 5)
@@ -112,7 +99,13 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 		ContentType: "application/gzip",
 	}
 
-	if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil {
+	reader, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("reading tempfile err: %v", err)
+	}
+	defer reader.Close()
+
+	if _, err := service.Objects.Insert(bucket, object).Media(reader).Do(); err != nil {
 		return nil, fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
 	}
 
@@ -180,6 +173,10 @@ func (g *GCPCloud) BuildLogs(app, id string, index int) (int, []string, error) {
 	return i, logs, err
 }
 
+func (g *GCPCloud) BuildLogsStream(id string) (io.Reader, error) {
+	return nil, fmt.Errorf("Not supported on GCP.")
+}
+
 func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	image := fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, b.App, b.Id)
 	log.Debugf("---- Docker Image: %s", image)
@@ -188,8 +185,12 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, err := getKubeClientset(g.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
 
-	deployer, err := newDeployer(g.DeploymentName)
+	deployer, err := sched.NewDeployer(c)
 	if err != nil {
 		return nil, err
 	}
@@ -203,12 +204,12 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		port = p
 	}
 
-	ret, err := deployer.Run(&DeployRequest{
+	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
 		Replicas:      1,
 		Environment:   g.DeploymentName,
-		Zone:          g.Zone,
+		Zone:          g.DefaultZone,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
 	})
@@ -223,7 +224,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Id:        generateId("R", 5),
 		App:       b.App,
 		BuildId:   b.Id,
-		Status:    pb.Status_CREATED,
+		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
 	}
 

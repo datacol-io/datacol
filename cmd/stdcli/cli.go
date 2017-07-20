@@ -3,15 +3,16 @@ package stdcli
 import (
 	"errors"
 	"fmt"
-	pb "github.com/dinesh/datacol/api/models"
-	rollbarAPI "github.com/stvp/rollbar"
-	"gopkg.in/urfave/cli.v2"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	pb "github.com/dinesh/datacol/api/models"
+	rollbarAPI "github.com/stvp/rollbar"
+	"gopkg.in/urfave/cli.v2"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 )
 
 func init() {
-	Version = "1.0.0-alpha.5"
+	Version = "1.0.0-alpha.6"
 	localappdir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []*cli.Command{}

@@ -1,0 +1,205 @@
+{{ define "resource" }}
+  {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+      "AppName": {
+        "Type": "String",
+        "Description": "Name of application"
+      },
+      "BucketPrefix": {
+        "Type": "String",
+        "Description": "path prefix of bucket to look for source-code"
+      },
+      "StackName": {
+        "Type": "String",
+        "Description": "Name of base stack name"
+      },
+      "RepositoryUrl": {
+        "Type": "String",
+        "Description": "Name of codecommit repository"
+      }
+    },
+    "Conditions": {
+      "HaveCodeCommit": {
+        "Fn::Not": [{
+          "Fn::Equals": [{"Ref": "RepositoryUrl"}, "false"]
+        }]
+      }
+    },
+    "Resources": {
+      "ECRRepository": {
+        "Type": "AWS::ECR::Repository",
+        "Properties": {
+          "RepositoryName": {
+            "Fn::Join": ["-", [{
+              "Ref": "StackName"
+            }, {
+              "Ref": "AppName"
+            }, "repo"]]
+          },
+          "RepositoryPolicyText": {
+            "Version": "2008-10-17",
+            "Statement": {
+              "Sid": "AllowPullPush",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": ["ecr:*"]
+            }
+          }
+        }
+      },
+      "CodeBuildRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["codebuild.amazonaws.com"]
+              },
+              "Action": ["sts:AssumeRole"]
+            }]
+          },
+          "Policies": [{
+            "PolicyName": {
+              "Fn::Join": ["-", [{
+                "Ref": "StackName"
+              }, {
+                "Ref": "AppName"
+              }, "policy"]]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [{
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetAuthorizationToken",
+                    "codecommit:GitPull"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject"],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:s3:::${BucketPrefix}/*"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}/*"
+                  },
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:PutImage",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload"
+                  ]
+                }
+              ]
+            }
+          }]
+        }
+      },
+      "CloudBuildProject": {
+        "Type": "AWS::CodeBuild::Project",
+        "Properties": {
+          "Name": {
+            "Fn::Sub": "${StackName}-${AppName}-code-builder"
+          },
+          "TimeoutInMinutes": 15,
+          "ServiceRole": {
+            "Fn::GetAtt": "CodeBuildRole.Arn"
+          },
+          "Environment": {
+            "ComputeType": "BUILD_GENERAL1_MEDIUM",
+            "Image": "aws/codebuild/docker:1.12.1",
+            "Type": "LINUX_CONTAINER",
+            "EnvironmentVariables": [{
+                "Name": "IMAGE_REPO_NAME",
+                "Value": {
+                  "Ref": "ECRRepository"
+                }
+              },
+              {
+                "Name": "REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "ACCOUNT_ID",
+                "Value": {
+                  "Ref": "AWS::AccountId"
+                }
+              },
+              {
+                "Name": "IMAGE_TAG",
+                "Value": "latest"
+              },
+              {
+                "Name": "APP",
+                "Value": {
+                  "Ref": "AppName"
+                }
+              }
+            ]
+          },
+          "Artifacts": {
+            "Type": "NO_ARTIFACTS"
+          },
+          "Source": {
+            "Type": {
+              "Fn::If": ["HaveCodeCommit", "CODECOMMIT", "S3"]
+            },
+            "Location": {
+              "Fn::If": [
+                "HaveCodeCommit", {
+                  "Ref": "RepositoryUrl"
+                }, {
+                  "Fn::Sub": "${BucketPrefix}/source.zip"
+                }
+              ]
+            },
+            "BuildSpec": {
+              "Fn::Join": ["\n", [
+                "version: 0.2",
+                "phases:",
+                " pre_build:",
+                "   commands:",
+                "     - echo Logging into Amazon ECR...",
+                "     - $(aws ecr get-login --region $REGION)",
+                " build:",
+                "   commands:",
+                "     - echo Build started on `date`",
+                "     - echo Building the Docker image",
+                "     - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .",
+                "     - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG",
+                "     - echo ***** Build completed *****",
+                " post_build:",
+                "   commands:",
+                "     - echo Pushing Docker image",
+                "     - docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG",
+                "     - echo ***** Image Pushed *****"
+              ]]
+            }
+          }
+        }
+      }
+    }
+  }
+{{ end }}

@@ -18,3 +18,10 @@ func toJson(object interface{}) string {
 	}
 	return string(dump)
 }
+
+func intMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

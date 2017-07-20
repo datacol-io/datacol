@@ -1,27 +1,27 @@
 package gcp
 
 import (
-	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
-	"github.com/appscode/go/crypto/rand"
-	"github.com/dinesh/datacol/go/env"
-	"golang.org/x/oauth2/google"
-	csm "google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/compute/v1"
-	dm "google.golang.org/api/deploymentmanager/v2"
-	"google.golang.org/api/googleapi"
-	"google.golang.org/api/option"
-	smm "google.golang.org/api/servicemanagement/v1"
-	"google.golang.org/api/storage/v1"
-	"google.golang.org/grpc"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"cloud.google.com/go/datastore"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
+	"google.golang.org/api/storage/v1"
+	"google.golang.org/grpc"
+
+	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
+	csm "google.golang.org/api/cloudresourcemanager/v1"
+	dm "google.golang.org/api/deploymentmanager/v2"
+	smm "google.golang.org/api/servicemanagement/v1"
 )
 
 const (
@@ -47,17 +47,6 @@ type initResponse struct {
 func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	if len(opts.MachineType) == 0 {
 		opts.MachineType = ditermineMachineType(opts.NumNodes)
-	}
-
-	if len(opts.ApiKey) == 0 {
-		opts.ApiKey = rand.GeneratePassword()
-	}
-
-	ec := env.FromHost()
-	if ec.DevMode() {
-		opts.ArtifactBucket = "datacol-dev"
-	} else {
-		opts.ArtifactBucket = "datacol-distros"
 	}
 
 	opts.Region = getGcpRegion(opts.Zone)
@@ -185,6 +174,32 @@ func TeardownStack(name, project, bucket string) error {
 
 	if err = waitForDpOp(dmsvc, op, project, false, nil); err != nil {
 		return fmt.Errorf("deleting stack %v", err)
+	}
+
+	out, err := dmsvc.Deployments.List(project).Do()
+	if err != nil {
+		return fmt.Errorf("fetching deployments err: %v", err)
+	}
+
+	for _, rsDp := range out.Deployments {
+		shouldDelete := false
+		for _, lb := range rsDp.Labels {
+			if lb.Key == "stack" && lb.Value == name {
+				shouldDelete = true
+				break
+			}
+		}
+
+		if shouldDelete {
+			op, err := dmsvc.Deployments.Delete(project, rsDp.Name).Do()
+			if err != nil {
+				return err
+			}
+
+			if err = waitForDpOp(dmsvc, op, project, false, nil); err != nil {
+				return err
+			}
+		}
 	}
 
 	return resetDatabase(name, project)
@@ -440,11 +455,24 @@ resources:
           #! /bin/bash
           apt-get update
           apt-get install -y unzip curl
+          
+          cat <<EOF >> /etc/environment
+          DATACOL_PROVIDER=gcp
+          DATACOL_API_KEY={{ properties['api_key']  }}
+          DATACOL_BUCKET={{ properties['bucket'] }}
+          DATACOL_CLUSTER={{ properties['cluster_name'] }}
+          DATACOL_STACK={{ properties['stack_name'] }}
+          GCP_DEFAULT_ZONE={{ properties['zone'] }}
+          GCP_REGION={{ properties['region'] }}
+          EOF
+
           curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
             chmod +x kubectl && \
             mv kubectl /usr/local/bin
           mkdir -p /opt/datacol && \
           curl -Ls /tmp https://storage.googleapis.com/{{ properties['artifact_bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
+
+          while read line; do export $line; done < <(cat /etc/environment)
           cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `

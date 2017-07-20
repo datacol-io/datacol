@@ -2,38 +2,16 @@ package main
 
 import (
 	"bytes"
-	"cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
-	"github.com/dinesh/datacol/cloud/google"
-	"github.com/mitchellh/go-homedir"
 	"golang.org/x/net/context"
 	"os/exec"
-	"path/filepath"
 	"syscall"
 )
 
-func kubeConfigPath(s, p, z string) (string, error) {
-	if metadata.OnGCE() {
-		c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
-		if err != nil {
-			return "", err
-		}
-		return google.CacheKubeConfig(s, p, z, c)
-	} else {
-		// for test mode only, minukube config
-		dir, err := homedir.Dir()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		return filepath.Join(dir, ".kube", "config"), nil
-	}
-}
-
 func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResponse, error) {
 	// todo: remove this call as we are caching the kubeconfig on first run.
-	cfg, err := kubeConfigPath(s.StackName, s.Project, s.Zone)
+	cfg, err := s.Provider.K8sConfigPath()
 	if err != nil {
 		return nil, internalError(err, "failed to fetch k8s config")
 	}
@@ -44,7 +22,7 @@ func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResp
 }
 
 func (s *Server) ProcessRun(ctx context.Context, req *pbs.ProcessRunReq) (*pbs.CmdResponse, error) {
-	cfg, err := kubeConfigPath(s.StackName, s.Project, s.Zone)
+	cfg, err := s.Provider.K8sConfigPath()
 	if err != nil {
 		return nil, internalError(err, "failed to fetch k8s config")
 	}

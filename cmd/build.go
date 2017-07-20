@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,8 +26,14 @@ import (
 func init() {
 	stdcli.AddCommand(&cli.Command{
 		Name:   "build",
-		Usage:  "build an app from Dockerfile or app.yaml(App-Engine)",
+		Usage:  "build an app from Dockerfile or app.yaml (App-Engine)",
 		Action: cmdBuild,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "ref",
+				Usage: "branch or commit Id of git repository",
+			},
+		},
 		Subcommands: []*cli.Command{
 			{
 				Name:   "list",
@@ -96,8 +103,22 @@ func cmdBuild(c *cli.Context) error {
 		return app404Err(name)
 	}
 
-	_, err = executeBuildDir(api, app, dir)
+	ref := c.String("ref")
+	if ref == "" {
+		_, err = executeBuildDir(api, app, dir)
+	} else {
+		_, err = executeBuildGitSource(api, app, ref)
+	}
+
 	return err
+}
+
+func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb.Build, error) {
+	b, err := api.CreateBuildGit(app, version)
+	if err != nil {
+		return nil, err
+	}
+	return b, finishBuild(api, b)
 }
 
 func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, error) {
@@ -218,6 +239,58 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 }
 
 func finishBuild(api *client.Client, b *pb.Build) error {
+	if api.IsGCP() {
+		return finishBuildGCP(api, b)
+	} else {
+		return finishBuildAws(api, b)
+	}
+}
+
+func finishBuildAws(api *client.Client, b *pb.Build) error {
+	stream, err := api.ProviderServiceClient.BuildLogsStream(context.TODO(), &pbs.BuildLogStreamReq{Id: b.RemoteId})
+	if err != nil {
+		return err
+	}
+	defer stream.CloseSend()
+	out := os.Stdout
+
+	ticker := time.NewTicker(time.Second * 2)
+	defer ticker.Stop()
+
+	buildStatus := b.Status
+
+	go func() {
+		for _ = range ticker.C {
+			newb, _ := api.GetBuild(b.App, b.Id)
+			if newb.Status != buildStatus {
+				buildStatus = newb.Status
+				break
+			}
+		}
+	}()
+
+	for {
+		if buildStatus != "IN_PROGRESS" {
+			fmt.Println("Build Id:", b.Id)
+			fmt.Println("Build status:", buildStatus)
+			break
+		}
+
+		ret, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if _, err := out.Write(ret.Data); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func finishBuildGCP(api *client.Client, b *pb.Build) error {
 	index := int32(0)
 
 OUTER:

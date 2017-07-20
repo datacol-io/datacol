@@ -147,10 +147,6 @@ func resetDatabase(name, project string) error {
 		return fmt.Errorf("deleting releases err: %v", err)
 	}
 
-	if err := deleteFromQuery(s, ctx, datastore.NewQuery(resourceKind)); err != nil {
-		return fmt.Errorf("deleting resources err: %v", err)
-	}
-
 	return nil
 }
 
@@ -160,9 +156,6 @@ func (g *GCPCloud) resetDatabase() error {
 		return err
 	}
 
-	store := g.datastore()
-	ctx := g.ctxNS()
-
 	// delete apps, builds, releases
 	for _, app := range apps {
 		if err := g.deleteAppFromDatastore(app.Name); err != nil {
@@ -170,21 +163,16 @@ func (g *GCPCloud) resetDatabase() error {
 		}
 	}
 
-	// delete resources
-	q := datastore.NewQuery(resourceKind).KeysOnly()
-	return deleteFromQuery(store, ctx, q)
+	return nil
 }
 
-func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *dm.Manifest, error) {
-	dp, err := service.Deployments.Get(project, stack).Do()
+func fetchDpAndManifest(service *dm.Service, project, name string) (*dm.Deployment, *dm.Manifest, error) {
+	dp, err := service.Deployments.Get(project, name).Do()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	parts := strings.Split(dp.Manifest, "/")
-	mname := parts[len(parts)-1]
-	m, err := service.Manifests.Get(project, stack, mname).Do()
-
+	m, err := fetchManifest(service, project, name, dp.Manifest)
 	return dp, m, err
 }
 
@@ -192,59 +180,8 @@ func resourceFromStack(service *dm.Service, project, stack, name string) (*pb.Re
 	return &pb.Resource{Name: name}, nil
 }
 
-const mysqlInstanceYAML = `
-- type: sqladmin.v1beta4.instance
-  name: '{{ .name }}'
-  properties:
-    region: '{{ .region }}'
-    databaseVersion: '{{ .db_version }}'
-    instanceType: CLOUD_SQL_INSTANCE
-    backendType: SECOND_GEN
-    settings:
-      tier: '{{ .tier }}'
-      backupConfiguration:
-        enabled: false
-        binaryLogEnabled: false
-      ipConfiguration:
-        ipv4Enabled: true
-        requireSsl: true
-      dataDiskSizeGb: 10
-      dataDiskType: PD_SSD
-      activationPolicy: '{{ .activation_policy }}'
-      locationPreference:
-        zone: {{ .zone }}
-- type: sqladmin.v1beta4.database
-  name: {{ .name }}-{{ .database }}
-  properties:
-    name: {{ .database }}
-    instance: $(ref.{{ .name }}.name)
-    charset: utf8mb4
-    collation: utf8mb4_general_ci
-`
-
-var pgsqlInstanceYAML = `
-- type: sqladmin.v1beta4.instance
-  name: '{{ .name }}'
-  properties:
-    region: '{{ .region }}'
-    databaseVersion: '{{ .db_version }}'
-    instanceType: CLOUD_SQL_INSTANCE
-    settings:
-      tier: '{{ .tier }}'
-      backupConfiguration:
-        enabled: true
-        binaryLogEnabled: true
-      ipConfiguration:
-        ipv4Enabled: false
-        requireSsl: false
-      dataDiskSizeGb: 10
-      dataDiskType: PD_SSD
-      activationPolicy: '{{ .activation_policy }}'
-      locationPreference:
-        zone: {{ .zone }}
-- type: sqladmin.v1beta4.database
-  name: {{ .name }}-{{ .database }}
-  properties:
-    name: {{ .database }}
-    instance: $(ref.{{ .name }}.name)
-`
+func fetchManifest(service *dm.Service, project, name, url string) (*dm.Manifest, error) {
+	parts := strings.Split(url, "/")
+	mname := parts[len(parts)-1]
+	return service.Manifests.Get(project, name, mname).Do()
+}

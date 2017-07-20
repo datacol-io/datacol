@@ -1,19 +1,20 @@
 package google
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
-	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	dm "google.golang.org/api/deploymentmanager/v2"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	databaseName = "app"
-	resourceKind = "Resource"
+	databaseName     = "app"
+	systemName       = "datacol"
+	stackLabelKey    = "stack"
+	resourceLabelKey = "resource"
 )
 
 type dmResource struct {
@@ -22,118 +23,88 @@ type dmResource struct {
 	Properties map[string]interface{} `yaml:"properties"`
 }
 
+type dmOutput struct {
+	Name  string `yaml:"type"`
+	Value string `yaml:"value"`
+}
+
 type manifestConfig struct {
 	Resources []dmResource `yaml:"resources"`
+	Outputs   []dmOutput   `yaml:"outputs"`
 }
 
 func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
-	rs := new(pb.Resource)
-	ctx, key := g.nestedKey(resourceKind, name)
-	err := g.datastore().Get(ctx, key, rs)
-	return rs, err
-}
-
-func (g *GCPCloud) ResourceDelete(name string) error {
-	service := g.deploymentmanager()
-	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
+	dpName := fmt.Sprintf("%s-%s", g.DeploymentName, name)
+	dp, manifest, err := g.describeDeployment(dpName)
 	if err != nil {
-		return err
-	}
-
-	mc := manifestConfig{}
-	if err := yaml.Unmarshal([]byte(manifest.ExpandedConfig), &mc); err != nil {
-		return err
-	}
-
-	found := false
-	rs_db := fmt.Sprintf("%s-%s", name, databaseName)
-
-	resources := []dmResource{}
-
-	for _, r := range mc.Resources {
-		if r.Name != name && r.Name != rs_db {
-			resources = append(resources, r)
-		} else {
-			found = true
-		}
-	}
-
-	mc.Resources = resources
-
-	if !found {
-		return fmt.Errorf("%s not found", name)
-	}
-
-	c, err := yaml.Marshal(mc)
-	content := string(c)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("content: %+v", content)
-	if err := g.updateDeployment(service, dp, manifest, content); err != nil {
-		return err
-	}
-
-	ctx, key := g.nestedKey(resourceKind, name)
-	return g.datastore().Delete(ctx, key)
-}
-
-func (g *GCPCloud) ResourceList() (pb.Resources, error) {
-	var rs pb.Resources
-
-	q := datastore.NewQuery(resourceKind)
-	if _, err := g.datastore().GetAll(g.ctxNS(), q, &rs); err != nil {
 		return nil, err
+	}
+
+	rs, err := g.resourceFromDeployment(dp, manifest, g.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
+
+	if rs.Tags[stackLabelKey] != "" && rs.Tags[stackLabelKey] != g.DeploymentName {
+		return nil, fmt.Errorf("no such deployment in this stack: %s", name)
+	}
+
+	switch rs.Kind {
+	case "mysql":
+		rs.Exports["DATABASE_URL"] = fmt.Sprintf("mysql://%s:%s@%s:%s/%s", rs.Outputs["EnvMysqlUsername"], rs.Outputs["EnvMysqlPassword"], "127.0.0.1", "3306", rs.Outputs["EnvMysqlDatabase"])
+		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Region, name)
+	case "postgres":
+		rs.Exports["DATABASE_URL"] = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", rs.Outputs["EnvPostgresUsername"], rs.Outputs["EnvPostgresPassword"], "127.0.0.1", "5432", rs.Outputs["EnvPostgresDatabase"])
+		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Region, name)
 	}
 
 	return rs, nil
 }
 
+func (g *GCPCloud) ResourceDelete(name string) error {
+	dpName := fmt.Sprintf("%s-%s", g.DeploymentName, name)
+	_, err := g.deploymentmanager().Deployments.Delete(g.Project, dpName).Do()
+	return err
+}
+
+func (g *GCPCloud) ResourceList() (pb.Resources, error) {
+	return g.resourceListFromStack()
+}
+
 func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 	resp := pb.Resources{}
 	service := g.deploymentmanager()
-	_, manifest, err := getManifest(service, g.Project, g.DeploymentName)
+
+	out, err := service.Deployments.List(g.Project).Do()
 	if err != nil {
 		return resp, err
 	}
 
-	mc := manifestConfig{}
-	if err := yaml.Unmarshal([]byte(manifest.ExpandedConfig), &mc); err != nil {
-		return resp, err
-	}
+	for _, dp := range out.Deployments {
+		tags := deploymentLabels(dp)
 
-	for _, r := range mc.Resources {
-		resp = append(resp, &pb.Resource{
-			Name: r.Name,
-			Kind: dpToResourceType(r.Type, r.Name),
-		})
+		if tags[stackLabelKey] != g.DeploymentName || tags["system"] != systemName {
+			continue
+		}
+
+		mc, err := fetchManifest(service, g.Project, dp.Name, dp.Manifest)
+		if err != nil {
+			return resp, err
+		}
+		rs, err := g.resourceFromDeployment(dp, mc, g.DeploymentName)
+		if err != nil {
+			return resp, err
+		}
+		resp = append(resp, rs)
 	}
 
 	return resp, nil
 }
 
 func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error) {
-	service := g.deploymentmanager()
-	dp, manifest, err := getManifest(service, g.Project, g.DeploymentName)
-	if err != nil {
-		return nil, err
-	}
-
 	rs := &pb.Resource{Name: name, Kind: kind}
 
-	var sqlj2 string
-	switch kind {
-	case "mysql":
-		params["region"] = getGcpRegion(g.Zone)
-		params["zone"] = g.Zone
-		params["database"] = databaseName
-		sqlj2 = compileTmpl(mysqlInstanceYAML, params)
-	case "postgres":
-		params["region"] = getGcpRegion(g.Zone)
-		params["zone"] = g.Zone
-		params["database"] = databaseName
-
+	if kind == "postgres" {
 		if _, ok := params["tier"]; !ok {
 			c, k := params["cpu"]
 			if !k {
@@ -147,47 +118,40 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
 			params["tier"] = fmt.Sprintf("db-custom-%s-%s", c, m)
 		}
-
-		sqlj2 = compileTmpl(pgsqlInstanceYAML, params)
-	default:
-		log.Fatal(fmt.Errorf("%s is not supported yet.", kind))
 	}
-
-	content := manifest.ExpandedConfig + sqlj2
-	log.Debugf("\nDM config: %+v", content)
-
-	if err = g.updateDeployment(service, dp, manifest, content); err != nil {
-		return nil, err
-	}
-
-	exports := make(map[string]string)
 
 	switch kind {
 	case "mysql", "postgres":
-		passwd := generatePassword()
-		if err := g.createSqlUser(kind, passwd, name); err != nil {
-			return nil, err
-		}
-
-		instName := fmt.Sprintf("%s:%s:%s", g.Project, params["region"], name)
-		exports["INSTANCE_NAME"] = instName
-		hostName := fmt.Sprintf("127.0.0.1:%d", getDefaultPort(kind))
-		exports["DATABASE_URL"] = fmt.Sprintf("%s://%s:%s@%s/%s", kind, kind, passwd, hostName, databaseName)
+		params["region"] = g.Region
+		params["zone"] = g.DefaultZone
+		params["database"] = databaseName
+		params["password"] = generatePassword()
+		params["username"] = kind
+	default:
+		return nil, fmt.Errorf("%s is not supported yet.", kind)
 	}
 
-	rs.Exports = jsonEncode(exports)
-	rs.Parameters = jsonEncode(params)
-
-	log.Debugf("storing %s details into datastore.", toJson(rs))
-
-	store := g.datastore()
-	ctx, key := g.nestedKey(resourceKind, name)
-	if _, err := store.Put(ctx, key, rs); err != nil {
-		return nil, err
+	sqlj2, err := buildTemplate(kind, params)
+	if err != nil {
+		return nil, fmt.Errorf("Parsing template err: %v", err)
 	}
 
-	defer store.Close()
-	return rs, nil
+	log.Debugf("creating resource with: %s", sqlj2)
+
+	_, err = g.deploymentmanager().Deployments.Insert(g.Project, &dm.Deployment{
+		Name: fmt.Sprintf("%s-%s", g.DeploymentName, name),
+		Target: &dm.TargetConfiguration{
+			Config: &dm.ConfigFile{Content: sqlj2},
+		},
+		Labels: []*dm.DeploymentLabelEntry{
+			&dm.DeploymentLabelEntry{Key: "name", Value: name},
+			&dm.DeploymentLabelEntry{Key: resourceLabelKey, Value: kind},
+			&dm.DeploymentLabelEntry{Key: stackLabelKey, Value: g.DeploymentName},
+			&dm.DeploymentLabelEntry{Key: "system", Value: systemName},
+		},
+	}).Do()
+
+	return rs, err
 }
 
 func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
@@ -205,7 +169,8 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 			return nil, err
 		}
 
-		rsvars := jsonDecode(rs.Exports)
+		rsvars := rs.Exports
+
 		if err = setupCloudProxy(kube, ns, g.Project, app, rsvars); err != nil {
 			return nil, err
 		}
@@ -236,35 +201,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 	}
 
 	append_app(app, rs)
-
-	ctx, key := g.nestedKey(resourceKind, rs.Name)
-	if _, err := g.datastore().Put(ctx, key, rs); err != nil {
-		return nil, err
-	}
-
 	return rs, nil
-}
-
-func append_app(app string, rs *pb.Resource) {
-	found := false
-	for _, a := range rs.Apps {
-		if app == a {
-			found = true
-		}
-	}
-
-	if !found {
-		rs.Apps = append(rs.Apps, app)
-	}
-}
-
-func remove_app(app string, rs *pb.Resource) {
-	for i, a := range rs.Apps {
-		if app == a {
-			rs.Apps = append(rs.Apps[:i], rs.Apps[i+1:]...)
-			break
-		}
-	}
 }
 
 func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
@@ -300,32 +237,70 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 	return rs, nil
 }
 
-func getDefaultPort(kind string) int {
-	var port int
-	switch kind {
-	case "mysql":
-		port = 3306
-	case "postgres":
-		port = 5432
-	default:
-		log.Fatal(fmt.Errorf("No default port defined for %s", kind))
+func (g *GCPCloud) resourceFromDeployment(dp *dm.Deployment, manifest *dm.Manifest, stack string) (*pb.Resource, error) {
+	tags := deploymentLabels(dp)
+
+	var mc manifestConfig
+	if err := yaml.Unmarshal([]byte(manifest.ExpandedConfig), &mc); err != nil {
+		return nil, err
 	}
 
-	return port
+	outputs := map[string]string{}
+	exports := make(map[string]string)
+
+	for _, out := range mc.Outputs {
+		outputs[out.Name] = out.Value
+	}
+
+	rs := &pb.Resource{
+		Name:    tags["name"],
+		Stack:   stack,
+		Kind:    tags[resourceLabelKey],
+		Tags:    tags,
+		Outputs: outputs,
+		Exports: exports,
+	}
+
+	if dp.Operation != nil {
+		rs.Status = dp.Operation.Status
+		rs.StatusReason = dp.Operation.StatusMessage
+
+		if rs.StatusReason == "" && dp.Operation.Error != nil {
+			rs.StatusReason = dp.Operation.HttpErrorMessage
+		}
+	}
+
+	return rs, nil
 }
 
-func jsonEncode(opts map[string]string) []byte {
-	b, err := json.Marshal(opts)
-	if err != nil {
-		log.Fatal(fmt.Errorf("marshaling %+v err:%v", opts, err))
+func remove_app(app string, rs *pb.Resource) {
+	for i, a := range rs.Apps {
+		if app == a {
+			rs.Apps = append(rs.Apps[:i], rs.Apps[i+1:]...)
+			break
+		}
 	}
-	return b
 }
 
-func jsonDecode(b []byte) map[string]string {
-	var opts map[string]string
-	if err := json.Unmarshal(b, &opts); err != nil {
-		log.Fatal(fmt.Errorf("unmarshaling %+v err:%v", opts, err))
+func append_app(app string, rs *pb.Resource) {
+	found := false
+	for _, a := range rs.Apps {
+		if app == a {
+			found = true
+		}
 	}
-	return opts
+
+	if !found {
+		rs.Apps = append(rs.Apps, app)
+	}
+}
+
+func deploymentLabels(dp *dm.Deployment) map[string]string {
+	tags := map[string]string{}
+
+	for _, label := range dp.Labels {
+		tags[label.Key] = label.Value
+	}
+
+	return tags
 }

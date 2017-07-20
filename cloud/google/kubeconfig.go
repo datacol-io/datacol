@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"cloud.google.com/go/compute/metadata"
+	log "github.com/Sirupsen/logrus"
 	container "google.golang.org/api/container/v1"
 )
 
@@ -43,7 +44,16 @@ type configOptions struct {
 	TokenFile string
 }
 
-func CacheKubeConfig(sName, project, zone, cname string) (string, error) {
+func (g *GCPCloud) K8sConfigPath() (string, error) {
+	c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
+	if err != nil {
+		return "", err
+	}
+
+	return cacheKubeConfig(g.DeploymentName, g.Project, g.DefaultZone, c)
+}
+
+func cacheKubeConfig(sName, project, zone, cname string) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err

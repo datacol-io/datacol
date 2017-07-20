@@ -7,7 +7,7 @@ import (
 )
 
 type Provider interface {
-	AppCreate(string) (*pb.App, error)
+	AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, error)
 	AppGet(string) (*pb.App, error)
 	AppDelete(string) error
 	AppRestart(string) error
@@ -16,12 +16,14 @@ type Provider interface {
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error
 
-	BuildCreate(app string, data []byte) (*pb.Build, error)
+	BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error)
+	BuildImport(app, filename string) (*pb.Build, error)
 	BuildList(app string, limit int) (pb.Builds, error)
 	BuildGet(app, id string) (*pb.Build, error)
 	BuildDelete(app, id string) error
 	BuildRelease(*pb.Build) (*pb.Release, error)
 	BuildLogs(app, id string, index int) (int, []string, error)
+	BuildLogsStream(id string) (io.Reader, error)
 
 	ReleaseList(string, int) (pb.Releases, error)
 	ReleaseDelete(string, string) error
@@ -36,4 +38,5 @@ type Provider interface {
 	ResourceUnlink(string, string) (*pb.Resource, error)
 
 	GetRunningPods(string) (string, error)
+	K8sConfigPath() (string, error)
 }
