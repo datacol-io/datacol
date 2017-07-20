@@ -19,9 +19,17 @@
       locationPreference:
         zone: {{ .zone }}
 - type: sqladmin.v1beta4.database
-  name: {{ .name }}-{{ .database }}
   properties:
     name: {{ .database }}
     instance: $(ref.{{ .name }}.name)
     charset: utf8mb4
     collation: utf8mb4_general_ci
+- type: sqladmin.v1beta4.user
+  properties:
+    name: {{ .name }}
+    password: {{ .password }}
+- outputs:
+  EnvMysqlInstance: $(ref.{{ .name }}.name)
+  EnvMysqlDatabase: {{ .database }}
+  EnvMysqlPassword: {{ .password }}
+  EnvMysqlUsername: {{ .username }}

@@ -93,6 +93,10 @@ func init() {
 				Usage: "The Kubernetes version to use for the master and nodes",
 				Value: "1.6.4",
 			},
+			&cli.StringFlag{
+				Name:  "key",
+				Usage: "Name of ssh-keypair to create for aws",
+			},
 		},
 	})
 
@@ -136,6 +140,7 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		Bucket:          c.String("bucket"),
 		Version:         stdcli.Version,
 		ApiKey:          c.String("ApiKey"),
+		KeyName:         c.String("key"),
 		UseSpotInstance: c.Bool("preemptible"),
 	}
 
@@ -263,7 +268,7 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 		return err
 	}
 
-	if err = dumpAwsAuthParams(opts.Name, opts.Region, ret.Host, ret.Password); err != nil {
+	if err = dumpAwsAuthParams(opts.Name, opts.Region, opts.Bucket, ret.Host, ret.Password); err != nil {
 		return err
 	}
 
@@ -442,12 +447,13 @@ func saveAwsCredential(name string, cred *aws.AwsCredentials) error {
 	return nil
 }
 
-func dumpAwsAuthParams(name, region, host, api_key string) error {
+func dumpAwsAuthParams(name, region, bucket, host, api_key string) error {
 	auth := &stdcli.Auth{
 		Name:      name,
 		ApiServer: host,
 		Region:    region,
 		ApiKey:    api_key,
+		Bucket:    bucket,
 	}
 
 	return stdcli.SetAuth(auth)

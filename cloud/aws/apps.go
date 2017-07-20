@@ -2,10 +2,12 @@ package aws
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/ecr"
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
@@ -67,20 +69,13 @@ func (a *AwsCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, er
 
 func (a *AwsCloud) AppRestart(app string) error {
 	log.Debugf("Restarting %s", app)
-	ns := a.DeploymentName
-
-	kube, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
-
 	env, err := a.EnvironmentGet(app)
 	if err != nil {
 		return err
 	}
 
 	env["_RESTARTED"] = time.Now().Format("20060102150405")
-	return sched.SetPodEnv(kube, ns, app, env)
+	return sched.SetPodEnv(a.kubeClient(), a.DeploymentName, app, env)
 }
 
 func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
@@ -122,20 +117,61 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 }
 
 func (a *AwsCloud) AppDelete(name string) error {
+	a.deleteFromCluster(name)
+
+	if err := a.deleteFromDynamo(name); err != nil {
+		return err
+	}
+
+	if err := a.deleteAppResources(name); err != nil {
+		return err
+	}
+
 	if err := a.ResourceDelete(stackNameForApp(name)); err != nil {
 		return err
 	}
 
-	_, err := a.dynamodb().DeleteItem(&dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"name": {S: aws.String(name)},
-		},
-		TableName: aws.String(a.dynamoApps()),
+	return nil
+}
+
+func (p *AwsCloud) deleteAppResources(name string) error {
+	svc := p.ecr()
+
+	out, err := svc.ListImages(&ecr.ListImagesInput{
+		RegistryId:     aws.String(os.Getenv("AWS_ACCOUNT_ID")),
+		RepositoryName: aws.String(p.ecrRepository(name)),
 	})
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Deleting docker images: %d ...", len(out.ImageIds))
+
+	if len(out.ImageIds) > 0 {
+		_, err = svc.BatchDeleteImage(&ecr.BatchDeleteImageInput{
+			RegistryId:     aws.String(os.Getenv("AWS_ACCOUNT_ID")),
+			RepositoryName: aws.String(p.ecrRepository(name)),
+			ImageIds:       out.ImageIds,
+		})
+		return err
+	}
+
 	return nil
+}
+
+func (p *AwsCloud) deleteFromCluster(name string) error {
+	log.Debugf("Removing app from kube cluster ...")
+	return sched.DeleteApp(p.kubeClient(), p.DeploymentName, name)
+}
+
+func (p *AwsCloud) deleteFromDynamo(name string) error {
+	_, err := p.dynamodb().DeleteItem(&dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"name": {S: aws.String(name)},
+		},
+		TableName: aws.String(p.dynamoApps()),
+	})
+	return err
 }
 
 func (p *AwsCloud) saveApp(a *pb.App) error {

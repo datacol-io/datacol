@@ -7,9 +7,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	kapi "k8s.io/client-go/pkg/api/v1"
-	klabels "k8s.io/client-go/pkg/labels"
 )
 
 const appKind = "App"
@@ -108,55 +105,5 @@ func (g *GCPCloud) deleteAppFromCluster(name string) error {
 		return err
 	}
 
-	if _, err := kube.Core().Services(ns).Get(name); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err := kube.Core().Services(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-		return err
-	}
-
-	labels := klabels.Set(map[string]string{"name": name}).AsSelector()
-
-	dp, err := kube.Extensions().Deployments(ns).Get(name)
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	zerors := int32(0)
-	dp.Spec.Replicas = &zerors
-
-	if dp, err = kube.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
-	}
-
-	sched.WaitUntilUpdated(kube, ns, name)
-
-	if err = kube.Extensions().Deployments(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-		return err
-	}
-
-	// delete replicasets by label name=app
-	res, err := kube.Extensions().ReplicaSets(ns).List(kapi.ListOptions{LabelSelector: labels.String()})
-	if err != nil {
-		return err
-	}
-
-	for _, rs := range res.Items {
-		if err := kube.Extensions().ReplicaSets(ns).Delete(rs.Name, &kapi.DeleteOptions{}); err != nil {
-			log.Warn(err)
-		}
-	}
-
-	if _, err = kube.Extensions().Ingresses(ns).Get(name); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err = kube.Extensions().Ingresses(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
-		return err
-	}
-
-	return nil
+	return sched.DeleteApp(kube, ns, name)
 }

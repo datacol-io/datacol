@@ -1,5 +1,5 @@
 BUILD_CMD=cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go
-version=1.0.0-alpha.5
+version=1.0.0-alpha.6
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
@@ -22,6 +22,7 @@ api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go
 
 gen:
+	go-bindata -o cmd/provider/aws/templates.go cmd/provider/aws/templates/ && gsed -i 's/main/aws/g' cmd/provider/aws/templates.go
 	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && gsed -i 's/main/aws/g' cloud/aws/templates.go
 	go-bindata -o cloud/google/templates.go cloud/google/templates/ && gsed -i 's/main/google/g' cloud/google/templates.go
 

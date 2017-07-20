@@ -1,32 +1,37 @@
 package main
 
 import (
-	"cloud.google.com/go/compute/metadata"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/appscode/cloudid"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
+	"io"
+	"io/ioutil"
+	"net"
+	"os"
+	"strings"
+
+	"cloud.google.com/go/compute/metadata"
 	"github.com/dinesh/datacol/cloud"
-	daws "github.com/dinesh/datacol/cloud/aws"
 	"github.com/dinesh/datacol/cloud/google"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"io"
-	"io/ioutil"
-	"net"
-	"os"
-	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
+	daws "github.com/dinesh/datacol/cloud/aws"
 )
 
 func newServer() *Server {
 	var password, name string
 	var provider cloud.Provider
 
-	cid := cloudid.Detect()
+	cid, ok := os.LookupEnv("DATACOL_PROVIDER")
+	if !ok {
+		log.Fatalf("Missing provider env var.")
+	}
+
 	switch cid {
 	case "aws":
 		password = os.Getenv("DATACOL_API_KEY")
@@ -46,11 +51,11 @@ func newServer() *Server {
 			Region:         region,
 			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
 		}
-	case "gce":
+	case "gcp":
 		var bucket, zone, projectId, projectNumber string
-		password = getAttr("DATACOL_API_KEY")
-		bucket = getAttr("DATACOL_BUCKET")
-		name = getAttr("DATACOL_STACK")
+		password = os.Getenv("DATACOL_API_KEY")
+		bucket = os.Getenv("DATACOL_BUCKET")
+		name = os.Getenv("DATACOL_STACK")
 		z, err := metadata.Zone()
 		if err != nil {
 			log.Fatal(err)
@@ -80,14 +85,6 @@ func newServer() *Server {
 	}
 
 	return &Server{Provider: provider, Password: password, StackName: name}
-}
-
-func getAttr(key string) string {
-	v, err := metadata.InstanceAttributeValue(key)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return v
 }
 
 type Server struct {

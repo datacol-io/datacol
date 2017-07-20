@@ -8,10 +8,6 @@ imports:
   - datastore
   - internal
   - storage
-- name: github.com/appscode/cloudid
-  version: 4c6509c052ab644b971ec14e025a954f75f989c3
-  subpackages:
-  - internal
 - name: github.com/appscode/errors
   version: 45337f4d7774392043ed9f8c237f9e810974dd98
 - name: github.com/appscode/go
@@ -186,8 +182,6 @@ imports:
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
-- name: github.com/joyrexus/buckets
-  version: 95fcbf1aabe464641d7180b55a99650486f1edf9
 - name: github.com/jteeuwen/go-bindata
   version: bbd0c6e271208dce66d8fda4bc536453cd27fc4a
 - name: github.com/juju/ratelimit

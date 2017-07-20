@@ -200,3 +200,17 @@ func mergeSqlManifest(dp *v1beta1.Deployment, secretName string, options map[str
 
 	return dp
 }
+
+func getDefaultPort(kind string) int {
+	var port int
+	switch kind {
+	case "mysql":
+		port = 3306
+	case "postgres":
+		port = 5432
+	default:
+		log.Fatal(fmt.Errorf("No default port defined for %s", kind))
+	}
+
+	return port
+}

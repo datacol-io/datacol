@@ -429,6 +429,15 @@ resources:
           #! /bin/bash
           apt-get update
           apt-get install -y unzip curl
+          
+          cat <<EOF >> /etc/environment
+          DATACOL_PROVIDER=gcp
+          DATACOL_API_KEY={{ properties['api_key']  }}
+          DATACOL_BUCKET={{ properties['bucket'] }}
+          DATACOL_CLUSTER={{ properties['cluster_name'] }}
+          DATACOL_STACK={{ properties['stack_name'] }}
+          EOF
+
           curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
             chmod +x kubectl && \
             mv kubectl /usr/local/bin

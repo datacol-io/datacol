@@ -2,19 +2,37 @@ package aws
 
 import (
 	"fmt"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	log "github.com/Sirupsen/logrus"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+var _kubeClient *kubernetes.Clientset
 
 var (
 	rootPath      = "/opt/datacol"
 	kcpath        = filepath.Join(rootPath, "kubeconfig")
-	pemPathRE     = filepath.Join(rootPath, "datacol-%s-key.pem")
+	pemPathRE     = filepath.Join(rootPath, "%s.pem")
 	privateIpAttr = "MasterPrivateIp"
+	scpCmd        = "scp -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@%s:~/kubeconfig %s"
 )
+
+func (p *AwsCloud) kubeClient() *kubernetes.Clientset {
+	if _kubeClient == nil {
+		kube, err := getKubeClientset(p.DeploymentName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_kubeClient = kube
+	}
+
+	return _kubeClient
+}
 
 func (p *AwsCloud) K8sConfigPath() (string, error) {
 	if _, err := os.Stat(kcpath); err != nil {
@@ -23,7 +41,11 @@ func (p *AwsCloud) K8sConfigPath() (string, error) {
 			if err != nil {
 				return ipAddr, err
 			}
-			cmd := fmt.Sprintf("scp -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@%s:~/kubeconfig %s", fmt.Sprintf(pemPathRE, p.DeploymentName), ipAddr, kcpath)
+
+			keyname := fmt.Sprintf(pemPathRE, os.Getenv("DATACOL_KEY_NAME"))
+			cmd := fmt.Sprintf(scpCmd, keyname, ipAddr, kcpath)
+
+			log.Debugf("Executing %s", cmd)
 			if _, err := exec.Command("/bin/sh", "-c", cmd).Output(); err != nil {
 				return "", err
 			}

@@ -2,12 +2,14 @@ package aws
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -45,6 +47,10 @@ func (p *AwsCloud) codebuild() *codebuild.CodeBuild {
 
 func (p *AwsCloud) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
 	return cloudwatchlogs.New(session.New(), p.config())
+}
+
+func (p *AwsCloud) ecr() *ecr.ECR {
+	return ecr.New(session.New(), p.config())
 }
 
 func (p *AwsCloud) describeStack(name string) (*cloudformation.Stack, error) {

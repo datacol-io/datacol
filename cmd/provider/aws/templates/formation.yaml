@@ -264,7 +264,7 @@ Parameters:
     Type: String
 
   CreateK8sCluster:
-    Default: false
+    Default: true
     Description: Create a kubernetes stack or not (mostly used for development purpose.)
     AllowedValues:
       - true
@@ -611,11 +611,13 @@ Resources:
             systemctl daemon-reload && systemctl enable apictl
 
             cat <<EOF >> /etc/environment
+            DATACOL_PROVIDER=aws
             DATACOL_STACK=${AWS::StackName}
             DATACOL_VERSION=${DatacolVersion}
             DATACOL_BUCKET=${SettingBucket}
             DATACOL_API_KEY=${ApiKey}
             AWS_VPC_ID=${PublicSubnet0.VpcId}
+            DATACOL_KEY_NAME=${KeyName}
             AWS_SUBNETS=${PublicSubnet0},${PublicSubnet1}
             AWS_SUBNETS_PRIVATE=${PrivateSubnet0},${PrivateSubnet1}
             AWS_SECURITY_GROUP=${BastionSecurityGroup.GroupId}

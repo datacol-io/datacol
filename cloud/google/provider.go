@@ -139,6 +139,14 @@ func (g *GCPCloud) datastore() *datastore.Client {
 	return dc
 }
 
+func (g *GCPCloud) describeDeployment(name string) (
+	*deploymentmanager.Deployment,
+	*deploymentmanager.Manifest,
+	error,
+) {
+	return fetchDpAndManifest(g.deploymentmanager(), g.Project, name)
+}
+
 func datastoreClient(name, project string) (*datastore.Client, func()) {
 	opts := []option.ClientOption{
 		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5 * time.Second)),

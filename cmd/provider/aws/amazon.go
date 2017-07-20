@@ -3,8 +3,10 @@ package aws
 import (
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/appscode/go/io"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -12,9 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"os"
-	"strings"
-	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
@@ -27,7 +28,7 @@ These credentials will only be used to communicate between this installer runnin
 )
 
 var (
-	bastionType     = "t2.nano"
+	bastionType     = "t2.micro"
 	bucketPrefix    = "datacol"
 	networkProvider = "calico"
 	adminIngressLoc = "0.0.0.0/0"
@@ -36,7 +37,7 @@ var (
 type InitOptions struct {
 	Name, Region, Zone, Bucket         string
 	ApiKey, Version, ArtifactBucket    string
-	MachineType                        string
+	MachineType, KeyName               string
 	DiskSize, NumNodes, ControllerPort int
 	UseSpotInstance                    bool
 }
@@ -58,13 +59,12 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 
 	config := awsConfig(opts.Region, creds)
 	cf := cloudformation.New(session.New(), config)
-	tmpl, err := io.ReadFile("./cmd/provider/aws/formation.yaml")
-
+	formation, err := Asset("cmd/provider/aws/templates/formation.yaml")
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := createKeyPair(opts.Name, config)
+	resp, err := createKeyPair(opts.KeyName, config)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("AWSSecretAccessKey"), ParameterValue: aws.String(creds.Secret)},
 		},
 		StackName:    aws.String(opts.Name),
-		TemplateBody: aws.String(tmpl),
+		TemplateBody: aws.String(string(formation)),
 	}
 
 	fmt.Printf("Creating a new stack: %s \n", opts.Name)
@@ -140,6 +140,8 @@ func emptyAssetBucket(bucket string, config *aws.Config) error {
 	for i, obj := range out.Contents {
 		keys[i] = &s3.ObjectIdentifier{Key: obj.Key}
 	}
+
+	log.Debugf("deleting %+v from %s", keys, bucket)
 
 	_, err = svc.DeleteObjects(&s3.DeleteObjectsInput{
 		Bucket: aws.String(bucket),
@@ -215,13 +217,16 @@ func deleteStack(stack string, cf *cloudformation.CloudFormation) error {
 	return err
 }
 
-func createKeyPair(name string, config *aws.Config) (*ec2.CreateKeyPairOutput, error) {
+func createKeyPair(keyName string, config *aws.Config) (*ec2.CreateKeyPairOutput, error) {
 	service := ec2.New(session.New(), config)
-	keyName := fmt.Sprintf("datacol-%s-key", name)
+	if keyName == "" {
+		return nil, fmt.Errorf("Please provide a unique ssh-keypair name using `--key`")
+	}
+
 	resp, err := service.CreateKeyPair(&ec2.CreateKeyPairInput{KeyName: &keyName})
 
 	if err != nil {
-		if strings.Contains(err.Error(), "Duplicate") {
+		if false && strings.Contains(err.Error(), "Duplicate") {
 			delInput := &ec2.DeleteKeyPairInput{
 				KeyName: aws.String(keyName),
 			}

@@ -175,19 +175,22 @@ func (g *GCPCloud) resetDatabase() error {
 	return deleteFromQuery(store, ctx, q)
 }
 
-func getManifest(service *dm.Service, project, stack string) (*dm.Deployment, *dm.Manifest, error) {
-	dp, err := service.Deployments.Get(project, stack).Do()
+func fetchDpAndManifest(service *dm.Service, project, name string) (*dm.Deployment, *dm.Manifest, error) {
+	dp, err := service.Deployments.Get(project, name).Do()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	parts := strings.Split(dp.Manifest, "/")
-	mname := parts[len(parts)-1]
-	m, err := service.Manifests.Get(project, stack, mname).Do()
-
+	m, err := fetchManifest(service, project, name, dp.Manifest)
 	return dp, m, err
 }
 
 func resourceFromStack(service *dm.Service, project, stack, name string) (*pb.Resource, error) {
 	return &pb.Resource{Name: name}, nil
+}
+
+func fetchManifest(service *dm.Service, project, name, url string) (*dm.Manifest, error) {
+	parts := strings.Split(url, "/")
+	mname := parts[len(parts)-1]
+	return service.Manifests.Get(project, name, mname).Do()
 }

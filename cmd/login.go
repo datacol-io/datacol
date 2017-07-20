@@ -65,7 +65,7 @@ func updateSetting(ret *pbs.AuthResponse, host, passwd string) error {
 	}
 
 	if ret.Project == "" {
-		return dumpAwsAuthParams(ret.Name, ret.Region, host, passwd)
+		return dumpAwsAuthParams(ret.Name, ret.Region, "", host, passwd)
 	} else {
 		return dumpGcpAuthParams(ret.Name, ret.Project, "", host, passwd)
 	}
