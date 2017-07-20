@@ -39,7 +39,7 @@ type InitOptions struct {
 	ApiKey, Version, ArtifactBucket    string
 	MachineType, KeyName               string
 	DiskSize, NumNodes, ControllerPort int
-	UseSpotInstance                    bool
+	UseSpotInstance, CreateCluster     bool
 }
 
 type initResponse struct {
@@ -71,6 +71,10 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 
 	log.Debugf("Creating stack with %+v", opts)
 	zone1 := getAwsZone1(opts.Zone)
+	mkCluster := "true"
+	if !opts.CreateCluster {
+		mkCluster = "false"
+	}
 
 	req := &cloudformation.CreateStackInput{
 		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
@@ -91,6 +95,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("SettingBucket"), ParameterValue: aws.String(opts.Bucket)},
 			{ParameterKey: aws.String("AWSAccessKey"), ParameterValue: aws.String(creds.Access)},
 			{ParameterKey: aws.String("AWSSecretAccessKey"), ParameterValue: aws.String(creds.Secret)},
+			{ParameterKey: aws.String("CreateK8sCluster"), ParameterValue: aws.String(mkCluster)},
 		},
 		StackName:    aws.String(opts.Name),
 		TemplateBody: aws.String(string(formation)),

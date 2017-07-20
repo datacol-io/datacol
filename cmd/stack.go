@@ -142,6 +142,7 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		ApiKey:          c.String("ApiKey"),
 		KeyName:         c.String("key"),
 		UseSpotInstance: c.Bool("preemptible"),
+		CreateCluster:   len(c.String("cluster")) == 0,
 	}
 
 	if len(options.ApiKey) == 0 {

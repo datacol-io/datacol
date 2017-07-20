@@ -30,12 +30,12 @@ func (a *AwsCloud) appFromItem(item map[string]*dynamodb.AttributeValue) *pb.App
 }
 
 func (a *AwsCloud) AppList() (pb.Apps, error) {
-	req := &dynamodb.QueryInput{
-		ScanIndexForward: aws.Bool(false),
-		TableName:        aws.String(a.dynamoApps()),
+	req := &dynamodb.ScanInput{
+		ConsistentRead: aws.Bool(true),
+		TableName:      aws.String(a.dynamoApps()),
 	}
 
-	res, err := a.dynamodb().Query(req)
+	res, err := a.dynamodb().Scan(req)
 	if err != nil {
 		return nil, err
 	}
