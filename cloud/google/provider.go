@@ -41,7 +41,8 @@ type GCPCloud struct {
 	ProjectNumber  string
 	DeploymentName string
 	BucketName     string
-	Zone           string
+	DefaultZone    string
+	Region         string
 }
 
 func (g *GCPCloud) storage() *storage.Service {
@@ -167,7 +168,7 @@ func datastoreClient(name, project string) (*datastore.Client, func()) {
 
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
 	service := g.container()
-	return service.Projects.Zones.Clusters.Get(g.Project, g.Zone, name).Do()
+	return service.Projects.Zones.Clusters.Get(g.Project, g.DefaultZone, name).Do()
 }
 
 func (g *GCPCloud) ctxNS() context.Context {

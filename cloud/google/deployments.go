@@ -147,10 +147,6 @@ func resetDatabase(name, project string) error {
 		return fmt.Errorf("deleting releases err: %v", err)
 	}
 
-	if err := deleteFromQuery(s, ctx, datastore.NewQuery(resourceKind)); err != nil {
-		return fmt.Errorf("deleting resources err: %v", err)
-	}
-
 	return nil
 }
 
@@ -160,9 +156,6 @@ func (g *GCPCloud) resetDatabase() error {
 		return err
 	}
 
-	store := g.datastore()
-	ctx := g.ctxNS()
-
 	// delete apps, builds, releases
 	for _, app := range apps {
 		if err := g.deleteAppFromDatastore(app.Name); err != nil {
@@ -170,9 +163,7 @@ func (g *GCPCloud) resetDatabase() error {
 		}
 	}
 
-	// delete resources
-	q := datastore.NewQuery(resourceKind).KeysOnly()
-	return deleteFromQuery(store, ctx, q)
+	return nil
 }
 
 func fetchDpAndManifest(service *dm.Service, project, name string) (*dm.Deployment, *dm.Manifest, error) {

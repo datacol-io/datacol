@@ -56,13 +56,10 @@ func newServer() *Server {
 		password = os.Getenv("DATACOL_API_KEY")
 		bucket = os.Getenv("DATACOL_BUCKET")
 		name = os.Getenv("DATACOL_STACK")
-		z, err := metadata.Zone()
-		if err != nil {
-			log.Fatal(err)
-		}
-		zone = z
+		zone = os.Getenv("GCP_DEFAULT_ZONE")
+		region := os.Getenv("GCP_REGION")
 
-		projectId, err = metadata.ProjectID()
+		projectId, err := metadata.ProjectID()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -76,7 +73,8 @@ func newServer() *Server {
 			Project:        projectId,
 			DeploymentName: name,
 			BucketName:     bucket,
-			Zone:           zone,
+			DefaultZone:    zone,
+			Region:         region,
 			ProjectNumber:  projectNumber,
 		}
 

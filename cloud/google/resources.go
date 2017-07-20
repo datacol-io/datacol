@@ -1,23 +1,20 @@
 package google
 
 import (
-	// "encoding/json"
 	"fmt"
 	"strings"
 
-	dm "google.golang.org/api/deploymentmanager/v2"
-	"gopkg.in/yaml.v2"
-
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	dm "google.golang.org/api/deploymentmanager/v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
 	databaseName     = "app"
-	resourceKind     = "Resource"
 	systemName       = "datacol"
-	stackLabelKey    = "Case"
-	resourceLabelKey = "Resource"
+	stackLabelKey    = "stack"
+	resourceLabelKey = "resource"
 )
 
 type dmResource struct {
@@ -43,7 +40,7 @@ func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
 		return nil, err
 	}
 
-	rs, err := g.resourceFromDeployment(dp, manifest, name)
+	rs, err := g.resourceFromDeployment(dp, manifest, g.DeploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -55,10 +52,10 @@ func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
 	switch rs.Kind {
 	case "mysql":
 		rs.Exports["DATABASE_URL"] = fmt.Sprintf("mysql://%s:%s@%s:%s/%s", rs.Outputs["EnvMysqlUsername"], rs.Outputs["EnvMysqlPassword"], "127.0.0.1", "3306", rs.Outputs["EnvMysqlDatabase"])
-		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Zone, name)
+		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Region, name)
 	case "postgres":
 		rs.Exports["DATABASE_URL"] = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", rs.Outputs["EnvPostgresUsername"], rs.Outputs["EnvPostgresPassword"], "127.0.0.1", "5432", rs.Outputs["EnvPostgresDatabase"])
-		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Zone, name)
+		rs.Exports["INSTANCE_NAME"] = fmt.Sprintf("%s:%s:%s", g.Project, g.Region, name)
 	}
 
 	return rs, nil
@@ -66,7 +63,7 @@ func (g *GCPCloud) ResourceGet(name string) (*pb.Resource, error) {
 
 func (g *GCPCloud) ResourceDelete(name string) error {
 	dpName := fmt.Sprintf("%s-%s", g.DeploymentName, name)
-	_, err := g.deploymentmanager().Deployments.Delete(g.DeploymentName, dpName).Do()
+	_, err := g.deploymentmanager().Deployments.Delete(g.Project, dpName).Do()
 	return err
 }
 
@@ -86,7 +83,7 @@ func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 	for _, dp := range out.Deployments {
 		tags := deploymentLabels(dp)
 
-		if tags[stackLabelKey] != g.DeploymentName || tags["System"] != systemName {
+		if tags[stackLabelKey] != g.DeploymentName || tags["system"] != systemName {
 			continue
 		}
 
@@ -125,8 +122,8 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
 	switch kind {
 	case "mysql", "postgres":
-		params["region"] = getGcpRegion(g.Zone)
-		params["zone"] = g.Zone
+		params["region"] = g.Region
+		params["zone"] = g.DefaultZone
 		params["database"] = databaseName
 		params["password"] = generatePassword()
 		params["username"] = kind
@@ -136,8 +133,10 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 
 	sqlj2, err := buildTemplate(kind, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Parsing template err: %v", err)
 	}
+
+	log.Debugf("creating resource with: %s", sqlj2)
 
 	_, err = g.deploymentmanager().Deployments.Insert(g.Project, &dm.Deployment{
 		Name: fmt.Sprintf("%s-%s", g.DeploymentName, name),
@@ -145,10 +144,10 @@ func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (
 			Config: &dm.ConfigFile{Content: sqlj2},
 		},
 		Labels: []*dm.DeploymentLabelEntry{
-			&dm.DeploymentLabelEntry{Key: "Name", Value: name},
+			&dm.DeploymentLabelEntry{Key: "name", Value: name},
 			&dm.DeploymentLabelEntry{Key: resourceLabelKey, Value: kind},
 			&dm.DeploymentLabelEntry{Key: stackLabelKey, Value: g.DeploymentName},
-			&dm.DeploymentLabelEntry{Key: "System", Value: systemName},
+			&dm.DeploymentLabelEntry{Key: "system", Value: systemName},
 		},
 	}).Do()
 
@@ -202,12 +201,6 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 	}
 
 	append_app(app, rs)
-
-	ctx, key := g.nestedKey(resourceKind, rs.Name)
-	if _, err := g.datastore().Put(ctx, key, rs); err != nil {
-		return nil, err
-	}
-
 	return rs, nil
 }
 
@@ -252,19 +245,32 @@ func (g *GCPCloud) resourceFromDeployment(dp *dm.Deployment, manifest *dm.Manife
 		return nil, err
 	}
 
-	var outputs map[string]string
+	outputs := map[string]string{}
+	exports := make(map[string]string)
 
 	for _, out := range mc.Outputs {
 		outputs[out.Name] = out.Value
 	}
 
-	return &pb.Resource{
-		Name:    tags["Name"],
+	rs := &pb.Resource{
+		Name:    tags["name"],
 		Stack:   stack,
 		Kind:    tags[resourceLabelKey],
 		Tags:    tags,
 		Outputs: outputs,
-	}, nil
+		Exports: exports,
+	}
+
+	if dp.Operation != nil {
+		rs.Status = dp.Operation.Status
+		rs.StatusReason = dp.Operation.StatusMessage
+
+		if rs.StatusReason == "" && dp.Operation.Error != nil {
+			rs.StatusReason = dp.Operation.HttpErrorMessage
+		}
+	}
+
+	return rs, nil
 }
 
 func remove_app(app string, rs *pb.Resource) {
@@ -290,7 +296,7 @@ func append_app(app string, rs *pb.Resource) {
 }
 
 func deploymentLabels(dp *dm.Deployment) map[string]string {
-	var tags map[string]string
+	tags := map[string]string{}
 
 	for _, label := range dp.Labels {
 		tags[label.Key] = label.Value

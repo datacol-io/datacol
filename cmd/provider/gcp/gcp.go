@@ -176,6 +176,32 @@ func TeardownStack(name, project, bucket string) error {
 		return fmt.Errorf("deleting stack %v", err)
 	}
 
+	out, err := dmsvc.Deployments.List(project).Do()
+	if err != nil {
+		return fmt.Errorf("fetching deployments err: %v", err)
+	}
+
+	for _, rsDp := range out.Deployments {
+		shouldDelete := false
+		for _, lb := range rsDp.Labels {
+			if lb.Key == "stack" && lb.Value == name {
+				shouldDelete = true
+				break
+			}
+		}
+
+		if shouldDelete {
+			op, err := dmsvc.Deployments.Delete(project, rsDp.Name).Do()
+			if err != nil {
+				return err
+			}
+
+			if err = waitForDpOp(dmsvc, op, project, false, nil); err != nil {
+				return err
+			}
+		}
+	}
+
 	return resetDatabase(name, project)
 }
 
@@ -436,6 +462,8 @@ resources:
           DATACOL_BUCKET={{ properties['bucket'] }}
           DATACOL_CLUSTER={{ properties['cluster_name'] }}
           DATACOL_STACK={{ properties['stack_name'] }}
+          GCP_DEFAULT_ZONE={{ properties['zone'] }}
+          GCP_REGION={{ properties['region'] }}
           EOF
 
           curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
@@ -444,5 +472,7 @@ resources:
           mkdir -p /opt/datacol && \
           curl -Ls /tmp https://storage.googleapis.com/{{ properties['artifact_bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
+
+          while read line; do export $line; done < <(cat /etc/environment)
           cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `

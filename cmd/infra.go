@@ -27,7 +27,7 @@ var resourceTypes = []ResourceType{
 	},
 	{
 		name:    "postgres",
-		gcpArgs: "--cpu=1,--memory=3840,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
+		gcpArgs: "--cpu=1,--memory=4096,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
 		awsArgs: "--allocated-storage=10,--database=app,--instance-type=db.t2.micro,--max-connections={DBInstanceClassMemory/15000000},--multi-az=false,--password=,--private,--username=app,--version=9.6.1",
 	},
 	{
@@ -161,6 +161,12 @@ func cmdResourceDelete(c *cli.Context) error {
 		}
 	}
 
+	if api.IsGCP() {
+		if err := waitForGcpResource(name, "DELETE", api); err != nil {
+			return err
+		}
+	}
+
 	fmt.Println("\nDELETED")
 	return nil
 }
@@ -214,10 +220,17 @@ func cmdResourceCreate(c *cli.Context) error {
 	log.Debugf("Resource: %v", toJson(rs))
 
 	if api.IsAWS() {
-		if err := waitForAwsResource(t.name, "CREATE", api); err != nil {
+		if err := waitForAwsResource(options["name"], "CREATE", api); err != nil {
 			return err
 		}
 	}
+
+	if api.IsGCP() {
+		if err := waitForGcpResource(options["name"], "CREATE", api); err != nil {
+			return err
+		}
+	}
+
 	fmt.Println("\nCREATED")
 	return nil
 }
@@ -300,6 +313,36 @@ Loop:
 				return fmt.Errorf("%s failed because of \"%s\"", event, rs.StatusReason)
 			}
 			if rs.Status == completedEv {
+				break Loop
+			}
+		case <-timeout:
+			fmt.Print("timeout (5 minutes). Skipping")
+			break Loop
+		}
+	}
+
+	return nil
+}
+
+func waitForGcpResource(name, event string, c *client.Client) error {
+	tick := time.Tick(time.Second * 2)
+	timeout := time.After(time.Minute * 5)
+	fmt.Printf("Waiting for %s ", name)
+
+Loop:
+	for {
+		select {
+		case <-tick:
+			rs, err := c.GetResource(name)
+			if err != nil {
+				if event == "DELETE" {
+					return nil
+				}
+				return err
+			}
+
+			fmt.Print(".")
+			if rs.Status == "DONE" {
 				break Loop
 			}
 		case <-timeout:

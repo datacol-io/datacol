@@ -209,7 +209,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Image:         image,
 		Replicas:      1,
 		Environment:   g.DeploymentName,
-		Zone:          g.Zone,
+		Zone:          g.DefaultZone,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
 	})
