@@ -442,14 +442,6 @@ resources:
         - datacol
     metadata:
       items:
-      - key: DATACOL_API_KEY
-        value: {{ properties['api_key'] }}
-      - key: DATACOL_STACK
-        value: {{ properties['stack_name'] }}
-      - key: DATACOL_BUCKET
-        value: {{ properties['bucket'] }}
-      - key: DATACOL_CLUSTER
-        value: {{ properties['cluster_name'] }}
       - key: startup-script
         value: |
           #! /bin/bash
@@ -464,15 +456,18 @@ resources:
           DATACOL_STACK={{ properties['stack_name'] }}
           GCP_DEFAULT_ZONE={{ properties['zone'] }}
           GCP_REGION={{ properties['region'] }}
+          GCP_PROJECT={{ env['project'] }}
+          GCP_PROJECT_NUMBER={{ env['project_number'] }}
           EOF
+          while read line; do export $line; done < <(cat /etc/environment)
 
           curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.6.3/bin/linux/amd64/kubectl > kubectl &&
             chmod +x kubectl && \
             mv kubectl /usr/local/bin
+
           mkdir -p /opt/datacol && \
           curl -Ls /tmp https://storage.googleapis.com/{{ properties['artifact_bucket'] }}/binaries/{{ properties['version'] }}/apictl.zip > /tmp/apictl.zip
             unzip /tmp/apictl.zip -d /opt/datacol && chmod +x /opt/datacol/apictl
 
-          while read line; do export $line; done < <(cat /etc/environment)
           cd /opt/datacol && nohup ./apictl -log-file log.txt &
 `

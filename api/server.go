@@ -53,21 +53,15 @@ func newServer() *Server {
 		}
 	case "gcp":
 		var bucket, zone, projectId, projectNumber string
+
 		password = os.Getenv("DATACOL_API_KEY")
 		bucket = os.Getenv("DATACOL_BUCKET")
 		name = os.Getenv("DATACOL_STACK")
+
 		zone = os.Getenv("GCP_DEFAULT_ZONE")
 		region := os.Getenv("GCP_REGION")
-
-		projectId, err := metadata.ProjectID()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		projectNumber, err = metadata.NumericProjectID()
-		if err != nil {
-			log.Fatal(err)
-		}
+		projectId = os.Getenv("GCP_PROJECT")
+		projectNumber = os.Getenv("GCP_PROJECT_NUMBER")
 
 		provider = &google.GCPCloud{
 			Project:        projectId,

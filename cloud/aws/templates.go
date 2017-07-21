@@ -86,7 +86,7 @@ func cloudAwsTemplatesAppTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/app.tmpl", size: 6223, mode: os.FileMode(420), modTime: time.Unix(1500318804, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/app.tmpl", size: 6223, mode: os.FileMode(420), modTime: time.Unix(1500616848, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -106,7 +106,7 @@ func cloudAwsTemplatesMysqlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/mysql.tmpl", size: 3587, mode: os.FileMode(420), modTime: time.Unix(1500220644, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/mysql.tmpl", size: 3587, mode: os.FileMode(420), modTime: time.Unix(1500616848, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -126,7 +126,7 @@ func cloudAwsTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4430, mode: os.FileMode(420), modTime: time.Unix(1500220644, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4430, mode: os.FileMode(420), modTime: time.Unix(1500616848, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -146,7 +146,7 @@ func cloudAwsTemplatesRedisTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/redis.tmpl", size: 3164, mode: os.FileMode(420), modTime: time.Unix(1500220644, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/redis.tmpl", size: 3164, mode: os.FileMode(420), modTime: time.Unix(1500616848, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

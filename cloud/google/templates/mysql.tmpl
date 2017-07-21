@@ -2,6 +2,7 @@ resources:
   - type: sqladmin.v1beta4.instance
     name: '{{ .name }}'
     properties:
+      project: '{{ .project }}'
       region: '{{ .region }}'
       databaseVersion: '{{ .db_version }}'
       instanceType: CLOUD_SQL_INSTANCE
@@ -16,31 +17,36 @@ resources:
           requireSsl: true
         dataDiskSizeGb: 10
         dataDiskType: PD_SSD
-        activationPolicy: '{{ .activation_policy }}'
         locationPreference:
-          zone: {{ .zone }}
+          zone: '{{ .zone }}'
 
   - type: sqladmin.v1beta4.database
-    name: {{ .name }}-database
+    name: '{{ .name }}-database'
     properties:
-      name: {{ .database }}
+      project: '{{ .project }}'
+      name: '{{ .database }}'
       instance: $(ref.{{ .name }}.name)
       charset: utf8mb4
       collation: utf8mb4_general_ci
 
   - type: sqladmin.v1beta4.user
-    name: {{ .name }}-user
+    name: '{{ .name }}-user'
+    metadata:
+      dependsOn:
+        - '{{ .name }}'
+        - '{{ .name }}-database'
     properties:
-      name: {{ .username }}
-      password: {{ .password }}
+      project: '{{ .project }}'
+      name: '{{ .username }}'
+      password: '{{ .password }}'
       instance: $(ref.{{ .name }}.name)
 
 outputs:
   - name: EnvMysqlInstance
     value: $(ref.{{ .name }}.name)
   - name: EnvMysqlDatabase
-    value: {{ .database }}
+    value: '{{ .database }}'
   - name: EnvMysqlPassword
-    value: {{ .password }}
+    value: '{{ .password }}'
   - name: EnvMysqlUsername
-    value: {{ .username }}
+    value: '{{ .username }}'

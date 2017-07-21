@@ -103,6 +103,7 @@ func (g *GCPCloud) resourceListFromStack() (pb.Resources, error) {
 
 func (g *GCPCloud) ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error) {
 	rs := &pb.Resource{Name: name, Kind: kind}
+	params["project"] = g.Project
 
 	if kind == "postgres" {
 		if _, ok := params["tier"]; !ok {
