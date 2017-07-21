@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	container "google.golang.org/api/container/v1"
 )
@@ -45,12 +44,12 @@ type configOptions struct {
 }
 
 func (g *GCPCloud) K8sConfigPath() (string, error) {
-	c, err := metadata.InstanceAttributeValue("DATACOL_CLUSTER")
-	if err != nil {
-		return "", err
+	cname, ok := os.LookupEnv("DATACOL_CLUSTER")
+	if !ok {
+		return "", fmt.Errorf("DATACOL_CLUSTER env var not found")
 	}
 
-	return cacheKubeConfig(g.DeploymentName, g.Project, g.DefaultZone, c)
+	return cacheKubeConfig(g.DeploymentName, g.Project, g.DefaultZone, cname)
 }
 
 func cacheKubeConfig(sName, project, zone, cname string) (string, error) {

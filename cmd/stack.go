@@ -23,7 +23,7 @@ var (
 	credNotFound    = errors.New("Invalid credentials")
 	projectNotFound = errors.New("Invalid project id")
 
-	defaultGcpZone         = "asia-southeast1-a"
+	defaultGcpZone         = "asia-east1-a" //Taiwan
 	defaultAWSZone         = "ap-southeast-1a"
 	defaultAWSInstanceType = "t2.medium"
 	defaultGCPInstanceType = "n1-standard-1"
