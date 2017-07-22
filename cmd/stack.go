@@ -340,11 +340,13 @@ func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 }
 
 func cmdStackDestroy(c *cli.Context) error {
-	if !term.Ask("This is destructive action. Do you want to continue ?", false) {
+	auth, _ := stdcli.GetAuthOrDie()
+	provider := auth.Provider()
+
+	prompt := fmt.Sprintf("This is destructive action. Do you want to delete %s stack on %s ?", auth.Name, provider)
+	if !term.Ask(prompt, false) {
 		return nil
 	}
-
-	provider := c.Args().Get(0)
 
 	switch strings.ToLower(provider) {
 	case "gcp":

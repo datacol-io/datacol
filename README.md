@@ -1,10 +1,10 @@
 ## DATACOL
 
-[Datacol](https://www.datacol.io) provides a powerful control layer on top of AWS/GCP.
+[Datacol](https://www.datacol.io) provides a powerful PaaS control layer on top of AWS/GCP. 
 
-Datacol helps you create Heroku like infrastructure for deploying container-native applications on Cloud. It is a deployment platform that simplifies the process developers use to build, deploy and manage their applications in the cloud.
+Datacol helps you create Heroku like infrastructure for deploying container-native applications on cloud. It is a deployment platform that simplifies the process developers use to build, deploy and manage applications in the cloud. It aims to make it trivially easy to deploy a container based microservices architecture.
 
-Datacol is installed into your own Cloud account and uses [Container engine](https://cloud.google.com/container-engine/), [GCR](https://cloud.google.com/container-registry/), [ContainerBuilder](https://cloud.google.com/container-builder/), and many other great GCP services under the hood but automates it all away to give you a better deployment experience. It uses Docker under the hood so if you want to customize anything (languages, dependencies, etc) you can simply add a Dockerfile to your project.
+Datacol can be installed into your own cloud account and uses managed cloud services ( like for GCP we use [Container engine](https://cloud.google.com/container-engine/), [GCR](https://cloud.google.com/container-registry/), [ContainerBuilder](https://cloud.google.com/container-builder/)) under the hood but automates it all away to give you a better deployment experience. It uses Docker under the hood so if you want to customize anything (languages, dependencies, etc) you can simply add a Dockerfile to your project.
 
 [![asciicast](https://asciinema.org/a/114966.png)](https://asciinema.org/a/114966)
 

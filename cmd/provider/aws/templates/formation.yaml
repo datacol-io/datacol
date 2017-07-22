@@ -669,25 +669,6 @@ Resources:
         ReadCapacityUnits: "5"
         WriteCapacityUnits: "5"
 
-  ## Create releases dynamodb table
-  DynamoReleaseTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName:
-        Fn::Join:
-          - "-" 
-          - - !Ref AWS::StackName
-            - "releases"
-      AttributeDefinitions:
-        - AttributeName: "id"
-          AttributeType: "S"
-      KeySchema:
-        - AttributeName: "id"
-          KeyType: "HASH"
-      ProvisionedThroughput:
-        ReadCapacityUnits: "5"
-        WriteCapacityUnits: "5"
-
   ### Create build dynamodb table
   DynamoBuildTable:
     Type: AWS::DynamoDB::Table

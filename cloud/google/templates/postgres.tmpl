@@ -31,6 +31,7 @@ resources:
       name: '{{ .username }}'
       password: '{{ .password }}'
       instance: $(ref.{{ .name }}.name)
+      host: '%'
 
 outputs:
   - name: EnvPostgresInstance
