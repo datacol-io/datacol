@@ -24,7 +24,7 @@ type dmResource struct {
 }
 
 type dmOutput struct {
-	Name  string `yaml:"type"`
+	Name  string `yaml:"name"`
 	Value string `yaml:"value"`
 }
 
@@ -240,17 +240,18 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 
 func (g *GCPCloud) resourceFromDeployment(dp *dm.Deployment, manifest *dm.Manifest, stack string) (*pb.Resource, error) {
 	tags := deploymentLabels(dp)
-
-	var mc manifestConfig
-	if err := yaml.Unmarshal([]byte(manifest.ExpandedConfig), &mc); err != nil {
-		return nil, err
-	}
-
-	outputs := map[string]string{}
+	outputs := make(map[string]string)
 	exports := make(map[string]string)
 
-	for _, out := range mc.Outputs {
-		outputs[out.Name] = out.Value
+	var mc manifestConfig
+	if manifest.Config != nil {
+		if err := yaml.Unmarshal([]byte(manifest.Config.Content), &mc); err != nil {
+			return nil, err
+		}
+
+		for _, out := range mc.Outputs {
+			outputs[out.Name] = out.Value
+		}
 	}
 
 	rs := &pb.Resource{

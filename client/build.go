@@ -2,9 +2,11 @@ package client
 
 import (
 	"fmt"
+	"io"
+	"math"
+
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
-	"io"
 )
 
 const chunkSize = 1024 * 1024 * 1
@@ -17,11 +19,12 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 		return nil, err
 	}
 
-	numChunks := len(data)/chunkSize + 1
-	fmt.Print("Uploading source ")
+	numChunks := int(math.Ceil(float64(len(data)) / float64(chunkSize)))
+
+	fmt.Printf("Uploading source in %d chunks", numChunks)
 
 	for i := 0; i < numChunks; i++ {
-		maxEnd := intMin((i+1)*chunkSize, len(data[i*chunkSize:]))
+		maxEnd := i*chunkSize + intMin(chunkSize, len(data[i*chunkSize:]))
 
 		chunk := data[i*chunkSize : maxEnd]
 		if len(chunk) == 0 && err == io.EOF {

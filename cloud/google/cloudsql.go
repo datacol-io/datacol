@@ -101,7 +101,7 @@ func setupCloudProxy(c *kubernetes.Clientset, ns, project, name string, options 
 		return err
 	}
 
-	cred, err := svaPrivateKey(name, project)
+	cred, err := svaPrivateKey(ns, project)
 	if err != nil {
 		return err
 	}

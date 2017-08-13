@@ -231,7 +231,7 @@ func resetDatabase(name, project string) error {
 }
 
 func waitForDpOp(svc *dm.Service, op *dm.Operation, project string, interrupt bool, teardown func() error) error {
-	term.Printf("Waiting on %s [%v]", op.OperationType, op.Name)
+	term.Printf("\nWaiting for %s on %s [%v]", op.Name, op.OperationType, op.Name)
 
 	cancelCh := make(chan os.Signal, 1)
 	signal.Notify(cancelCh, os.Interrupt, syscall.SIGTERM)

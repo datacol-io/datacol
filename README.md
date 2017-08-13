@@ -16,6 +16,23 @@ Please follow this [guide](https://www.datacol.io/docs/getting-started/) to get 
 
 You can [join](https://slackpass.io/datacol) our Slack team for discussion and support.
 
+#### Development
+
+To generate code from protobuf and bindata from static files, run
+
+    make gen
+
+To build the CLI
+  
+    make -B cli
+
+To build the api
+
+    make -B api
+
+We are currently adding tests, run tests locally using 
+  
+    go test $(glide nv)
 
 ### License
 
