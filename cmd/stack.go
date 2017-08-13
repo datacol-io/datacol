@@ -76,8 +76,8 @@ func init() {
 			},
 			&cli.BoolFlag{
 				Name:  "preemptible",
-				Usage: "use preemptible vm",
-				Value: true,
+				Usage: "use preemptible vm (for GCP)",
+				Value: false,
 			},
 			&cli.BoolFlag{
 				Name:  "opt-out",
@@ -91,7 +91,7 @@ func init() {
 			&cli.StringFlag{
 				Name:  "cluster-version",
 				Usage: "The Kubernetes version to use for the master and nodes",
-				Value: "1.6.4",
+				Value: "1.6.7",
 			},
 			&cli.StringFlag{
 				Name:  "key",
