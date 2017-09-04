@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -30,10 +31,11 @@ These credentials will only be used to communicate between this installer runnin
 )
 
 var (
-	gauthConfig goauth2.Config
-	projectId   string
-	pNumber     int64
-	emailOptin  = true
+	gauthConfig    goauth2.Config
+	projectId      string
+	pNumber        int64
+	emailOptin     = true
+	errInvalidCode = errors.New("invalid URL for Google authentication code")
 )
 
 type authPacket struct {
@@ -84,28 +86,35 @@ func CreateCredential(rackName string, optout bool) authPacket {
 		term.ExitOnError(err)
 	}
 
-	stop := make(chan authPacket, 1)
+	stop := make(chan authPacket)
 	http.Handle("/", callbackHandler{rackName, handleGauthCallback, stop})
 
 	go http.Serve(listener, nil)
 
-	select {
-	case msg := <-stop:
-		listener.Close()
-		client, err := setIamPolicy(rackName, msg.AccessToken)
-		if err != nil {
-			return authPacket{Err: err}
-		}
+	for {
+		select {
+		case msg := <-stop:
+			listener.Close()
 
-		email, data, err := NewServiceAccountPrivateKey(client, rackName, projectId)
-		if err != nil {
-			return authPacket{Err: err}
-		}
+			if msg.Err != nil {
+				return msg
+			}
 
-		msg.Cred = data
-		msg.ProjectId = projectId
-		msg.SAEmail = email
-		return msg
+			client, err := setIamPolicy(rackName, msg.AccessToken)
+			if err != nil {
+				return authPacket{Err: err}
+			}
+
+			email, data, err := NewServiceAccountPrivateKey(client, rackName, projectId)
+			if err != nil {
+				return authPacket{Err: err}
+			}
+
+			msg.Cred = data
+			msg.ProjectId = projectId
+			msg.SAEmail = email
+			return msg
+		}
 	}
 }
 
@@ -129,7 +138,12 @@ func (h callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h callbackHandler) termOnError(err error) {
-	h.stop <- authPacket{Err: err}
+	switch err {
+	case errInvalidCode:
+		// skip invalid Code errors
+	default:
+		h.stop <- authPacket{Err: err}
+	}
 }
 
 func (h callbackHandler) termOnSuccess(token string) {
@@ -145,7 +159,7 @@ func handleGauthCallback(h *callbackHandler, w http.ResponseWriter, r *http.Requ
 	code := r.URL.Query().Get("code")
 
 	if code == "" {
-		return "", fmt.Errorf("invalid code")
+		return "", errInvalidCode
 	}
 
 	token, err := gauthConfig.Exchange(context.Background(), code)
