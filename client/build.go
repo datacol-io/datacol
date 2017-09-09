@@ -21,7 +21,7 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 
 	numChunks := int(math.Ceil(float64(len(data)) / float64(chunkSize)))
 
-	fmt.Printf("Uploading source in %d chunks", numChunks)
+	fmt.Print("Uploading source")
 
 	for i := 0; i < numChunks; i++ {
 		maxEnd := i*chunkSize + intMin(chunkSize, len(data[i*chunkSize:]))
