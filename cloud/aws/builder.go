@@ -1,7 +1,6 @@
 package aws
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"github.com/ejholmes/cloudwatch"
@@ -99,19 +99,16 @@ func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
 		return nil, fmt.Errorf("reading tempfile err: %v", err)
 	}
 	defer reader.Close()
-	fileInfo, _ := reader.Stat()
+	log.Debugf("Uploading to s3 from %s", zipPath)
 
-	buffer := make([]byte, fileInfo.Size())
-	reader.Read(buffer)
+	uploader := s3manager.NewUploaderWithClient(a.s3())
 
-	fileBytes := bytes.NewReader(buffer)
-
-	log.Debug("Uploading to s3")
-
-	if _, err := a.s3().PutObject(&s3.PutObjectInput{
-		Body:   fileBytes,
+	if _, err = uploader.Upload(&s3manager.UploadInput{
+		Body:   reader,
 		Bucket: aws.String(a.codeBuildBucket()),
 		Key:    aws.String(app + "/source.zip"),
+	}, func(u *s3manager.Uploader) {
+		u.PartSize = 64 * 1024 * 1024 // 64MB per part
 	}); err != nil {
 		return nil, fmt.Errorf("uploading source to s3 err: %v", err)
 	}

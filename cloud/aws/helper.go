@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/docker/docker/pkg/archive"
-	"github.com/jhoonb/archivex"
+	"github.com/mholt/archiver"
 )
 
 func generateId(prefix string, size int) string {
@@ -89,22 +89,21 @@ func timestampNow() int32 {
 }
 
 func convertGzipToZip(app, src string) (string, error) {
-	dir, err := ioutil.TempDir(os.Getenv("HOME"), app+"-")
+	dir, err := ioutil.TempDir("", app+"-")
 	if err != nil {
 		return dir, err
 	}
 
+	log.Debugf("untar %s to %s", src, dir)
 	if err = untarPath(src, dir); err != nil {
 		return dir, err
 	}
 
-	zipf := new(archivex.ZipFile)
-	zipf.Create(dir)
-	if err = zipf.AddAll(dir, false); err != nil {
-		return dir, err
+	zipPath := dir + ".zip"
+	if err := archiver.Zip.Make(zipPath, []string{dir}); err != nil {
+		return dir, fmt.Errorf("creating a zip archive err: %v", err)
 	}
-
-	return zipf.Name, zipf.Close()
+	return zipPath, nil
 }
 
 func buildTemplate(name, section string, data interface{}) (string, error) {

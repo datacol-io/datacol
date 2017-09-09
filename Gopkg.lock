@@ -41,7 +41,7 @@
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
-  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/ec2query","private/protocol/json/jsonutil","private/protocol/jsonrpc","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/cloudformation","service/cloudwatchlogs","service/codebuild","service/dynamodb","service/ec2","service/ecr","service/s3","service/sts"]
+  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/ec2query","private/protocol/json/jsonutil","private/protocol/jsonrpc","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/cloudformation","service/cloudwatchlogs","service/codebuild","service/dynamodb","service/ec2","service/ecr","service/s3","service/s3/s3iface","service/s3/s3manager","service/sts"]
   revision = "b709581f82a77c0ff00790d1446c05719fed714d"
   version = "v1.10.9"
 
@@ -82,6 +82,12 @@
   packages = ["."]
   revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
   version = "v0.3.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/dsnet/compress"
+  packages = [".","bzip2","bzip2/internal/sais","internal","internal/errors","internal/prefix"]
+  revision = "c4dbed65594871659ea7347a85e1b8dcd97b9990"
 
 [[projects]]
   branch = "master"
@@ -186,12 +192,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/jhoonb/archivex"
-  packages = ["."]
-  revision = "be4efa7ec0c38ab76d56037014c90d48d6b13037"
-
-[[projects]]
-  branch = "master"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   revision = "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d"
@@ -222,10 +222,22 @@
   revision = "57fdcb988a5c543893cc61bce354a6e24ab70022"
 
 [[projects]]
+  name = "github.com/mholt/archiver"
+  packages = ["."]
+  revision = "cdc68dd1f170b8dfc1a0d2231b5bb0967ed67006"
+  version = "v2.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/nwaples/rardecode"
+  packages = ["."]
+  revision = "f22b7ef81a0afac9ce1447d37e5ab8e99fbd2f73"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -253,6 +265,12 @@
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "f1f1a805ed361a0e078bb537e4ea78cd37dcf065"
+
+[[projects]]
+  name = "github.com/ulikunitz/xz"
+  packages = [".","internal/hash","internal/xlog","lzma"]
+  revision = "0c6b41e72360850ca4f98dc341fd999726ea007f"
+  version = "v0.5.4"
 
 [[projects]]
   name = "golang.org/x/crypto"
@@ -328,6 +346,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "337b1c2a5a49983cd281a281a119e0f198f146dd97a27c1995db6fe5b1e066a7"
+  inputs-digest = "90002e91433f974f5078dac1547a4453ec1de9665e1e858d64798599d9a9fcb0"
   solver-name = "gps-cdcl"
   solver-version = 1

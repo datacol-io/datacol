@@ -206,6 +206,10 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 		app = req.App
 	}
 
+	if err := fd.Close(); err != nil {
+		return internalError(err, "failed to close tmpfile")
+	}
+
 	b, err := s.Provider.BuildImport(app, fd.Name())
 	if err != nil {
 		return internalError(err, "failed to upload source.")
