@@ -84,7 +84,7 @@ func cloudGoogleTemplatesMysqlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 1392, mode: os.FileMode(420), modTime: time.Unix(1500705857, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 1392, mode: os.FileMode(420), modTime: time.Unix(1502614896, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -104,7 +104,7 @@ func cloudGoogleTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 1134, mode: os.FileMode(420), modTime: time.Unix(1500705865, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 1134, mode: os.FileMode(420), modTime: time.Unix(1502614896, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -161,7 +161,7 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"cloud/google/templates/mysql.tmpl":    cloudGoogleTemplatesMysqlTmpl,
+	"cloud/google/templates/mysql.tmpl": cloudGoogleTemplatesMysqlTmpl,
 	"cloud/google/templates/postgres.tmpl": cloudGoogleTemplatesPostgresTmpl,
 }
 
@@ -204,12 +204,11 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
-
 var _bintree = &bintree{nil, map[string]*bintree{
 	"cloud": &bintree{nil, map[string]*bintree{
 		"google": &bintree{nil, map[string]*bintree{
 			"templates": &bintree{nil, map[string]*bintree{
-				"mysql.tmpl":    &bintree{cloudGoogleTemplatesMysqlTmpl, map[string]*bintree{}},
+				"mysql.tmpl": &bintree{cloudGoogleTemplatesMysqlTmpl, map[string]*bintree{}},
 				"postgres.tmpl": &bintree{cloudGoogleTemplatesPostgresTmpl, map[string]*bintree{}},
 			}},
 		}},
@@ -262,3 +261,4 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
+

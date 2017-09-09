@@ -100,7 +100,7 @@ func cmdResourceList(c *cli.Context) error {
 	}
 
 	if api.IsAWS() {
-		// fmt.Printf("Host: %s\n", client.ApiServer)
+		// fmt.Printf("Datacol API: %s\n", client.ApiServer)
 		// fmt.Printf("Region: %s\n", client.Region)
 	}
 

@@ -5,13 +5,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var _kubeClient *kubernetes.Clientset
+var kubeClient *kubernetes.Clientset
+var cacheClientsetOnce sync.Once
+var cacheConfigPathOnce sync.Once
 
 var (
 	rootPath      = "/opt/datacol"
@@ -22,16 +25,20 @@ var (
 )
 
 func (p *AwsCloud) kubeClient() *kubernetes.Clientset {
-	if _kubeClient == nil {
-		kube, err := getKubeClientset(p.DeploymentName)
+	cacheConfigPathOnce.Do(func() {
+		p.K8sConfigPath()
+	})
+
+	cacheClientsetOnce.Do(func() {
+		kube, err := getkubeclientset(p.DeploymentName)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		_kubeClient = kube
-	}
+		kubeClient = kube
+	})
 
-	return _kubeClient
+	return kubeClient
 }
 
 func (p *AwsCloud) K8sConfigPath() (string, error) {
@@ -72,7 +79,7 @@ func (p *AwsCloud) masterPrivateIp() (string, error) {
 	return "", fmt.Errorf("unable to find MasterPrivateIp from stack output")
 }
 
-func getKubeClientset(name string) (*kubernetes.Clientset, error) {
+func getkubeclientset(name string) (*kubernetes.Clientset, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kcpath)
 	if err != nil {
 		return nil, err
