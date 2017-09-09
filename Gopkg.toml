@@ -1,0 +1,47 @@
+[[constraint]]
+  name = "github.com/Sirupsen/logrus"
+  version = "0.11.5"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/appscode/go-term"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ejholmes/cloudwatch"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-version"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/inconshreveable/go-update"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jhoonb/archivex"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/go-homedir"
+
+[[constraint]]
+  name = "github.com/stvp/rollbar"
+  version = "0.4.0"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "~1.0.1-GA"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/urfave/cli.v2"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
