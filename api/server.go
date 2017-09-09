@@ -183,6 +183,8 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("storing upload into %s", fd.Name())
 	defer os.Remove(fd.Name())
 
 	for {
@@ -194,7 +196,10 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 			return err
 		}
 
+		log.Debugf("writing %d data", len(req.Data))
+
 		if err = writeToFd(fd, req.Data); err != nil {
+			log.Error(err)
 			return err
 		}
 

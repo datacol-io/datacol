@@ -2,14 +2,15 @@ package aws
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/client-go/pkg/util/intstr"
-	"os"
-	"strconv"
 )
 
 func (a *AwsCloud) dynamoReleases() string {
@@ -34,10 +35,8 @@ func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := getKubeClientset(a.DeploymentName)
-	if err != nil {
-		return nil, err
-	}
+
+	c := a.kubeClient()
 
 	deployer, err := sched.NewDeployer(c)
 	if err != nil {

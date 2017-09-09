@@ -102,12 +102,7 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 	}
 
 	app := a.appFromItem(res.Item)
-
-	kc, err := getKubeClientset(a.DeploymentName)
-	if err != nil {
-		log.Warn(err)
-		return app, nil
-	}
+	kc := a.kubeClient()
 
 	if app.Endpoint, err = sched.GetServiceEndpoint(kc, a.DeploymentName, name); err != nil {
 		return app, err

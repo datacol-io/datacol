@@ -88,8 +88,8 @@ func timestampNow() int32 {
 	return int32(time.Now().Unix())
 }
 
-func convertGzipToZip(src string) (string, error) {
-	dir, err := ioutil.TempDir(os.Getenv("HOME"), "zip-")
+func convertGzipToZip(app, src string) (string, error) {
+	dir, err := ioutil.TempDir(os.Getenv("HOME"), app+"-")
 	if err != nil {
 		return dir, err
 	}

@@ -2,20 +2,18 @@ package aws
 
 import (
 	"bufio"
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	sched "github.com/dinesh/datacol/cloud/kube"
 	"math"
 	"strconv"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 func (a *AwsCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {
 	ns := a.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return nil, nil, err
-	}
+	c := a.kubeClient()
 
 	pod, err := sched.RunningPods(ns, app, c)
 	if err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"

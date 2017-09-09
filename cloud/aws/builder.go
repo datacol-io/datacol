@@ -3,6 +3,12 @@ package aws
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"strings"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/codebuild"
@@ -11,11 +17,6 @@ import (
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"github.com/ejholmes/cloudwatch"
-	"io"
-	"io/ioutil"
-	"os"
-	"strings"
-	"time"
 )
 
 func (a *AwsCloud) ecrRepository(n string) string {
@@ -36,10 +37,7 @@ func (a *AwsCloud) codeBuildBucket() string {
 
 func (g *AwsCloud) GetRunningPods(app string) (string, error) {
 	ns := g.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return "", err
-	}
+	c := g.kubeClient()
 
 	return sched.RunningPods(ns, app, c)
 }
@@ -88,10 +86,12 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 }
 
 func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
-	zipPath, err := convertGzipToZip(gzipPath)
+	log.Debugf("converting gzip to zip of %s", gzipPath)
+	zipPath, err := convertGzipToZip(app, gzipPath)
 	if err != nil {
 		return nil, fmt.Errorf("converting gzip to zip archive. err: %v", err)
 	}
+
 	defer os.RemoveAll(zipPath)
 
 	reader, err := os.Open(zipPath)
@@ -106,6 +106,8 @@ func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
 
 	fileBytes := bytes.NewReader(buffer)
 
+	log.Debug("Uploading to s3")
+
 	if _, err := a.s3().PutObject(&s3.PutObjectInput{
 		Body:   fileBytes,
 		Bucket: aws.String(a.codeBuildBucket()),
@@ -113,6 +115,8 @@ func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
 	}); err != nil {
 		return nil, fmt.Errorf("uploading source to s3 err: %v", err)
 	}
+
+	log.Debug("OK \n")
 
 	build := &pb.Build{
 		App:       app,
