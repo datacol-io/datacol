@@ -16,7 +16,7 @@ vet:
 	goimports ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/aws/ ./cloud/ ./api ./api/models/ ./api/controller/
 
 cmd:
-	go build -ldflags="-s -w" -i ${BUILD_CMD}
+	go build -o datacol -ldflags="-s -w" -i ${BUILD_CMD}
 
 api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go

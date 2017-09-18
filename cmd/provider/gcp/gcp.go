@@ -328,7 +328,6 @@ resources:
 - name: {{ env['name'] }}
   type: storage.v1.bucket
   properties:
-    location: {{ properties['bucketLocation'] }}
     projectNumber: {{ properties['projectNumber'] }}
 `
 

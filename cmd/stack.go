@@ -219,7 +219,7 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	}
 
 	if err := initializeGCP(options, nodes, c.Bool("opt-out")); err != nil {
-		return err
+		term.ExitOnError(err)
 	}
 
 	term.Successln("\nDONE")
