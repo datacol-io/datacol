@@ -127,9 +127,7 @@ func cmdResourceInfo(c *cli.Context) error {
 	defer close()
 
 	rs, err := api.GetResource(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	// for k, v := range jsonDecode(rs.Exports) {
 	// 	fmt.Printf("%s=%s", k, v)
@@ -150,21 +148,14 @@ func cmdResourceDelete(c *cli.Context) error {
 	api, close := getApiClient(c)
 	defer close()
 
-	err := api.DeleteResource(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(api.DeleteResource(name))
 
 	if api.IsAWS() {
-		if err := waitForAwsResource(name, "DELETE", api); err != nil {
-			return err
-		}
+		stdcli.ExitOnError(waitForAwsResource(name, "DELETE", api))
 	}
 
 	if api.IsGCP() {
-		if err := waitForGcpResource(name, "DELETE", api); err != nil {
-			return err
-		}
+		stdcli.ExitOnError(waitForGcpResource(name, "DELETE", api))
 	}
 
 	fmt.Println("\nDELETED")
@@ -176,9 +167,7 @@ func cmdResourceCreate(c *cli.Context) error {
 	defer close()
 
 	t, err := checkResourceType(c.Args().First())
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	var arguments string
 	if api.IsGCP() {
@@ -213,22 +202,16 @@ func cmdResourceCreate(c *cli.Context) error {
 	fmt.Printf("\n")
 
 	rs, err := api.CreateResource(t.name, options)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	log.Debugf("Resource: %v", toJson(rs))
 
 	if api.IsAWS() {
-		if err := waitForAwsResource(options["name"], "CREATE", api); err != nil {
-			return err
-		}
+		stdcli.ExitOnError(waitForAwsResource(options["name"], "CREATE", api))
 	}
 
 	if api.IsGCP() {
-		if err := waitForGcpResource(options["name"], "CREATE", api); err != nil {
-			return err
-		}
+		stdcli.ExitOnError(waitForGcpResource(options["name"], "CREATE", api))
 	}
 
 	fmt.Println("\nCREATED")
@@ -245,10 +228,7 @@ func cmdLinkCreate(c *cli.Context) error {
 	client, close := getApiClient(c)
 	defer close()
 
-	err = client.CreateResourceLink(app, name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(client.CreateResourceLink(app, name))
 
 	fmt.Printf("Linked %s to %s\n", name, app)
 	return nil
@@ -256,17 +236,14 @@ func cmdLinkCreate(c *cli.Context) error {
 
 func cmdLinkDelete(c *cli.Context) error {
 	_, app, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
+
 	name := c.Args().First()
 	client, close := getApiClient(c)
+
 	defer close()
 
-	err = client.DeleteResourceLink(app, name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(client.DeleteResourceLink(app, name))
 
 	fmt.Printf("Deleted link %s from %s\n", name, app)
 	return nil
@@ -329,6 +306,14 @@ func waitForGcpResource(name, event string, c *client.Client) error {
 	timeout := time.After(time.Minute * 5)
 	fmt.Printf("Waiting for %s ", name)
 
+	/*
+		NOTE: Though GCP deployment manager provides status=PENDING|RUNNING|DONE, we add an additional "FAILED" value to denote
+		failed event which is equivalent to DONE with Operation.Error != nil.
+
+		This is set in cloud/gcp/resource.go#resourceFromDeployment.
+	*/
+	failedEvent := "FAILED"
+
 Loop:
 	for {
 		select {
@@ -342,6 +327,10 @@ Loop:
 			}
 
 			fmt.Print(".")
+			if rs.Status == failedEvent {
+				return fmt.Errorf("%s failed because of \"%s\"", event, rs.StatusReason)
+			}
+
 			if rs.Status == "DONE" {
 				break Loop
 			}

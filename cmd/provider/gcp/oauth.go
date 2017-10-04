@@ -200,15 +200,20 @@ func setIamPolicy(rackName, accessToken string) (*iam.Service, error) {
 
 	fmt.Println("\nPlease choose a project to continue.")
 
-	i, _ := term.List(projects)
-	projectId = presp.Projects[i].ProjectId
-	pNumber = presp.Projects[i].ProjectNumber
+	_, selectedName := term.List(projects)
+
+	for _, p := range presp.Projects {
+		if selectedName == p.Name {
+			projectId = p.ProjectId
+			break
+		}
+	}
 
 	if len(projectId) == 0 {
 		return nil, fmt.Errorf("Please select atleast an option.")
 	}
 
-	log.Debugf("Selected ProjectId: %s", projectId)
+	log.Debugf("Selected ProjectId: %s Name: %s", projectId, selectedName)
 
 	iamClient, err := iam.New(client)
 	if err != nil {

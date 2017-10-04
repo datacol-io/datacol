@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	term "github.com/appscode/go-term"
 	pb "github.com/dinesh/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"gopkg.in/urfave/cli.v2"
@@ -53,7 +54,7 @@ func GetAppStack() string {
 	}
 
 	if stack == "" {
-		Error(Stack404)
+		ExitOnError(Stack404)
 	}
 	return stack
 }
@@ -128,15 +129,16 @@ func CheckFlagsPresence(c *cli.Context, flags ...string) {
 	for _, name := range flags {
 		value := c.String(name)
 		if value == "" {
-			Error(fmt.Errorf("Missing required param %v", name))
+			term.Errorln(fmt.Errorf("Missing required param --%v", name))
+			cli.ShowCommandHelp(c, c.Command.Name)
+			os.Exit(1)
 		}
 	}
 }
 
-func Error(err error) {
+func ExitOnError(err error) {
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		term.Fatalln(err)
 	}
 }
 
@@ -149,7 +151,7 @@ func HandlePanicErr(err error) {
 func EnsureOnlyFlags(c *cli.Context, args []string) {
 	for _, a := range args {
 		if !strings.HasPrefix(a, "--") {
-			Error(fmt.Errorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a))
+			ExitOnError(fmt.Errorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a))
 			Usage(c)
 		}
 	}

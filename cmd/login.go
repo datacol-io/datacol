@@ -3,14 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"os"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"golang.org/x/net/context"
 	"gopkg.in/urfave/cli.v2"
-	"os"
-	"strings"
 )
 
 func init() {
@@ -34,9 +35,7 @@ func cmdLogin(c *cli.Context) error {
 	fmt.Print("Enter your password: ")
 
 	p, err := r.ReadString('\n')
-	if err != nil {
-		log.Fatal(err)
-	}
+	stdcli.ExitOnError(err)
 
 	passwd := strings.TrimSpace(p)
 	host := c.String("ip")
@@ -46,12 +45,12 @@ func cmdLogin(c *cli.Context) error {
 
 	log.Debugf("Trying to login with [%s]", passwd)
 	ret, err := api.Auth(context.TODO(), &pbs.AuthRequest{Password: passwd})
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	log.Debugf("response: %+v", toJson(ret))
+
 	if err = updateSetting(ret, host, passwd); err != nil {
+		stdcli.ExitOnError(err)
 		return err
 	}
 
@@ -61,6 +60,7 @@ func cmdLogin(c *cli.Context) error {
 
 func updateSetting(ret *pbs.AuthResponse, host, passwd string) error {
 	if err := createStackDir(ret.Name); err != nil {
+		stdcli.ExitOnError(err)
 		return err
 	}
 

@@ -2,8 +2,14 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
 	"github.com/appscode/go/crypto/rand"
@@ -13,10 +19,6 @@ import (
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"github.com/dinesh/datacol/go/env"
 	"gopkg.in/urfave/cli.v2"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 var (
@@ -27,6 +29,10 @@ var (
 	defaultAWSZone         = "ap-southeast-1a"
 	defaultAWSInstanceType = "t2.medium"
 	defaultGCPInstanceType = "n1-standard-1"
+)
+
+const (
+	serviceAccountKey = "service_account"
 )
 
 func init() {
@@ -91,11 +97,11 @@ func init() {
 			&cli.StringFlag{
 				Name:  "cluster-version",
 				Usage: "The Kubernetes version to use for the master and nodes",
-				Value: "1.6.7",
+				Value: "1.7.6-gke.1",
 			},
 			&cli.StringFlag{
 				Name:  "key",
-				Usage: "Name of ssh-keypair to create for aws",
+				Usage: "[Name of ssh-keypair to create for AWS] OR [/path/to/service-account key for GCP]",
 			},
 		},
 	})
@@ -107,20 +113,23 @@ func init() {
 	})
 }
 
-func cmdStackCreate(c *cli.Context) error {
+func cmdStackCreate(c *cli.Context) (err error) {
 	if c.NArg() < 1 {
-		return fmt.Errorf("Please provide a cloud provider (aws or gcp)")
+		err = fmt.Errorf("Please provide a cloud provider (aws or gcp)")
 	}
 
 	provider := c.Args().Get(0)
 	switch strings.ToLower(provider) {
 	case "gcp":
-		return cmdGCPStackCreate(c)
+		err = cmdGCPStackCreate(c)
 	case "aws":
-		return cmdAWSStackCreate(c)
+		err = cmdAWSStackCreate(c)
 	default:
-		return fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
+		err = fmt.Errorf("Invalid cloud provider: %s. Should be either of `aws` or `gcp`.", provider)
 	}
+
+	stdcli.ExitOnError(err)
+	return
 }
 
 func cmdAWSStackCreate(c *cli.Context) error {
@@ -188,6 +197,7 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		Preemptible:    preemptible,
 		Version:        stdcli.Version,
 		ApiKey:         password,
+		SAKeyPath:      c.String("key"),
 		ClusterVersion: c.String("cluster-version"),
 	}
 
@@ -214,6 +224,7 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	ec := env.FromHost()
 	if ec.DevMode() {
 		options.ArtifactBucket = "datacol-dev"
+		options.Preemptible = true
 	} else {
 		options.ArtifactBucket = "datacol-distros"
 	}
@@ -281,27 +292,44 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 }
 
 func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
-	resp := gcp.CreateCredential(opts.Name, optout)
-	if resp.Err != nil {
-		return resp.Err
-	}
+	var cred []byte
 
-	cred := resp.Cred
-	if len(cred) == 0 {
-		return credNotFound
-	}
+	if opts.SAKeyPath != "" {
+		data, err := ioutil.ReadFile(opts.SAKeyPath)
+		if err != nil {
+			return err
+		}
+		cred = data
 
-	if len(resp.ProjectId) == 0 {
-		return projectNotFound
+		jwtConfig, err := parseGCPCredentialsFile(data)
+		if err != nil {
+			return err
+		}
+
+		opts.Project = jwtConfig.ProjectID
+		opts.SAEmail = jwtConfig.ClientEmail
+	} else {
+		resp := gcp.CreateCredential(opts.Name, optout)
+		if resp.Err != nil {
+			return resp.Err
+		}
+
+		cred = resp.Cred
+		if len(cred) == 0 {
+			return credNotFound
+		}
+
+		if len(resp.ProjectId) == 0 {
+			return projectNotFound
+		}
+
+		opts.Project = resp.ProjectId
+		opts.SAEmail = resp.SAEmail
 	}
 
 	if err := saveGcpCredential(opts.Name, cred); err != nil {
 		return err
 	}
-
-	opts.Project = resp.ProjectId
-	opts.ProjectNumber = resp.PNumber
-	opts.SAEmail = resp.SAEmail
 
 	if len(opts.Bucket) == 0 {
 		opts.Bucket = fmt.Sprintf("datacol-%s", slug(opts.Project))
@@ -339,7 +367,7 @@ func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 	return dumpGcpAuthParams(opts.Name, opts.Project, opts.Bucket, res.Host, res.Password)
 }
 
-func cmdStackDestroy(c *cli.Context) error {
+func cmdStackDestroy(c *cli.Context) (err error) {
 	auth, _ := stdcli.GetAuthOrDie()
 	provider := auth.Provider()
 
@@ -350,17 +378,14 @@ func cmdStackDestroy(c *cli.Context) error {
 
 	switch strings.ToLower(provider) {
 	case "gcp":
-		if err := gcpTeardown(); err != nil {
-			return err
-		}
+		err = gcpTeardown()
 	case "aws":
-		if err := awsTeardown(); err != nil {
-			return err
-		}
+		err = awsTeardown()
 	default:
-		return fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
+		err = fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
 	}
 
+	stdcli.ExitOnError(err)
 	term.Successln("\nDONE")
 	return nil
 }
@@ -480,4 +505,24 @@ func getAwsRegionFromZone(zone string) string {
 
 func getGcpRegionFromZone(zone string) string {
 	return zone[0 : len(zone)-2]
+}
+
+type credentialsFile struct {
+	Type string `json:"type"` // serviceAccountKey or userCredentialsKey
+
+	// Service Account fields
+	ClientEmail string `json:"client_email"`
+	ProjectID   string `json:"project_id"`
+}
+
+func parseGCPCredentialsFile(jsonKey []byte) (*credentialsFile, error) {
+	var f credentialsFile
+	if err := json.Unmarshal(jsonKey, &f); err != nil {
+		return nil, err
+	}
+	if f.Type != "service_account" {
+		return nil, fmt.Errorf("google: read JWT from JSON credentials: 'type' field is %q (expected %q)", f.Type, serviceAccountKey)
+	}
+
+	return &f, nil
 }

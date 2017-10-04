@@ -1,7 +1,6 @@
 package google
 
 import (
-	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -9,7 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
+
+	"cloud.google.com/go/datastore"
 
 	"cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
@@ -34,7 +36,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-var _jwtClient *http.Client
+var jwtHttpClient *http.Client
+var onceLoadJwtClient sync.Once
 
 type GCPCloud struct {
 	Project        string
@@ -194,17 +197,15 @@ func httpClient(name string) *http.Client {
 }
 
 func jwtClient(sva []byte) *http.Client {
-	if _jwtClient != nil {
-		return _jwtClient
-	}
+	onceLoadJwtClient.Do(func() {
+		cfg, err := oauth2_google.JWTConfigFromJSON(sva, csm.CloudPlatformScope, sqladmin.SqlserviceAdminScope)
+		if err != nil {
+			log.Fatal(fmt.Errorf("JWT client %s", err))
+		}
+		jwtHttpClient = cfg.Client(context.TODO())
+	})
 
-	jwtConfig, err := oauth2_google.JWTConfigFromJSON(sva, csm.CloudPlatformScope, sqladmin.SqlserviceAdminScope)
-	if err != nil {
-		log.Fatal(fmt.Errorf("JWT client %s", err))
-	}
-
-	_jwtClient = jwtConfig.Client(context.TODO())
-	return _jwtClient
+	return jwtHttpClient
 }
 
 func (g *GCPCloud) gsGet(bucket, key string) ([]byte, error) {

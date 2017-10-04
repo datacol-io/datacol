@@ -14,19 +14,12 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/yaml.v2"
 )
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-}
-
-func exitOnError(err error) {
-	if err != nil {
-		term.Fatalln(err)
-	}
 }
 
 func withIntSuffix(seed string) string {

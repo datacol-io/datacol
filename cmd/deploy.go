@@ -48,9 +48,7 @@ func init() {
 
 func cmdDeploy(c *cli.Context) error {
 	dir, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
 	defer close()
@@ -65,17 +63,15 @@ func cmdDeploy(c *cli.Context) error {
 	buildId := c.String("build")
 
 	if len(buildId) == 0 {
-		if build, err = executeBuildDir(client, app, dir); err != nil {
-			return err
-		}
+		build, err = executeBuildDir(client, app, dir)
+		stdcli.ExitOnError(err)
 	} else {
 		b, err := client.GetBuild(name, buildId)
-		if err != nil {
-			return err
-		}
+		stdcli.ExitOnError(err)
 
 		if b == nil {
-			return fmt.Errorf("No build found by id: %s.", buildId)
+			err = fmt.Errorf("No build found by id: %s.", buildId)
+			stdcli.ExitOnError(err)
 		}
 
 		build = b
@@ -83,13 +79,13 @@ func cmdDeploy(c *cli.Context) error {
 
 	fmt.Printf("Deploying build %s\n", build.Id)
 
-	if _, err = client.ReleaseBuild(build, c.Bool("wait")); err != nil {
-		return err
-	}
+	_, err = client.ReleaseBuild(build, c.Bool("wait"))
+	stdcli.ExitOnError(err)
 
 	app, err = client.GetApp(name)
 	if err != nil {
-		return fmt.Errorf("fetching app %s err: %v", name, err)
+		err = fmt.Errorf("fetching app %s err: %v", name, err)
+		stdcli.ExitOnError(err)
 	}
 
 	if len(app.Endpoint) > 0 {

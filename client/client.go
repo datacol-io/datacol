@@ -2,6 +2,8 @@ package client
 
 import (
 	"fmt"
+	"os"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/io"
 	pb "github.com/dinesh/datacol/api/controller"
@@ -9,7 +11,6 @@ import (
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"os"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 func init() {
 	root := models.ConfigPath
 	if err := io.EnsureDirectory(root); err != nil {
-		stdcli.Error(err)
+		stdcli.ExitOnError(err)
 	}
 }
 

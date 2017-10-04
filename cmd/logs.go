@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
 	"os"
 	"time"
+
+	"github.com/dinesh/datacol/cmd/stdcli"
+	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
@@ -29,20 +30,20 @@ func init() {
 
 func cmdAppLogStream(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
 	defer close()
 
-	if _, err := client.GetApp(name); err != nil {
-		return err
-	}
+	_, err = client.GetApp(name)
+	stdcli.ExitOnError(err)
 
 	if c.NArg() > 0 {
 		name = c.Args().Get(0)
 	}
 
-	return client.StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), os.Stdout)
+	err = client.StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), os.Stdout)
+	stdcli.ExitOnError(err)
+
+	return err
 }
