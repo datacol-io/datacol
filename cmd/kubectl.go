@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"os"
+
+	"golang.org/x/net/context"
 
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
@@ -26,10 +27,8 @@ func cmdKubectl(c *cli.Context) error {
 
 	args := c.Args().Slice()
 	ret, err := client.ProviderServiceClient.Kubectl(context.TODO(), &pbs.KubectlReq{Args: args})
+	stdcli.ExitOnError(err)
 
-	if err != nil {
-		return err
-	}
 	onApiExec(ret, args)
 	return nil
 }
@@ -39,7 +38,7 @@ func onApiExec(ret *pbs.CmdResponse, args []string) {
 	if len(ret.Err) > 0 {
 		log.Warn(ret.Err)
 		log.Warn(ret.StdErr)
-		fmt.Printf("failed to execute %v", args)
+		fmt.Printf("failed to execute %v\n", args)
 	} else {
 		if exitcode == 0 {
 			fmt.Printf(ret.StdOut)

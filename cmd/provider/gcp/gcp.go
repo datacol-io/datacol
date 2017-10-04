@@ -34,10 +34,12 @@ const (
 type InitOptions struct {
 	Name, Project, ClusterName, MachineType, Zone, Bucket string
 	ApiKey, Version, Region, ArtifactBucket               string
-	SAEmail, ClusterVersion                               string
-	ProjectNumber                                         int64
-	DiskSize, NumNodes, ControllerPort                    int
-	ClusterNotExists, Preemptible                         bool
+
+	// SA stands for Service Account
+	SAKeyPath, SAEmail, ClusterVersion string
+
+	DiskSize, NumNodes, ControllerPort int
+	ClusterNotExists, Preemptible      bool
 }
 
 type initResponse struct {
@@ -328,7 +330,7 @@ resources:
 - name: {{ env['name'] }}
   type: storage.v1.bucket
   properties:
-    projectNumber: {{ properties['projectNumber'] }}
+    name: {{ env['name'] }}
 `
 
 const kubeClusterYAML = `
@@ -349,7 +351,7 @@ resources:
       nodeConfig:
         preemptible: {{ properties['preemptible'] }}
         machineType: {{ properties['machineType'] }}
-        imageType: CONTAINER_VM
+        imageType: COS
         diskSizeGb: {{ properties['diskSize'] }}
         oauthScopes:
           - https://www.googleapis.com/auth/compute
@@ -367,7 +369,6 @@ resources:
 - type: registry.jinja
   name: {{ .Bucket }}
   properties:
-    projectNumber: {{ .ProjectNumber }}
     zone: {{ .Zone }}
 
 - type: compute.jinja
@@ -436,6 +437,7 @@ resources:
         - https://www.googleapis.com/auth/devstorage.read_write
         - https://www.googleapis.com/auth/logging.write
         - https://www.googleapis.com/auth/monitoring
+        - https://www.googleapis.com/auth/sqlservice.admin
     tags:
       items:
         - datacol

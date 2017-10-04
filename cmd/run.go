@@ -15,22 +15,18 @@ func init() {
 
 func cmdAppRun(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
 	defer close()
 
-	if _, err := client.GetApp(name); err != nil {
-		return err
-	}
+	_, err = client.GetApp(name)
+	stdcli.ExitOnError(err)
 
 	args := c.Args().Slice()
 	ret, err := client.RunProcess(name, args)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
+
 	onApiExec(ret, args)
 
 	return nil

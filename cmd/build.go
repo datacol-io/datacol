@@ -58,9 +58,7 @@ func cmdBuildList(c *cli.Context) error {
 	defer close()
 
 	builds, err := api.GetBuilds(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	fmt.Println(toJson(builds))
 	return nil
@@ -68,21 +66,18 @@ func cmdBuildList(c *cli.Context) error {
 
 func cmdBuildDelete(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
+
 	api, close := getApiClient(c)
 	defer close()
 
 	if c.Args().Len() == 0 {
-		return fmt.Errorf("Please provide id of the build")
+		stdcli.ExitOnError(fmt.Errorf("Please provide id of the build"))
 	}
 
 	bid := c.Args().First()
 
-	if err = api.DeleteBuild(name, bid); err != nil {
-		return err
-	}
+	stdcli.ExitOnError(api.DeleteBuild(name, bid))
 
 	fmt.Println("DONE")
 	return nil
@@ -93,9 +88,7 @@ func cmdBuild(c *cli.Context) error {
 	defer close()
 
 	dir, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	app, err := api.GetApp(name)
 	if err != nil {
@@ -110,6 +103,7 @@ func cmdBuild(c *cli.Context) error {
 		_, err = executeBuildGitSource(api, app, ref)
 	}
 
+	stdcli.ExitOnError(err)
 	return err
 }
 

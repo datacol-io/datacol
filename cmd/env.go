@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
@@ -29,21 +30,18 @@ func init() {
 
 func cmdConfigList(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	ct, close := getApiClient(c)
 	defer close()
 
 	if _, err = ct.GetApp(name); err != nil {
-		return fmt.Errorf("failed to fetch app: %v", err)
+		err = fmt.Errorf("failed to fetch app: %v", err)
+		stdcli.ExitOnError(err)
 	}
 
 	env, err := ct.GetEnvironment(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	data := ""
 	for key, value := range env {
@@ -56,9 +54,7 @@ func cmdConfigList(c *cli.Context) error {
 
 func cmdConfigSet(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	ct, close := getApiClient(c)
 	defer close()
@@ -83,17 +79,13 @@ func cmdConfigSet(c *cli.Context) error {
 
 func cmdConfigUnset(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
 	defer close()
 
 	env, err := client.GetEnvironment(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	keyvar := c.Args().First()
 	data := ""

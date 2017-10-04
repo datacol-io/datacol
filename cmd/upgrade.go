@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go-term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	semver "github.com/hashicorp/go-version"
 	"github.com/inconshreveable/go-update"
@@ -31,38 +32,33 @@ func cmdVersion(c *cli.Context) {
 
 func cmdUpgrade(c *cli.Context) error {
 	currentv, err := semver.NewVersion(c.App.Version)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	lv := latestVersion()
 	newv, err := semver.NewVersion(lv)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	if newv.GreaterThan(currentv) {
 		url := binaryURL(lv)
 		fmt.Printf("Updating from %s to %s ...", c.App.Version, lv)
 		log.Debugf("\nDownloading from %s", url)
-		resp, err := http.Get(url)
-		if err != nil {
-			return err
-		}
 
+		resp, err := http.Get(url)
+		stdcli.ExitOnError(err)
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			b, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				log.Fatal(err)
+				term.Errorln(err)
 			}
 
-			return fmt.Errorf("fetching latest version err:%s", string(b))
+			err = fmt.Errorf("fetching latest version err:%s", string(b))
+			stdcli.ExitOnError(err)
 		}
 
 		if err := update.Apply(resp.Body, update.Options{}); err != nil {
-			return err
+			stdcli.ExitOnError(err)
 		}
 
 		fmt.Printf(" DONE\n")

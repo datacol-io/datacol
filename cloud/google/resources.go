@@ -267,8 +267,11 @@ func (g *GCPCloud) resourceFromDeployment(dp *dm.Deployment, manifest *dm.Manife
 		rs.Status = dp.Operation.Status
 		rs.StatusReason = dp.Operation.StatusMessage
 
-		if rs.StatusReason == "" && dp.Operation.Error != nil {
-			rs.StatusReason = dp.Operation.HttpErrorMessage
+		if dp.Operation.Error != nil {
+			rs.Status = "FAILED"
+			if errText, err := dp.Operation.Error.MarshalJSON(); err == nil {
+				rs.StatusReason = string(errText)
+			}
 		}
 	}
 

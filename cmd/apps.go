@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go-term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	"k8s.io/client-go/pkg/util/validation"
-	"os"
 )
 
 func init() {
@@ -51,19 +52,14 @@ func init() {
 
 func cmdAppRestart(c *cli.Context) error {
 	_, app, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
 	defer close()
 
-	if err := client.RestartApp(app); err != nil {
-		return err
-	}
+	stdcli.ExitOnError(client.RestartApp(app))
 
 	term.Successln("RESTARTED")
-
 	return nil
 }
 
@@ -72,9 +68,7 @@ func cmdAppsList(c *cli.Context) error {
 	defer close()
 
 	apps, err := api.GetApps()
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	fmt.Println(toJson(apps))
 	return nil
@@ -104,23 +98,15 @@ func cmdAppCreate(c *cli.Context) error {
 	defer close()
 
 	app, err := api.CreateApp(name, c.String("repo-url"))
+	stdcli.ExitOnError(err)
 
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(stdcli.WriteAppSetting("app", name))
 
-	if err = stdcli.WriteAppSetting("app", name); err != nil {
-		return err
-	}
-
-	if err = stdcli.WriteAppSetting("stack", api.StackName); err != nil {
-		return err
-	}
+	stdcli.ExitOnError(stdcli.WriteAppSetting("stack", api.StackName))
 
 	// todo: better way to hardcode stackname for app. we use <stack>-app-<name> for cloudformation.
-
 	if api.IsAWS() {
-		exitOnError(waitForAwsResource("app-"+name, "CREATE", api))
+		stdcli.ExitOnError(waitForAwsResource("app-"+name, "CREATE", api))
 	}
 
 	fmt.Printf("%s is created.\n", app.Name)
@@ -129,17 +115,13 @@ func cmdAppCreate(c *cli.Context) error {
 
 func cmdAppInfo(c *cli.Context) error {
 	_, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)
 	defer close()
 
 	app, err := api.GetApp(name)
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	fmt.Printf("%s", toJson(app))
 	return nil
@@ -147,24 +129,18 @@ func cmdAppInfo(c *cli.Context) error {
 
 func cmdAppDelete(c *cli.Context) error {
 	abs, name, err := getDirApp(".")
-	if err != nil {
-		return err
-	}
+	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)
 	defer close()
 
-	if err = api.DeleteApp(name); err != nil {
-		return err
-	}
+	stdcli.ExitOnError(api.DeleteApp(name))
 
 	if api.IsAWS() {
-		exitOnError(waitForAwsResource("app-"+name, "DELETE", api))
+		stdcli.ExitOnError(waitForAwsResource("app-"+name, "DELETE", api))
 	}
 
-	if err = stdcli.RmSettingDir(abs); err != nil {
-		return err
-	}
+	stdcli.ExitOnError(stdcli.RmSettingDir(abs))
 
 	fmt.Println("Done")
 	return nil
