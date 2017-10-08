@@ -102,7 +102,7 @@ func cmdAppCreate(c *cli.Context) error {
 
 	stdcli.ExitOnError(stdcli.WriteAppSetting("app", name))
 
-	stdcli.ExitOnError(stdcli.WriteAppSetting("stack", api.StackName))
+	stdcli.ExitOnError(stdcli.WriteAppSetting("stack", api.Name))
 
 	// todo: better way to hardcode stackname for app. we use <stack>-app-<name> for cloudformation.
 	if api.IsAWS() {

@@ -118,6 +118,8 @@ func cmdStackCreate(c *cli.Context) (err error) {
 		err = fmt.Errorf("Please provide a cloud provider (aws or gcp)")
 	}
 
+	stdcli.ExitOnError(err)
+
 	provider := c.Args().Get(0)
 	switch strings.ToLower(provider) {
 	case "gcp":
@@ -201,6 +203,8 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		ClusterVersion: c.String("cluster-version"),
 	}
 
+	ec := env.FromHost()
+
 	if options.Zone == "" {
 		options.Zone = defaultGcpZone
 	}
@@ -210,7 +214,11 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	}
 
 	if options.MachineType == "" {
-		options.MachineType = defaultGCPInstanceType
+		if ec.DevMode() {
+			options.MachineType = "g1-small"
+		} else {
+			options.MachineType = defaultGCPInstanceType
+		}
 	}
 
 	if len(options.Bucket) == 0 {
@@ -221,7 +229,6 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		options.ApiKey = rand.GeneratePassword()
 	}
 
-	ec := env.FromHost()
 	if ec.DevMode() {
 		options.ArtifactBucket = "datacol-dev"
 		options.Preemptible = true
@@ -230,7 +237,7 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	}
 
 	if err := initializeGCP(options, nodes, c.Bool("opt-out")); err != nil {
-		term.ExitOnError(err)
+		stdcli.ExitOnError(err)
 	}
 
 	term.Successln("\nDONE")

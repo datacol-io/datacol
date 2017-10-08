@@ -93,15 +93,18 @@ func cmdResourceList(c *cli.Context) error {
 	}
 
 	fmt.Printf("Cloud: %s\n", api.Provider())
-	fmt.Printf("Name: %s\n", api.StackName)
+	fmt.Printf("Name: %s\n", api.Name)
+
+	fmt.Printf("Datacol API Host: %s\n", api.ApiServer)
+	fmt.Printf("Datacol API Key: %s\n", api.ApiKey)
 
 	if api.IsGCP() {
-		fmt.Printf("GCP Project: %s\n", api.ProjectId)
+		fmt.Printf("GCP Project: %s\n", api.Project)
+		fmt.Printf("GCP Region: %s\n", api.Region)
 	}
 
 	if api.IsAWS() {
-		// fmt.Printf("Datacol API: %s\n", client.ApiServer)
-		// fmt.Printf("Region: %s\n", client.Region)
+		fmt.Printf("AWS Region: %s\n", api.Region)
 	}
 
 	fmt.Println("\nResource:")

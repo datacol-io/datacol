@@ -91,7 +91,7 @@ func InitializeStack(opts *InitOptions) (*initResponse, error) {
 	op, err := service.Deployments.Insert(opts.Project, req).Do()
 	if err != nil {
 		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 409 {
-			return nil, fmt.Errorf("Failed: Deployment %s is already created. Please destroy.", name)
+			return nil, fmt.Errorf("Failed: Deployment %s is already created. Please destroy and retry.", name)
 		} else {
 			return nil, err
 		}
@@ -159,12 +159,13 @@ func TeardownStack(name, project, bucket string) error {
 	gsService := storageService(name)
 	resp, err := gsService.Objects.List(bucket).Do()
 	if err != nil {
-		return fmt.Errorf("listing items inside bucket err: %v", err)
-	}
-
-	for _, obj := range resp.Items {
-		if err := gsService.Objects.Delete(obj.Bucket, obj.Name).Do(); err != nil {
-			return err
+		err = fmt.Errorf("listing items inside bucket err: %v", err)
+		term.Warningln(err)
+	} else {
+		for _, obj := range resp.Items {
+			if err := gsService.Objects.Delete(obj.Bucket, obj.Name).Do(); err != nil {
+				return err
+			}
 		}
 	}
 

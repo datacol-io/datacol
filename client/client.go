@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/io"
@@ -26,15 +25,13 @@ func init() {
 }
 
 type Client struct {
-	Version   string
-	StackName string
-	ProjectId string
-
+	Version string
 	pb.ProviderServiceClient
+	stdcli.Auth
 }
 
 func (c *Client) IsGCP() bool {
-	return len(c.ProjectId) > 0
+	return len(c.Project) > 0
 }
 
 func (c *Client) IsAWS() bool {
@@ -59,6 +56,7 @@ func NewClient(version string) (*Client, func() error) {
 	conn := &Client{
 		Version:               version,
 		ProviderServiceClient: psc,
+		Auth: *auth,
 	}
 
 	conn.SetStack(auth)
@@ -94,20 +92,15 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 }
 
 func (c *Client) SetStack(auth *stdcli.Auth) {
-	c.StackName = auth.Name
-	c.ProjectId = auth.Project
+	c.Auth = *auth
 
 	if len(auth.Region) == 0 {
 		// for GCP only
-		if len(c.ProjectId) == 0 {
-			c.ProjectId = os.Getenv("PROJECT_ID")
+		if len(c.Project) == 0 {
+			c.Project = stdcli.ReadSetting(c.Name, "project")
 		}
 
-		if len(c.ProjectId) == 0 {
-			c.ProjectId = stdcli.ReadSetting(c.StackName, "project")
-		}
-
-		if len(c.ProjectId) == 0 && len(auth.Region) == 0 {
+		if len(auth.Project) == 0 && len(auth.Region) == 0 {
 			log.Fatal(fmt.Errorf("GCP project-id not found. Please set `PROJECT_ID` environment variable."))
 		}
 	}

@@ -2,9 +2,10 @@ package kube
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"sort"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 
 	"k8s.io/client-go/kubernetes"
 	kerrors "k8s.io/client-go/pkg/api/errors"
