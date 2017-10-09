@@ -44,9 +44,9 @@ type DeployRequest struct {
 		Name  string `json:"name"`
 		Value string `json:"value"`
 	} `json:"secrets"`
-	SSL  bool              `json:"ssl"`
-	Tags map[string]string `json:"tags"`
-	Zone string            `json:"zone"`
+	Domain string            `json:"domain"`
+	Tags   map[string]string `json:"tags"`
+	Zone   string            `json:"zone"`
 }
 
 type DeployResponse struct {
@@ -88,8 +88,8 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		return res, fmt.Errorf("failed to create deployment %v", err)
 	}
 
-	if payload.SSL {
-		_, err = d.CreateOrUpdateIngress(newIngress(res), payload.Environment)
+	if payload.Domain != "" {
+		_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domain), payload.Environment)
 		if err != nil {
 			return res, err
 		}
@@ -142,7 +142,9 @@ func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Servi
 
 func newService(payload *DeployRequest) *v1.Service {
 	serviceType := v1.ServiceTypeLoadBalancer
-	if payload.SSL {
+
+	// we will create an Ingress for if domain is provided
+	if payload.Domain != "" {
 		serviceType = v1.ServiceTypeNodePort
 	}
 
@@ -311,13 +313,17 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
 	return newIngress, nil
 }
 
-func newIngress(payload *DeployResponse) *v1beta1.Ingress {
+func newIngress(payload *DeployResponse, domain string) *v1beta1.Ingress {
 	r := payload.Request
+	if domain == "" {
+		domain = fmt.Sprintf("%s.%s", r.ServiceID, r.Zone)
+	}
+
 	return &v1beta1.Ingress{
 		ObjectMeta: newMetadata(&payload.Request),
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{{
-				Host: fmt.Sprintf("%s.%s", r.ServiceID, r.Zone),
+				Host: domain,
 				IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
 					Paths: []v1beta1.HTTPIngressPath{{Path: "/", Backend: v1beta1.IngressBackend{
 						ServiceName: r.ServiceID,

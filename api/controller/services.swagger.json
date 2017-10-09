@@ -836,6 +836,18 @@
         }
       }
     },
+    "controllerCreateReleaseRequest": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "$ref": "#/definitions/modelsBuild"
+        },
+        "domain": {
+          "type": "string",
+          "format": "string"
+        }
+      }
+    },
     "controllerCreateResourceRequest": {
       "type": "object",
       "properties": {

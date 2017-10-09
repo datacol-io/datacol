@@ -25,7 +25,7 @@ func (a *AwsCloud) ReleaseDelete(app, id string) error {
 	return nil
 }
 
-func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
+func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
 	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
 		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(b.App), b.Id,
 	)
@@ -60,6 +60,7 @@ func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Zone:          a.Region,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
+		Domain:        options.Domain,
 	})
 
 	if err != nil {

@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
@@ -22,13 +23,17 @@ func (c *Client) DeleteRelease(app, id string) error {
 	return err
 }
 
-func (c *Client) ReleaseBuild(build *models.Build, wait bool) (*models.Release, error) {
-	r, err := c.ProviderServiceClient.BuildRelease(ctx, build)
+func (c *Client) ReleaseBuild(build *models.Build, options models.ReleaseOptions) (*models.Release, error) {
+	r, err := c.ProviderServiceClient.BuildRelease(ctx, &pbs.CreateReleaseRequest{
+		Build:  build,
+		Domain: options.Domain,
+	})
+
 	if err != nil {
 		return r, err
 	}
 
-	if wait {
+	if options.Wait {
 		err = c.waitForLoadBalancerIp(build.App)
 	}
 

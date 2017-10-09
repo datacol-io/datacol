@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/dinesh/datacol/api/models"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
@@ -239,7 +238,7 @@ var (
 )
 
 func request_ProviderService_BuildRelease_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq models.Build
+	var protoReq CreateReleaseRequest
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_ProviderService_BuildRelease_0); err != nil {

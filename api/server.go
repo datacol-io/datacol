@@ -241,8 +241,11 @@ func (s *Server) BuildDelete(ctx context.Context, req *pbs.AppIdRequest) (*empty
 	return &empty.Empty{}, nil
 }
 
-func (s *Server) BuildRelease(ctx context.Context, b *pb.Build) (*pb.Release, error) {
-	r, err := s.Provider.BuildRelease(b)
+func (s *Server) BuildRelease(ctx context.Context, req *pbs.CreateReleaseRequest) (*pb.Release, error) {
+	r, err := s.Provider.BuildRelease(req.Build, pb.ReleaseOptions{
+		Domain: req.Domain,
+	})
+
 	if err != nil {
 		return nil, internalError(err, "failed to deploy app.")
 	}
