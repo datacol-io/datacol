@@ -5,15 +5,20 @@ import (
 	"sort"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	klabels "k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/util/intstr"
+
+	log "github.com/Sirupsen/logrus"
+	// "k8s.io/client-go/kubernetes"
+	//kerrors "k8s.io/client-go/pkg/api/errors"
+	//	"k8s.io/client-go/pkg/api/unversioned"
+	// "k8s.io/client-go/pkg/api/v1"
+	// "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	// klabels "k8s.io/client-go/pkg/labels"
+	// "k8s.io/client-go/pkg/util/intstr"
 )
 
 const (

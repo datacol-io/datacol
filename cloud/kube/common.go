@@ -6,9 +6,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	kapi "k8s.io/client-go/pkg/api/v1"
-	klabels "k8s.io/client-go/pkg/labels"
+	// kerrors "k8s.io/client-go/pkg/api/errors"
+	// kapi "k8s.io/client-go/pkg/api/v1"
+	// klabels "k8s.io/client-go/pkg/labels"
 )
 
 func DeleteApp(c *kubernetes.Clientset, ns, name string) error {

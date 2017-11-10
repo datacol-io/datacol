@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	kapi "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	// "k8s.io/api/apps/v1beta1"
+	// "k8s.io/client-go/kubernetes"
+	//kerrors "k8s.io/client-go/pkg/api/errors"
+	//kapi "k8s.io/client-go/pkg/api/v1"
+	//"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 	log "github.com/Sirupsen/logrus"
 )

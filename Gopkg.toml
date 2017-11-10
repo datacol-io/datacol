@@ -41,3 +41,19 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  branch = "release-1.8"
+  name = "k8s.io/api"
+
+[[constraint]]
+  branch = "release-1.8"
+  name = "k8s.io/apimachinery"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  branch = "release-5.0"
+
+[[override]]
+  name =  "github.com/juju/ratelimit"
+  branch = "master"

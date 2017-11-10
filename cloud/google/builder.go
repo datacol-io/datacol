@@ -15,7 +15,7 @@ import (
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
-	"k8s.io/client-go/pkg/util/intstr"
+	// "k8s.io/client-go/pkg/util/intstr"
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
