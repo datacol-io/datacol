@@ -84,7 +84,7 @@ message CreateResourceRequest {
 message AppResourceReq {
   string app = 1;
   string name = 2;
-}
+ }
 
 message KubectlReq {
   repeated string args = 1;

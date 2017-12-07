@@ -44,9 +44,9 @@ type DeployRequest struct {
 		Name  string `json:"name"`
 		Value string `json:"value"`
 	} `json:"secrets"`
-	Domain string            `json:"domain"`
-	Tags   map[string]string `json:"tags"`
-	Zone   string            `json:"zone"`
+	Domains []string          `json:"domains"`
+	Tags    map[string]string `json:"tags"`
+	Zone    string            `json:"zone"`
 }
 
 type DeployResponse struct {
@@ -88,8 +88,8 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		return res, fmt.Errorf("failed to create deployment %v", err)
 	}
 
-	if payload.Domain != "" {
-		_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domain), payload.Environment)
+	if len(payload.Domains) > 0 {
+		_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Environment)
 		if err != nil {
 			return res, err
 		}
@@ -144,7 +144,7 @@ func newService(payload *DeployRequest) *v1.Service {
 	serviceType := v1.ServiceTypeLoadBalancer
 
 	// we will create an Ingress for if domain is provided
-	if payload.Domain != "" {
+	if len(payload.Domains) > 0 {
 		serviceType = v1.ServiceTypeNodePort
 	}
 
@@ -302,10 +302,12 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
 		if !kerrors.IsAlreadyExists(err) {
 			return nil, err
 		}
+
 		ingress, err = r.Client.Extensions().Ingresses(env).Update(ingress)
 		if err != nil {
 			return nil, err
 		}
+
 		log.Debugf("Ingress updated: %+v", ingress.ObjectMeta.Name)
 		return ingress, nil
 	}
@@ -313,24 +315,30 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
 	return newIngress, nil
 }
 
-func newIngress(payload *DeployResponse, domain string) *v1beta1.Ingress {
+func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	r := payload.Request
-	if domain == "" {
-		domain = fmt.Sprintf("%s.%s", r.ServiceID, r.Zone)
+
+	if len(domains) == 0 {
+		domains = []string{fmt.Sprintf("%s.%s", r.ServiceID, r.Zone)}
+	}
+
+	rules := make([]v1beta1.IngressRule, len(domains))
+	for i, domain := range domains {
+		rules[i] = v1beta1.IngressRule{
+			Host: domain,
+			IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
+				Paths: []v1beta1.HTTPIngressPath{{Path: "/", Backend: v1beta1.IngressBackend{
+					ServiceName: r.ServiceID,
+					ServicePort: r.ContainerPort,
+				}}},
+			}},
+		}
 	}
 
 	return &v1beta1.Ingress{
 		ObjectMeta: newMetadata(&payload.Request),
 		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{{
-				Host: domain,
-				IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
-					Paths: []v1beta1.HTTPIngressPath{{Path: "/", Backend: v1beta1.IngressBackend{
-						ServiceName: r.ServiceID,
-						ServicePort: r.ContainerPort,
-					}}},
-				}},
-			}},
+			Rules: rules,
 		},
 		TypeMeta: unversioned.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Ingress"},
 	}

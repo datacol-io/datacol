@@ -972,6 +972,13 @@
     "modelsApp": {
       "type": "object",
       "properties": {
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "string"
+          }
+        },
         "endpoint": {
           "type": "string",
           "format": "string"

@@ -31,6 +31,11 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 	)
 	log.Debugf("---- Docker Image: %s", image)
 
+	app, err := a.AppGet(b.App)
+	if err != nil {
+		return nil, err
+	}
+
 	envVars, err := a.EnvironmentGet(b.App)
 	if err != nil {
 		return nil, err
@@ -52,6 +57,8 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		port = p
 	}
 
+	domains := sched.MergeAppDomains(app.Domains, options.Domain)
+
 	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
@@ -60,14 +67,19 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		Zone:          a.Region,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
-		Domain:        options.Domain,
+		Domains:       domains,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("Deploying %s with %s", b.App, toJson(ret.Request))
+	if len(app.Domains) != len(domains) {
+		app.Domains = domains
+		a.saveApp(app)
+	}
+
+	log.Debugf("Deployed %s with %s", b.App, toJson(ret.Request))
 
 	r := &pb.Release{
 		Id:        generateId("R", 5),

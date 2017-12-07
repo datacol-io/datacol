@@ -177,7 +177,7 @@ func (g *GCPCloud) BuildLogsStream(id string) (io.Reader, error) {
 	return nil, fmt.Errorf("Not supported on GCP.")
 }
 
-func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
+func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
 	image := fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, b.App, b.Id)
 	log.Debugf("---- Docker Image: %s", image)
 
@@ -185,6 +185,14 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	app, err := g.AppGet(b.App)
+	if err != nil {
+		return nil, err
+	}
+
+	domains := sched.MergeAppDomains(app.Domains, options.Domain)
+
 	c, err := getKubeClientset(g.DeploymentName)
 	if err != nil {
 		return nil, err
@@ -212,13 +220,22 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Zone:          g.DefaultZone,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
+		Domains:       domains,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("Deploying %s with %s", b.App, toJson(ret.Request))
+	if len(app.Domains) != len(domains) {
+		app.Domains = domains
+		ctx, key := g.nestedKey(appKind, app.Name)
+		if _, err = g.datastore().Put(ctx, key, app); err != nil {
+			log.Warnf("datastore put failed: %v", err)
+		}
+	}
+
+	log.Debugf("Deployed %s with %s", b.App, toJson(ret.Request))
 
 	r := &pb.Release{
 		Id:        generateId("R", 5),

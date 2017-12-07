@@ -45,7 +45,7 @@ func init() {
 			&cli.StringFlag{
 				Name:    "domain",
 				Aliases: []string{"d"},
-				Usage:   "domain name to use with this app",
+				Usage:   "domain(s) to use with this app",
 			},
 		},
 	})
