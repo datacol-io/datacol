@@ -4,10 +4,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/appscode/go-term"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/ejholmes/cloudwatch"
 
 [[constraint]]

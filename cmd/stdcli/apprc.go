@@ -1,10 +1,11 @@
 package stdcli
 
 import (
-	term "github.com/appscode/go-term"
-	"github.com/appscode/go/io"
-	pb "github.com/dinesh/datacol/api/models"
 	"os"
+
+	"github.com/appscode/go/io"
+	term "github.com/appscode/go/term"
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 var apprcPath string

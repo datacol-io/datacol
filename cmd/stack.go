@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
 	"github.com/appscode/go/crypto/rand"
+	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/provider/aws"
 	"github.com/dinesh/datacol/cmd/provider/gcp"

@@ -30,20 +30,10 @@
   version = "v0.11.5"
 
 [[projects]]
-  name = "github.com/appscode/errors"
-  packages = ["."]
-  revision = "45337f4d7774392043ed9f8c237f9e810974dd98"
-
-[[projects]]
-  name = "github.com/appscode/go"
-  packages = ["crypto/rand","env","io"]
-  revision = "496a78e678c2a161788f53f94bdb0ab9c812231f"
-
-[[projects]]
   branch = "master"
-  name = "github.com/appscode/go-term"
-  packages = ["."]
-  revision = "d0c677f2d84034b1357d3f69ffd29c5fb81f662f"
+  name = "github.com/appscode/go"
+  packages = ["crypto/rand","env","errors","io","term"]
+  revision = "0042f7fe164fd03992cfa5ea70a98615516be99b"
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
@@ -263,6 +253,12 @@
   revision = "ca53cad383cad2479bbba7f7a1a05797ec1386e4"
 
 [[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/skratchdot/open-golang"
   packages = ["open"]
@@ -272,6 +268,12 @@
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "5ccb023bc27df288a957c5e994cd44fd19619465"
+
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
+  version = "v1.1.4"
 
 [[projects]]
   name = "github.com/stvp/rollbar"
@@ -370,6 +372,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "56eaeabba086abb599e8e40dcfdf673e1fda5fef7397d040bd076eade722973a"
+  inputs-digest = "96220d428fa018d122ef281910bd74703d0301216edf7921d55931df652a0846"
   solver-name = "gps-cdcl"
   solver-version = 1

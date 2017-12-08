@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	term "github.com/appscode/go-term"
+	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"gopkg.in/urfave/cli.v2"

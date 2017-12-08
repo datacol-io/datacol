@@ -6,7 +6,7 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
+	term "github.com/appscode/go/term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
 	"k8s.io/client-go/pkg/util/validation"

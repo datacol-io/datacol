@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go/term"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
 )
 
 var events = map[string]bool{}

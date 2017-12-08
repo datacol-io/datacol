@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
+	term "github.com/appscode/go/term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	semver "github.com/hashicorp/go-version"
 	"github.com/inconshreveable/go-update"

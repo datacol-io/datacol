@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 
 	log "github.com/Sirupsen/logrus"
-	term "github.com/appscode/go-term"
+	term "github.com/appscode/go/term"
 	csm "google.golang.org/api/cloudresourcemanager/v1"
 	dm "google.golang.org/api/deploymentmanager/v2"
 	smm "google.golang.org/api/servicemanagement/v1"
