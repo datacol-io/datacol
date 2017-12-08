@@ -2,12 +2,13 @@ package google
 
 import (
 	"bufio"
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	sched "github.com/dinesh/datacol/cloud/kube"
 	"math"
 	"strconv"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 func (g *GCPCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {

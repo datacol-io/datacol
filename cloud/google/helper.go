@@ -3,7 +3,6 @@ package google
 import (
 	"bufio"
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/appscode/go/crypto/rand"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"

@@ -6,23 +6,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
-	// kerrors "k8s.io/client-go/pkg/api/errors"
-	// kapi "k8s.io/client-go/pkg/api/v1"
-	// klabels "k8s.io/client-go/pkg/labels"
+	core_v1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	klabels "k8s.io/apimachinery/pkg/labels"
 )
 
 func DeleteApp(c *kubernetes.Clientset, ns, name string) error {
-	if _, err := c.Core().Services(ns).Get(name); err != nil {
+	if _, err := c.Core().Services(ns).Get(name, meta_v1.GetOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
-	} else if err := c.Core().Services(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+	} else if err := c.Core().Services(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
 		return err
 	}
 
 	labels := klabels.Set(map[string]string{"name": name}).AsSelector()
 
-	dp, err := c.Extensions().Deployments(ns).Get(name)
+	dp, err := c.Extensions().Deployments(ns).Get(name, meta_v1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
@@ -38,27 +39,27 @@ func DeleteApp(c *kubernetes.Clientset, ns, name string) error {
 
 	WaitUntilUpdated(c, ns, name)
 
-	if err = c.Extensions().Deployments(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+	if err = c.Extensions().Deployments(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
 		return err
 	}
 
 	// delete replicasets by label name=app
-	res, err := c.Extensions().ReplicaSets(ns).List(kapi.ListOptions{LabelSelector: labels.String()})
+	res, err := c.Extensions().ReplicaSets(ns).List(meta_v1.ListOptions{LabelSelector: labels.String()})
 	if err != nil {
 		return err
 	}
 
 	for _, rs := range res.Items {
-		if err := c.Extensions().ReplicaSets(ns).Delete(rs.Name, &kapi.DeleteOptions{}); err != nil {
+		if err := c.Extensions().ReplicaSets(ns).Delete(rs.Name, &meta_v1.DeleteOptions{}); err != nil {
 			log.Warn(err)
 		}
 	}
 
-	if _, err = c.Extensions().Ingresses(ns).Get(name); err != nil {
+	if _, err = c.Extensions().Ingresses(ns).Get(name, meta_v1.GetOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
-	} else if err = c.Extensions().Ingresses(ns).Delete(name, &kapi.DeleteOptions{}); err != nil {
+	} else if err = c.Extensions().Ingresses(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
 		return err
 	}
 
@@ -66,17 +67,17 @@ func DeleteApp(c *kubernetes.Clientset, ns, name string) error {
 }
 
 func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) error {
-	dp, err := c.Extensions().Deployments(ns).Get(app)
+	dp, err := c.Extensions().Deployments(ns).Get(app, meta_v1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
 	for i, c := range dp.Spec.Template.Spec.Containers {
 		if c.Name == app {
-			envVars := []kapi.EnvVar{}
+			envVars := []core_v1.EnvVar{}
 			for key, value := range env {
 				if len(key) > 0 {
-					envVars = append(envVars, kapi.EnvVar{Name: key, Value: value})
+					envVars = append(envVars, core_v1.EnvVar{Name: key, Value: value})
 				}
 			}
 			log.Debugf("setting env vars:\n %s", toJson(env))
@@ -99,7 +100,7 @@ func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) e
 func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error) {
 	var endpoint = ""
 
-	svc, err := c.Core().Services(ns).Get(name)
+	svc, err := c.Core().Services(ns).Get(name, meta_v1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return endpoint, nil
@@ -107,7 +108,7 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		return endpoint, err
 	}
 
-	if svc.Spec.Type == kapi.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
+	if svc.Spec.Type == core_v1.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
 		ing := svc.Status.LoadBalancer.Ingress[0]
 		if len(ing.Hostname) > 0 {
 			endpoint = ing.Hostname
@@ -120,8 +121,8 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		}
 	}
 
-	if svc.Spec.Type == kapi.ServiceTypeNodePort {
-		ing, err := c.Extensions().Ingresses(ns).Get(name)
+	if svc.Spec.Type == core_v1.ServiceTypeNodePort {
+		ing, err := c.Extensions().Ingresses(ns).Get(name, meta_v1.GetOptions{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				return endpoint, nil

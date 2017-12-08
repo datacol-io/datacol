@@ -2,11 +2,10 @@ package google
 
 import (
 	"fmt"
-	sched "github.com/dinesh/datacol/cloud/kube"
 	"io"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	"google.golang.org/api/googleapi"
 )
 
