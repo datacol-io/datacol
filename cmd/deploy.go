@@ -42,6 +42,11 @@ func init() {
 				Aliases: []string{"f"},
 				Usage:   "path of Dockerfile or app.yaml",
 			},
+			&cli.StringFlag{
+				Name:    "domain",
+				Aliases: []string{"d"},
+				Usage:   "domain(s) to use with this app",
+			},
 		},
 	})
 }
@@ -79,7 +84,10 @@ func cmdDeploy(c *cli.Context) error {
 
 	fmt.Printf("Deploying build %s\n", build.Id)
 
-	_, err = client.ReleaseBuild(build, c.Bool("wait"))
+	_, err = client.ReleaseBuild(build, pb.ReleaseOptions{
+		Domain: c.String("domain"),
+		Wait:   c.Bool("wait"),
+	})
 	stdcli.ExitOnError(err)
 
 	app, err = client.GetApp(name)

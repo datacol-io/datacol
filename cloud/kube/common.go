@@ -120,5 +120,21 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		}
 	}
 
+	if svc.Spec.Type == kapi.ServiceTypeNodePort {
+		ing, err := c.Extensions().Ingresses(ns).Get(name)
+		if err != nil {
+			if kerrors.IsNotFound(err) {
+				return endpoint, nil
+			}
+			return endpoint, err
+		}
+
+		lBIngresses := ing.Status.LoadBalancer.Ingress
+		if len(lBIngresses) > 0 {
+			endpoint = lBIngresses[0].IP
+		}
+
+	}
+
 	return endpoint, nil
 }

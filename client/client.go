@@ -85,7 +85,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 		grpc.WithInsecure(),
 		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}))
 	if err != nil {
-		log.Fatal(fmt.Errorf("did not connect: %v", err))
+		log.Fatal(err)
 	}
 
 	return pb.NewProviderServiceClient(conn), conn.Close

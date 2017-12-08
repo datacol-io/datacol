@@ -25,11 +25,16 @@ func (a *AwsCloud) ReleaseDelete(app, id string) error {
 	return nil
 }
 
-func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
+func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
 	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
 		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(b.App), b.Id,
 	)
 	log.Debugf("---- Docker Image: %s", image)
+
+	app, err := a.AppGet(b.App)
+	if err != nil {
+		return nil, err
+	}
 
 	envVars, err := a.EnvironmentGet(b.App)
 	if err != nil {
@@ -52,6 +57,8 @@ func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		port = p
 	}
 
+	domains := sched.MergeAppDomains(app.Domains, options.Domain)
+
 	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
@@ -60,13 +67,19 @@ func (a *AwsCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		Zone:          a.Region,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
+		Domains:       domains,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("Deploying %s with %s", b.App, toJson(ret.Request))
+	if len(app.Domains) != len(domains) {
+		app.Domains = domains
+		a.saveApp(app)
+	}
+
+	log.Debugf("Deployed %s with %s", b.App, toJson(ret.Request))
 
 	r := &pb.Release{
 		Id:        generateId("R", 5),

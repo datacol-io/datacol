@@ -21,12 +21,22 @@ func (a *AwsCloud) dynamoApps() string {
 func (a *AwsCloud) appFromItem(item map[string]*dynamodb.AttributeValue) *pb.App {
 	name := coalesce(item["name"], "")
 
-	return &pb.App{
+	app := &pb.App{
 		Name:      name,
 		Status:    coalesce(item["status"], ""),
 		ReleaseId: coalesce(item["release_id"], ""),
 		Endpoint:  coalesce(item["endpoint"], ""),
 	}
+
+	if domainValues, ok := item["domains"]; ok {
+		domains := []string{}
+		for _, key := range domainValues.L {
+			domains = append(domains, coalesce(key, ""))
+		}
+		app.Domains = domains
+	}
+
+	return app
 }
 
 func (a *AwsCloud) AppList() (pb.Apps, error) {
@@ -187,6 +197,15 @@ func (p *AwsCloud) saveApp(a *pb.App) error {
 
 	if a.ReleaseId != "" {
 		req.Item["release_id"] = &dynamodb.AttributeValue{S: aws.String(a.ReleaseId)}
+	}
+
+	if len(a.Domains) > 0 {
+		list := []*dynamodb.AttributeValue{}
+		for _, d := range a.Domains {
+			list = append(list, &dynamodb.AttributeValue{S: aws.String(d)})
+		}
+
+		req.Item["domains"] = &dynamodb.AttributeValue{L: list}
 	}
 
 	_, err := p.dynamodb().PutItem(req)

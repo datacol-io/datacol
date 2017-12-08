@@ -4,8 +4,8 @@ $commands = "cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go " +
             "cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go " + 
             "cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go"
 
-$version = ENV.fetch('VERSION')
-$env     = ENV.fetch('DATACOL_ENV')
+$version = ENV.fetch('VERSION', "1.0.0-alpha.9")
+$env     = ENV.fetch('DATACOL_ENV') # dev or prod
 
 $bin_matrix =
   case $env

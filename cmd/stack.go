@@ -97,7 +97,7 @@ func init() {
 			&cli.StringFlag{
 				Name:  "cluster-version",
 				Usage: "The Kubernetes version to use for the master and nodes",
-				Value: "1.7.6-gke.1",
+				Value: "1.7.11-gke.0",
 			},
 			&cli.StringFlag{
 				Name:  "key",

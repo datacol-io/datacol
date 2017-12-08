@@ -84,7 +84,7 @@ message CreateResourceRequest {
 message AppResourceReq {
   string app = 1;
   string name = 2;
-}
+ }
 
 message KubectlReq {
   repeated string args = 1;
@@ -120,6 +120,11 @@ message ProcessRunReq {
 
 message ReleaseListResponse {
   repeated models.Release releases = 1;
+}
+
+message CreateReleaseRequest {
+  models.Build build = 1;
+  string domain = 2;
 }
 
 service ProviderService {
@@ -175,7 +180,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildRelease(models.Build) returns (models.Release) {
+  rpc BuildRelease(CreateReleaseRequest) returns (models.Release) {
     option (google.api.http) = {
       post: "/v1/releases"
     };

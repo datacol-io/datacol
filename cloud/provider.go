@@ -2,8 +2,9 @@ package cloud
 
 import (
 	"bufio"
-	pb "github.com/dinesh/datacol/api/models"
 	"io"
+
+	pb "github.com/dinesh/datacol/api/models"
 )
 
 type Provider interface {
@@ -21,7 +22,7 @@ type Provider interface {
 	BuildList(app string, limit int) (pb.Builds, error)
 	BuildGet(app, id string) (*pb.Build, error)
 	BuildDelete(app, id string) error
-	BuildRelease(*pb.Build) (*pb.Release, error)
+	BuildRelease(*pb.Build, pb.ReleaseOptions) (*pb.Release, error)
 	BuildLogs(app, id string, index int) (int, []string, error)
 	BuildLogsStream(id string) (io.Reader, error)
 

@@ -1,10 +1,11 @@
 package models
 
 import (
-	homedir "github.com/mitchellh/go-homedir"
 	"log"
 	"path/filepath"
 	"time"
+
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -36,9 +37,10 @@ type Releases []*Release
 type Resources []*Resource
 
 type ReleaseOptions struct {
-	Port int
-	Env  string
-	Wait bool
+	Port   int
+	Env    string
+	Wait   bool
+	Domain string
 }
 
 type LogStreamOptions struct {
