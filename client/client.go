@@ -2,9 +2,11 @@ package client
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/io"
+	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
@@ -83,9 +85,16 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 
 	conn, err := grpc.Dial(address,
 		grpc.WithInsecure(),
-		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}))
+		grpc.WithBlock(),
+		grpc.WithTimeout(time.Second*5),
+		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}),
+	)
 	if err != nil {
-		log.Fatal(err)
+		if err == grpc.ErrClientConnTimeout {
+			term.Errorln("Couldn't connect to the Controller API. Did you initialize the stack using `datacol init`")
+		}
+
+		stdcli.ExitOnError(err)
 	}
 
 	return pb.NewProviderServiceClient(conn), conn.Close
