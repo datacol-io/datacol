@@ -202,6 +202,8 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 		}
 	}
 
+	excludes = append(excludes, stdcli.LocalAppDir)
+
 	keepThem1, _ := fileutils.Matches(".dockerignore", excludes)
 	keepThem2, _ := fileutils.Matches("Dockerfile", excludes)
 	if keepThem1 || keepThem2 {

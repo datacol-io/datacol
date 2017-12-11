@@ -20,13 +20,13 @@ var (
 	Binary      string
 	Version     string
 	Commands    []*cli.Command
-	localappdir string
+	LocalAppDir string
 	Stack404    error
 )
 
 func init() {
 	Version = "1.0.0-alpha.9"
-	localappdir = ".dtcol"
+	LocalAppDir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []*cli.Command{}
 	Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")
@@ -64,7 +64,7 @@ func AddCommand(cmd *cli.Command) {
 }
 
 func GetAppSetting(setting string) string {
-	value, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", localappdir, setting))
+	value, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", LocalAppDir, setting))
 	if err != nil {
 		return ""
 	}
@@ -74,19 +74,19 @@ func GetAppSetting(setting string) string {
 }
 
 func WriteAppSetting(setting, value string) error {
-	if err := os.MkdirAll(localappdir, 0777); err != nil {
+	if err := os.MkdirAll(LocalAppDir, 0777); err != nil {
 		return err
 	}
 
 	return ioutil.WriteFile(
-		fmt.Sprintf(localappdir+"/%s", setting),
+		fmt.Sprintf(LocalAppDir+"/%s", setting),
 		[]byte(value),
 		0777,
 	)
 }
 
 func RmSettingDir(path string) error {
-	return os.RemoveAll(filepath.Join(path, localappdir))
+	return os.RemoveAll(filepath.Join(path, LocalAppDir))
 }
 
 func CurrentStack() string {
