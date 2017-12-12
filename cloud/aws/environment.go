@@ -4,15 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"io/ioutil"
-	"strings"
-
 	pb "github.com/dinesh/datacol/api/models"
-	"io"
 )
 
 func (a *AwsCloud) s3KeyForEnv(name string) string {

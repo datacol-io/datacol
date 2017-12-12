@@ -82,7 +82,27 @@ func (a *AwsCloud) BuildDelete(app, id string) error {
 }
 
 func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	return nil, nil
+	req := &dynamodb.ScanInput{
+		ConsistentRead: aws.Bool(true),
+		TableName:      aws.String(a.dynamoBuilds()),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":app": {S: aws.String(app)},
+		},
+		FilterExpression: aws.String("app=:app"),
+	}
+
+	res, err := a.dynamodb().Scan(req)
+	if err != nil {
+		return nil, err
+	}
+
+	builds := make(pb.Builds, len(res.Items))
+
+	for i, item := range res.Items {
+		builds[i] = a.buildFromItem(item)
+	}
+
+	return builds, nil
 }
 
 func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
