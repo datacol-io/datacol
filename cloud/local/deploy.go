@@ -1,7 +1,6 @@
 package local
 
 import (
-	"bufio"
 	"io"
 	"os"
 
@@ -13,18 +12,13 @@ func (g *LocalCloud) K8sConfigPath() (string, error) {
 	return os.Getenv("HOME") + "/.kube/config", nil
 }
 
-func (g *LocalCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {
+func (g *LocalCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error {
 	c, err := getKubeClientset(g.Name)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	reader, err := sched.LogStreamReq(c, g.Name, app, opts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return bufio.NewReader(reader), reader.Close, nil
+	return sched.LogStreamReq(c, w, g.Name, app, opts)
 }
 
 func (g *LocalCloud) ProcessRun(app string, stream io.ReadWriter, command string) error {

@@ -466,7 +466,7 @@
           "200": {
             "description": "(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/controllerLogStreamResponse"
+              "$ref": "#/definitions/controllerStreamMsg"
             }
           }
         },

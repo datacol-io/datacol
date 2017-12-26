@@ -296,7 +296,7 @@ service ProviderService {
     };
   }
 
-  rpc LogStream(LogStreamReq) returns (stream LogStreamResponse) {
+  rpc LogStream(LogStreamReq) returns (stream StreamMsg) {
     option (google.api.http) = {
       get: "/v1/logs/{name}"
     };

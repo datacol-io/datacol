@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResponse, error) {
-	// todo: remove this call as we are caching the kubeconfig on first run.
+	//TODO: remove this call as we are caching the kubeconfig on first run.
 	cfg, err := s.Provider.K8sConfigPath()
 	if err != nil {
 		return nil, internalError(err, "failed to fetch k8s config")

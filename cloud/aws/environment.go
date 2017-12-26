@@ -1,18 +1,17 @@
 package aws
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 )
 
 func (a *AwsCloud) s3KeyForEnv(name string) string {
@@ -29,7 +28,7 @@ func (a *AwsCloud) EnvironmentGet(name string) (pb.Environment, error) {
 		return nil, err
 	}
 
-	return loadEnv(data), nil
+	return common.LoadEnvironment(data), nil
 }
 
 func (a *AwsCloud) EnvironmentSet(name string, r io.Reader) error {
@@ -66,21 +65,4 @@ func (a *AwsCloud) s3Put(bucket, key string, data []byte) error {
 	_, err := a.s3().PutObject(req)
 
 	return err
-}
-
-func loadEnv(data []byte) pb.Environment {
-	e := pb.Environment{}
-
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	for scanner.Scan() {
-		parts := strings.SplitN(scanner.Text(), "=", 2)
-
-		if len(parts) == 2 {
-			if key := strings.TrimSpace(parts[0]); key != "" {
-				e[key] = parts[1]
-			}
-		}
-	}
-
-	return e
 }

@@ -16,7 +16,6 @@ import (
 	aws_provider "github.com/dinesh/datacol/cloud/aws"
 	"github.com/dinesh/datacol/cloud/google"
 	"github.com/dinesh/datacol/cloud/local"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -88,6 +87,7 @@ type Server struct {
 }
 
 func (s *Server) Run() error {
+	//TODO: should we expose K8sConfigPath for a provider ?
 	if _, err := s.Provider.K8sConfigPath(); err != nil {
 		log.Warn(fmt.Errorf("caching kubernetes config err: %v", err))
 	}
@@ -358,37 +358,6 @@ func (s *Server) ResourceUnlink(ctx context.Context, req *pbs.AppResourceReq) (*
 		return nil, internalError(err, fmt.Sprintf("failed to unlink resource %s", req.Name))
 	}
 	return ret, nil
-}
-
-func (s *Server) LogStream(req *pbs.LogStreamReq, stream pbs.ProviderService_LogStreamServer) error {
-	since, err := ptypes.Duration(req.Since)
-	if err != nil {
-		return err
-	}
-
-	reader, close, err := s.Provider.LogStream(req.Name, pb.LogStreamOptions{
-		Follow: req.Follow,
-		Since:  since,
-	})
-
-	if err != nil {
-		return err
-	}
-	defer close()
-
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		if err := stream.Send(&pbs.LogStreamResponse{Data: line}); err != nil {
-			return err
-		}
-	}
 }
 
 func (s *Server) unaryInterceptor(
