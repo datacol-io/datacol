@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -99,8 +100,18 @@ func convertGzipToZip(app, src string) (string, error) {
 		return dir, err
 	}
 
+	fileInfos, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return dir, fmt.Errorf("listing files: %v", err)
+	}
+
+	files := make([]string, len(fileInfos))
+	for i, f := range fileInfos {
+		files[i] = filepath.Join(dir, f.Name())
+	}
+
 	zipPath := dir + ".zip"
-	if err := archiver.Zip.Make(zipPath, []string{dir}); err != nil {
+	if err := archiver.Zip.Make(zipPath, files); err != nil {
 		return dir, fmt.Errorf("creating a zip archive err: %v", err)
 	}
 	return zipPath, nil

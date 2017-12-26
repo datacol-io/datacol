@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
@@ -80,6 +81,10 @@ func cmdDeploy(c *cli.Context) error {
 		}
 
 		build = b
+	}
+
+	if build.Status == "FAILED" {
+		term.Fatalln("BUILD FAILED")
 	}
 
 	fmt.Printf("Deploying build %s\n", build.Id)
