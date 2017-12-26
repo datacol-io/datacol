@@ -16,19 +16,12 @@ func init() {
 
 type Auth struct {
 	Name      string `json:"name,omitempty"`
+	Provider  string `json:"provider,omitempty"`
 	ApiServer string `json:"api_server,omitempty"`
 	ApiKey    string `json:"api_key,omitempty"`
 	Project   string `json:"project,omitempty"` // for gcp only
 	Bucket    string `json:"bucket,omitempty"`
 	Region    string `json:"region,omitempty"` // for aws only
-}
-
-func (a *Auth) Provider() string {
-	if len(a.Project) == 0 {
-		return "aws"
-	} else {
-		return "gcp"
-	}
 }
 
 type Apprc struct {

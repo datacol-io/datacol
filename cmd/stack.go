@@ -97,7 +97,7 @@ func init() {
 			&cli.StringFlag{
 				Name:  "cluster-version",
 				Usage: "The Kubernetes version to use for the master and nodes",
-				Value: "1.7.11-gke.0",
+				Value: "1.7.11-gke.1",
 			},
 			&cli.StringFlag{
 				Name:  "key",
@@ -115,7 +115,7 @@ func init() {
 
 func cmdStackCreate(c *cli.Context) (err error) {
 	if c.NArg() < 1 {
-		err = fmt.Errorf("Please provide a cloud provider (aws or gcp)")
+		err = fmt.Errorf("Please provide a cloud provider (aws, gcp, local)")
 	}
 
 	stdcli.ExitOnError(err)
@@ -126,6 +126,8 @@ func cmdStackCreate(c *cli.Context) (err error) {
 		err = cmdGCPStackCreate(c)
 	case "aws":
 		err = cmdAWSStackCreate(c)
+	case "local":
+		err = cmdLocalStackCreate(c)
 	default:
 		err = fmt.Errorf("Invalid cloud provider: %s. Should be either of `aws` or `gcp`.", provider)
 	}
@@ -174,6 +176,16 @@ func cmdAWSStackCreate(c *cli.Context) error {
 	term.Successln("\nDONE")
 	fmt.Printf("Next, create an app with `STACK=%s datacol apps create`.\n", stackName)
 	return nil
+}
+
+func cmdLocalStackCreate(c *cli.Context) error {
+	auth := &stdcli.Auth{
+		Name:      c.String("name"),
+		ApiServer: "localhost",
+		Provider:  "local",
+	}
+
+	return stdcli.SetAuth(auth)
 }
 
 func cmdGCPStackCreate(c *cli.Context) error {
@@ -376,7 +388,7 @@ func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 
 func cmdStackDestroy(c *cli.Context) (err error) {
 	auth, _ := stdcli.GetAuthOrDie()
-	provider := auth.Provider()
+	provider := auth.Provider
 
 	prompt := fmt.Sprintf("This is destructive action. Do you want to delete %s stack on %s ?", auth.Name, provider)
 	if !term.Ask(prompt, false) {
@@ -489,6 +501,7 @@ func dumpAwsAuthParams(name, region, bucket, host, api_key string) error {
 		Region:    region,
 		ApiKey:    api_key,
 		Bucket:    bucket,
+		Provider:  "aws",
 	}
 
 	return stdcli.SetAuth(auth)
@@ -501,6 +514,7 @@ func dumpGcpAuthParams(name, project, bucket, host, api_key string) error {
 		Bucket:    bucket,
 		ApiServer: host,
 		ApiKey:    api_key,
+		Provider:  "gcp",
 	}
 
 	return stdcli.SetAuth(auth)

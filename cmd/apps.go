@@ -70,7 +70,11 @@ func cmdAppsList(c *cli.Context) error {
 	apps, err := api.GetApps()
 	stdcli.ExitOnError(err)
 
-	fmt.Println(toJson(apps))
+	if len(apps) == 0 {
+		fmt.Println("No apps found.")
+	} else {
+		fmt.Println(toJson(apps))
+	}
 	return nil
 }
 

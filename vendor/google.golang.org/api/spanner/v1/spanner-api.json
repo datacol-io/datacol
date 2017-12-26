@@ -1,7 +1,0 @@
-{
-  "error": {
-    "code": 404,
-    "message": "Method GetDiscoveryRest not found for service spanner.googleapis.com",
-    "status": "NOT_FOUND"
-  }
-}
