@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,6 +40,10 @@ func (p *AwsCloud) kubeClient() *kubernetes.Clientset {
 	})
 
 	return kubeClient
+}
+
+func (p *AwsCloud) ProcessRun(app string, r io.ReadWriter, command string) error {
+	return nil
 }
 
 func (p *AwsCloud) K8sConfigPath() (string, error) {

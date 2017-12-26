@@ -1,15 +1,23 @@
 package client
 
 import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
-	"io"
-	"time"
+	"google.golang.org/grpc/metadata"
 )
 
-var ctx = context.TODO()
+var (
+	ctx = context.TODO()
+)
 
 func (c *Client) GetApps() (pb.Apps, error) {
 	ret, err := c.ProviderServiceClient.AppList(ctx, &pbs.ListRequest{})
@@ -63,11 +71,65 @@ func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, ou
 	}
 }
 
-func (c *Client) RunProcess(name string, args []string) (*pbs.CmdResponse, error) {
-	return c.ProviderServiceClient.ProcessRun(ctx, &pbs.ProcessRunReq{
-		Name:    name,
-		Command: args,
-	})
+func (c *Client) RunProcess(name string, args []string) error {
+	newctx := metadata.NewOutgoingContext(ctx, metadata.New(map[string]string{
+		"app":     name,
+		"command": strings.Join(args, "@"),
+	}))
+
+	stream, err := c.ProviderServiceClient.ProcessRun(newctx)
+	if err != nil {
+		return err //FIXME: not able to make it work for now. Not sure why.
+	}
+
+	defer stream.CloseSend()
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	fmt.Println("Running command", args, "for", name)
+
+	go func(out io.Writer) {
+		defer wg.Done()
+
+		for {
+			ret, rerr := stream.Recv()
+			if rerr == io.EOF {
+				break
+			}
+
+			if rerr != nil {
+				err = fmt.Errorf("failed to recieve data: %v", rerr)
+				break
+			}
+			_, err = out.Write(ret.Data)
+		}
+	}(os.Stdout)
+
+	go func() {
+		defer wg.Done()
+		buf := make([]byte, 1024)
+
+		for {
+			n, serr := os.Stdin.Read(buf)
+			if serr == io.EOF {
+				return
+			}
+			if serr != nil {
+				err = serr
+				break
+			}
+
+			if serr := stream.Send(&pbs.StreamMsg{buf[:n]}); serr != nil {
+				err = fmt.Errorf("failed to send: %v", serr)
+				break
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	return err
 }
 
 func (c *Client) GetEnvironment(name string) (pb.Environment, error) {

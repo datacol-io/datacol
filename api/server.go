@@ -21,6 +21,7 @@ import (
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	daws "github.com/dinesh/datacol/cloud/aws"
+	"github.com/dinesh/datacol/cloud/local"
 )
 
 func newServer() *Server {
@@ -29,13 +30,14 @@ func newServer() *Server {
 
 	cid, ok := os.LookupEnv("DATACOL_PROVIDER")
 	if !ok {
-		log.Fatalf("Missing provider env var.")
+		log.Fatalf("Missing provider env var. Please set `DATACOL_PROVIDER` in your shell")
 	}
+
+	name = os.Getenv("DATACOL_STACK")
 
 	switch cid {
 	case "aws":
 		password = os.Getenv("DATACOL_API_KEY")
-		name = os.Getenv("DATACOL_STACK")
 		region := os.Getenv("AWS_REGION")
 
 		if len(name) == 0 || len(password) == 0 {
@@ -53,10 +55,8 @@ func newServer() *Server {
 		}
 	case "gcp":
 		var bucket, zone, projectId, projectNumber string
-
 		password = os.Getenv("DATACOL_API_KEY")
 		bucket = os.Getenv("DATACOL_BUCKET")
-		name = os.Getenv("DATACOL_STACK")
 
 		zone = os.Getenv("GCP_DEFAULT_ZONE")
 		region := os.Getenv("GCP_REGION")
@@ -72,8 +72,13 @@ func newServer() *Server {
 			ProjectNumber:  projectNumber,
 		}
 
+	case "local":
+		provider = &local.LocalCloud{
+			Name:            name,
+			RegistryAddress: "localhost:5000",
+		}
 	default:
-		log.Fatal(fmt.Errorf("Unsupported cloud: %s", cid))
+		log.Fatalf("Unsupported cloud provider: %s", cid)
 	}
 
 	return &Server{Provider: provider, Password: password, StackName: name}
@@ -264,7 +269,7 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
 	reader, err := s.Provider.BuildLogsStream(req.Id)
 
-	if err != nil {
+	if err != nil || reader == nil {
 		return err
 	}
 

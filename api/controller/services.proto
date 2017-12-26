@@ -118,6 +118,10 @@ message ProcessRunReq {
   repeated string command = 2;
 }
 
+message StreamMsg {
+  bytes data = 1;
+}
+
 message ReleaseListResponse {
   repeated models.Release releases = 1;
 }
@@ -285,10 +289,10 @@ service ProviderService {
     };
   }
 
-  // Process api 
-  rpc ProcessRun(ProcessRunReq) returns (CmdResponse) {
-    option (google.api.http) = {
-      get: "/v1/process/{name}/run"
+  // Process api
+  rpc ProcessRun(stream StreamMsg) returns (stream StreamMsg) {
+    option (google.api.http) = { 
+      get: "/v1/process/run"
     };
   }
 

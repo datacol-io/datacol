@@ -11,9 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/datastore"
-
 	"cloud.google.com/go/compute/metadata"
+	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	oauth2_google "golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudbuild/v1"
@@ -151,7 +150,7 @@ func (g *GCPCloud) describeDeployment(name string) (
 	return fetchDpAndManifest(g.deploymentmanager(), g.Project, name)
 }
 
-func datastoreClient(name, project string) (*datastore.Client, func()) {
+func datastoreClient(name, project string) (*datastore.Client, func() error) {
 	opts := []option.ClientOption{
 		option.WithGRPCDialOption(grpc.WithBackoffMaxDelay(5 * time.Second)),
 		option.WithGRPCDialOption(grpc.WithTimeout(30 * time.Second)),
@@ -172,10 +171,6 @@ func datastoreClient(name, project string) (*datastore.Client, func()) {
 func (g *GCPCloud) getCluster(name string) (*container.Cluster, error) {
 	service := g.container()
 	return service.Projects.Zones.Clusters.Get(g.Project, g.DefaultZone, name).Do()
-}
-
-func (g *GCPCloud) ctxNS() context.Context {
-	return datastore.WithNamespace(context.TODO(), g.DeploymentName)
 }
 
 func httpClient(name string) *http.Client {
@@ -226,6 +221,20 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 }
 
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {
+	config, err := getKubeClientConfig(name)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("cluster connection %v", err)
+	}
+
+	return c, nil
+}
+
+func getKubeClientConfig(name string) (*rest.Config, error) {
 	var config *rest.Config
 	if metadata.OnGCE() {
 		c, err := clientcmd.BuildConfigFromFlags("", "/opt/datacol/kubeconfig")
@@ -245,12 +254,7 @@ func getKubeClientset(name string) (*kubernetes.Clientset, error) {
 		config = c
 	}
 
-	c, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("cluster connection %v", err)
-	}
-
-	return c, nil
+	return config, nil
 }
 
 func externalIp(obj *compute.Instance) string {

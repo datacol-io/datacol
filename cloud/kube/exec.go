@@ -3,15 +3,17 @@ package kube
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/api"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/restclient"
-
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 /*
@@ -19,23 +21,23 @@ import (
 */
 
 type RemoteExecutor interface {
-	Execute(method string, url *url.URL, config *restclient.Config, stdin io.Reader, stdout, stderr io.Writer, tty bool) error
+	Execute(method string, url *url.URL, config *rest.Config, stdin io.Reader, stdout, stderr io.Writer, tty bool) error
 }
 
 // DefaultRemoteExecutor is the standard implementation of remote command execution
 type DefaultRemoteExecutor struct{}
 
-func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *restclient.Config, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
-	exec, err := remotecommand.NewExecutor(config, method, url)
+func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *rest.Config, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
+	exec, err := remotecommand.NewSPDYExecutor(config, method, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create SPDY executor: %v", err)
 	}
+
 	return exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
-		Stdin:              stdin,
-		Stdout:             stdout,
-		Stderr:             stderr,
-		Tty:                tty,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+		Tty:    tty,
 	})
 }
 
@@ -52,18 +54,19 @@ type ExecOptions struct {
 	Err io.Writer
 
 	Executor RemoteExecutor
-	Client   *clientset.Clientset
-	Config   *restclient.Config
+	Client   *kubernetes.Clientset
+	Config   *rest.Config
 }
 
 // Run executes a validated remote execution against a pod.
 func (p *ExecOptions) Run() error {
-	pod, err := p.Client.Core().Pods(p.Namespace).Get(p.PodName)
+	pod, err := p.Client.Core().Pods(p.Namespace).Get(p.PodName, metav1.GetOptions{})
 	if err != nil {
+		log.Errorf("fetching pod status: %v", err)
 		return err
 	}
 
-	if pod.Status.Phase != api.PodRunning {
+	if pod.Status.Phase != corev1.PodRunning {
 		return fmt.Errorf("Pod '%s' (on namespace '%s') is not running and cannot execute commands; current phase is '%s'",
 			p.PodName, p.Namespace, pod.Status.Phase)
 	}
@@ -74,26 +77,56 @@ func (p *ExecOptions) Run() error {
 		containerName = pod.Spec.Containers[0].Name
 	}
 
-	// TODO: refactor with terminal helpers from the edit utility once that is merged
 	var stdin io.Reader
 	if p.Stdin {
 		stdin = p.In
 	}
 
-	// TODO: consider abstracting into a client invocation or client helper
+	log.Debugf("stdin:%v stdout:%v stderr:%v", stdin, p.Out, p.Err)
+
 	req := p.Client.Core().RESTClient().Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
 		SubResource("exec").
-		Param("container", containerName)
-	req.VersionedParams(&api.PodExecOptions{
+		Param("container", containerName).
+		Param("command", "/bin/bash").
+		Param("command", "-c")
+
+	req.VersionedParams(&corev1.PodExecOptions{
 		Container: containerName,
 		Command:   p.Command,
 		Stdin:     stdin != nil,
 		Stdout:    p.Out != nil,
 		Stderr:    p.Err != nil,
-	}, api.ParameterCodec)
+	}, scheme.ParameterCodec)
+
+	if p.Executor == nil {
+		p.Executor = &DefaultRemoteExecutor{}
+	}
 
 	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, false)
+}
+
+func ProcessExec(c *kubernetes.Clientset, cfg *rest.Config, ns, app, command string, stream io.ReadWriter) error {
+	pod, err := RunningPods(ns, app, c)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Running command %v inside pod: %v", command, pod)
+
+	executer := &ExecOptions{
+		Namespace:     ns,
+		PodName:       pod,
+		ContainerName: app,
+		Command:       strings.Split(command, "@"),
+		In:            ioutil.NopCloser(stream),
+		Out:           stream,
+		Err:           stream,
+		Client:        c,
+		Config:        cfg,
+	}
+
+	return executer.Run()
 }

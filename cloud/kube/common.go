@@ -2,10 +2,15 @@ package kube
 
 import (
 	"fmt"
+	"io"
+	"math"
+	"strconv"
+	"time"
 
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
 	core_v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,4 +143,28 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 	}
 
 	return endpoint, nil
+}
+
+func LogStreamReq(c *kubernetes.Clientset, ns, app string, opts pb.LogStreamOptions) (io.ReadCloser, error) {
+	pod, err := RunningPods(ns, app, c)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Getting logs from pod %s", pod)
+
+	req := c.Core().RESTClient().Get().
+		Namespace(ns).
+		Name(pod).
+		Resource("pods").
+		SubResource("log").
+		Param("container", app).
+		Param("follow", strconv.FormatBool(opts.Follow))
+
+	if opts.Since > 0 {
+		sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
+		req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
+	}
+
+	return req.Stream()
 }

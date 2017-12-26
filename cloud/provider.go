@@ -30,6 +30,7 @@ type Provider interface {
 	ReleaseDelete(string, string) error
 
 	LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error)
+	ProcessRun(app string, r io.ReadWriter, command string) error
 
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)
