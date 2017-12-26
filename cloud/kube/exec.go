@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -82,15 +81,14 @@ func (p *ExecOptions) Run() error {
 		stdin = p.In
 	}
 
-	log.Debugf("stdin:%v stdout:%v stderr:%v", stdin, p.Out, p.Err)
-
 	req := p.Client.Core().RESTClient().Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
 		SubResource("exec").
 		Param("container", containerName).
-		Param("command", "/bin/bash").
+		Param("command", "/bin/sh").
+		Param("tty", "true").
 		Param("command", "-c")
 
 	req.VersionedParams(&corev1.PodExecOptions{
@@ -105,7 +103,7 @@ func (p *ExecOptions) Run() error {
 		p.Executor = &DefaultRemoteExecutor{}
 	}
 
-	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, false)
+	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, true)
 }
 
 func ProcessExec(c *kubernetes.Clientset, cfg *rest.Config, ns, app, command string, stream io.ReadWriter) error {
@@ -120,7 +118,8 @@ func ProcessExec(c *kubernetes.Clientset, cfg *rest.Config, ns, app, command str
 		Namespace:     ns,
 		PodName:       pod,
 		ContainerName: app,
-		Command:       strings.Split(command, "@"),
+		Command:       []string{command},
+		Stdin:         true,
 		In:            ioutil.NopCloser(stream),
 		Out:           stream,
 		Err:           stream,

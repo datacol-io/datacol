@@ -9,23 +9,21 @@ import (
 	"strings"
 
 	"cloud.google.com/go/compute/metadata"
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud"
+	aws_provider "github.com/dinesh/datacol/cloud/aws"
 	"github.com/dinesh/datacol/cloud/google"
+	"github.com/dinesh/datacol/cloud/local"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-
-	log "github.com/Sirupsen/logrus"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
-	daws "github.com/dinesh/datacol/cloud/aws"
-	"github.com/dinesh/datacol/cloud/local"
 )
 
 func newServer() *Server {
-	var password, name string
 	var provider cloud.Provider
 
 	cid, ok := os.LookupEnv("DATACOL_PROVIDER")
@@ -33,11 +31,11 @@ func newServer() *Server {
 		log.Fatalf("Missing provider env var. Please set `DATACOL_PROVIDER` in your shell")
 	}
 
-	name = os.Getenv("DATACOL_STACK")
+	name := os.Getenv("DATACOL_STACK")
+	password := os.Getenv("DATACOL_API_KEY")
 
 	switch cid {
 	case "aws":
-		password = os.Getenv("DATACOL_API_KEY")
 		region := os.Getenv("AWS_REGION")
 
 		if len(name) == 0 || len(password) == 0 {
@@ -48,16 +46,14 @@ func newServer() *Server {
 			log.Fatal("AWS_REGION env var not found")
 		}
 
-		provider = &daws.AwsCloud{
+		provider = &aws_provider.AwsCloud{
 			DeploymentName: name,
 			Region:         region,
 			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
 		}
 	case "gcp":
 		var bucket, zone, projectId, projectNumber string
-		password = os.Getenv("DATACOL_API_KEY")
 		bucket = os.Getenv("DATACOL_BUCKET")
-
 		zone = os.Getenv("GCP_DEFAULT_ZONE")
 		region := os.Getenv("GCP_REGION")
 		projectId = os.Getenv("GCP_PROJECT")
@@ -76,6 +72,7 @@ func newServer() *Server {
 		provider = &local.LocalCloud{
 			Name:            name,
 			RegistryAddress: "localhost:5000",
+			EnvMap:          make(map[string]pb.Environment),
 		}
 	default:
 		log.Fatalf("Unsupported cloud provider: %s", cid)
@@ -97,7 +94,7 @@ func (s *Server) Run() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
 	if err != nil {
-		return fmt.Errorf("opening rpcPort err: %v", err)
+		return fmt.Errorf("opening rpc port: %v", err)
 	}
 
 	//todo: setting the max size to be 50MB. Add streaming for code upload

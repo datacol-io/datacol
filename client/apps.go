@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -74,7 +73,7 @@ func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, ou
 func (c *Client) RunProcess(name string, args []string) error {
 	newctx := metadata.NewOutgoingContext(ctx, metadata.New(map[string]string{
 		"app":     name,
-		"command": strings.Join(args, "@"),
+		"command": strings.Join(args, " "),
 	}))
 
 	stream, err := c.ProviderServiceClient.ProcessRun(newctx)
@@ -85,9 +84,9 @@ func (c *Client) RunProcess(name string, args []string) error {
 	defer stream.CloseSend()
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 
-	fmt.Println("Running command", args, "for", name)
+	r, w := os.Stdin, os.Stdout
 
 	go func(out io.Writer) {
 		defer wg.Done()
@@ -99,21 +98,24 @@ func (c *Client) RunProcess(name string, args []string) error {
 			}
 
 			if rerr != nil {
-				err = fmt.Errorf("failed to recieve data: %v", rerr)
+				err = rerr
 				break
 			}
-			_, err = out.Write(ret.Data)
-		}
-	}(os.Stdout)
 
-	go func() {
+			if _, err = out.Write(ret.Data); err != nil {
+				break
+			}
+		}
+	}(w)
+
+	go func(r io.Reader) {
 		defer wg.Done()
-		buf := make([]byte, 1024)
+		buf := make([]byte, 1024*1024)
 
 		for {
-			n, serr := os.Stdin.Read(buf)
+			n, serr := r.Read(buf)
 			if serr == io.EOF {
-				return
+				break
 			}
 			if serr != nil {
 				err = serr
@@ -121,11 +123,11 @@ func (c *Client) RunProcess(name string, args []string) error {
 			}
 
 			if serr := stream.Send(&pbs.StreamMsg{buf[:n]}); serr != nil {
-				err = fmt.Errorf("failed to send: %v", serr)
+				err = serr
 				break
 			}
 		}
-	}()
+	}(r)
 
 	wg.Wait()
 

@@ -15,6 +15,7 @@ func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 		log.Errorf("failed run process: %v", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -22,24 +23,21 @@ type runStream struct {
 	stream pbs.ProviderService_ProcessRunServer
 }
 
-func (rs *runStream) Read(p []byte) (n int, err error) {
+func (rs runStream) Read(p []byte) (n int, err error) {
 	msg, err := rs.stream.Recv()
-
 	if err != nil {
-		log.Errorf("runStream.Read: %v", err)
 		return len(p), err
 	}
 
 	copy(p, msg.Data)
-
 	return len(p), nil
 }
 
-func (rs *runStream) Write(p []byte) (n int, err error) {
+func (rs runStream) Write(p []byte) (n int, err error) {
 	if err = rs.stream.Send(&pbs.StreamMsg{
 		Data: p,
 	}); err != nil {
-		log.Errorf("runStream.Write: %v", err)
+		log.Errorf("sending bytes to stream %s: %v", string(p), err)
 	}
 
 	return len(p), err
