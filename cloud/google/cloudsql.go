@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	kapi "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-
 	log "github.com/Sirupsen/logrus"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -21,11 +21,11 @@ var (
 
 func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
 	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
-	if err := c.Core().Secrets(ns).Delete(secretName, &kapi.DeleteOptions{}); err != nil {
+	if err := c.Core().Secrets(ns).Delete(secretName, &metav1.DeleteOptions{}); err != nil {
 		return nil
 	}
 
-	dp, err := c.Extensions().Deployments(ns).Get(name)
+	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
 	}
 
 	found = false
-	vls := []kapi.Volume{}
+	vls := []v1.Volume{}
 	for _, v := range dp.Spec.Template.Spec.Volumes {
 		if v.Name != sqlCredVolName && v.Name != "cloudsql" {
 			vls = append(vls, v)
@@ -60,7 +60,7 @@ func tearCloudProxy(c *kubernetes.Clientset, ns, name, process string) error {
 }
 
 func setupCloudProxy(c *kubernetes.Clientset, ns, project, name string, options map[string]string) error {
-	dp, err := c.Extensions().Deployments(ns).Get(name)
+	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -71,8 +71,8 @@ func setupCloudProxy(c *kubernetes.Clientset, ns, project, name string, options 
 	}
 
 	secretName := fmt.Sprintf("%s-%s", name, sqlSecretName)
-	if _, err := c.Core().Secrets(ns).Create(&kapi.Secret{
-		ObjectMeta: kapi.ObjectMeta{
+	if _, err := c.Core().Secrets(ns).Create(&v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,
 		},
 		Data: map[string][]byte{
@@ -96,20 +96,20 @@ func mergeSqlManifest(dp *v1beta1.Deployment, secretName string, options map[str
 	parts := strings.Split(options["DATABASE_URL"], "://")
 	port := getDefaultPort(parts[0])
 
-	sqlContainer := kapi.Container{
+	sqlContainer := v1.Container{
 		Command: []string{"/cloud_sql_proxy", "--dir=/cloudsql",
 			fmt.Sprintf("-instances=%s=tcp:%d", options["INSTANCE_NAME"], port),
 			"-credential_file=/secrets/cloudsql/credentials.json"},
 		Name:            cloudsqlContainerName,
 		Image:           cloudsqlImage,
 		ImagePullPolicy: "IfNotPresent",
-		VolumeMounts: []kapi.VolumeMount{
-			kapi.VolumeMount{
+		VolumeMounts: []v1.VolumeMount{
+			v1.VolumeMount{
 				Name:      sqlCredVolName,
 				MountPath: "/secrets/cloudsql",
 				ReadOnly:  true,
 			},
-			kapi.VolumeMount{
+			v1.VolumeMount{
 				Name:      "cloudsql",
 				MountPath: "/cloudsql",
 			},
@@ -141,19 +141,19 @@ func mergeSqlManifest(dp *v1beta1.Deployment, secretName string, options map[str
 		}
 
 		if !volfound {
-			volumes := []kapi.Volume{
-				kapi.Volume{
+			volumes := []v1.Volume{
+				v1.Volume{
 					Name: sqlCredVolName,
-					VolumeSource: kapi.VolumeSource{
-						Secret: &kapi.SecretVolumeSource{
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
 							SecretName: secretName,
 						},
 					},
 				},
-				kapi.Volume{
+				v1.Volume{
 					Name: "cloudsql",
-					VolumeSource: kapi.VolumeSource{
-						EmptyDir: &kapi.EmptyDirVolumeSource{},
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{},
 					},
 				},
 			}

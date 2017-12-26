@@ -1,6 +1,7 @@
 package google
 
 import (
+	"context"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -14,8 +15,8 @@ const appKind = "App"
 func (g *GCPCloud) AppList() (pb.Apps, error) {
 	var apps pb.Apps
 
-	q := datastore.NewQuery(appKind)
-	if _, err := g.datastore().GetAll(g.ctxNS(), q, &apps); err != nil {
+	q := datastore.NewQuery(appKind).Namespace(g.DeploymentName)
+	if _, err := g.datastore().GetAll(context.Background(), q, &apps); err != nil {
 		return nil, err
 	}
 
@@ -76,15 +77,14 @@ func (g *GCPCloud) AppDelete(name string) error {
 }
 
 func (g *GCPCloud) deleteAppFromDatastore(name string) error {
-	store := g.datastore()
-	ctx := g.ctxNS()
+	store, ctx := g.datastore(), context.Background()
 
-	q := datastore.NewQuery(buildKind).Filter("App =", name).KeysOnly()
+	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("App =", name).KeysOnly()
 	if err := deleteFromQuery(store, ctx, q); err != nil {
 		return err
 	}
 
-	q = datastore.NewQuery(releaseKind).Filter("App =", name).KeysOnly()
+	q = datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("App =", name).KeysOnly()
 
 	if err := deleteFromQuery(store, ctx, q); err != nil {
 		return err

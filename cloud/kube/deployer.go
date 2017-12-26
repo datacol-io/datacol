@@ -5,15 +5,15 @@ import (
 	"sort"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	klabels "k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/util/intstr"
+
+	log "github.com/Sirupsen/logrus"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	klabels "k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -110,26 +110,28 @@ func (d *Deployer) Remove(r *DeployRequest) error {
 
 func newNamespace(payload *DeployRequest) *v1.Namespace {
 	return &v1.Namespace{
-		ObjectMeta: v1.ObjectMeta{Name: payload.Environment},
-		TypeMeta:   unversioned.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Namespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: payload.Environment},
+		TypeMeta:   metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Namespace"},
 	}
 }
 
 // CreateOrUpdateService creates or updates a service
 func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Service, error) {
-	newsSvc, err := r.Client.Services(env).Create(svc)
+	newsSvc, err := r.Client.Core().Services(env).Create(svc)
 	if err != nil {
 		if !kerrors.IsAlreadyExists(err) {
 			return nil, err
 		}
-		oldSvc, err := r.Client.Services(env).Get(svc.ObjectMeta.Name)
+		oldSvc, err := r.Client.Core().Services(env).Get(svc.ObjectMeta.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
+
 		svc.ObjectMeta.ResourceVersion = oldSvc.ObjectMeta.ResourceVersion
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		svc.Spec.Ports[0].NodePort = oldSvc.Spec.Ports[0].NodePort
-		svc, err = r.Client.Services(env).Update(svc)
+		svc, err = r.Client.Core().Services(env).Update(svc)
+
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +151,7 @@ func newService(payload *DeployRequest) *v1.Service {
 	}
 
 	return &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Annotations: payload.Tags,
 			Labels:      map[string]string{"name": payload.ServiceID},
 			Name:        payload.ServiceID,
@@ -162,12 +164,12 @@ func newService(payload *DeployRequest) *v1.Service {
 			}},
 			Selector: map[string]string{"name": payload.ServiceID},
 		},
-		TypeMeta: unversioned.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Service"},
+		TypeMeta: metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Service"},
 	}
 }
 
-func newMetadata(payload *DeployRequest) v1.ObjectMeta {
-	return v1.ObjectMeta{
+func newMetadata(payload *DeployRequest) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
 		Annotations: payload.Tags,
 		Labels:      map[string]string{"name": payload.ServiceID},
 		Name:        payload.ServiceID,
@@ -190,7 +192,7 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 	var d *v1beta1.Deployment
 
 	found := false
-	d, err := r.Client.Deployments(env).Get(payload.ServiceID)
+	d, err := r.Client.Extensions().Deployments(env).Get(payload.ServiceID, metav1.GetOptions{})
 
 	if err == nil {
 		found = true
@@ -203,14 +205,14 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 	}
 
 	if !found {
-		d, err := r.Client.Deployments(env).Create(d)
+		d, err := r.Client.Extensions().Deployments(env).Create(d)
 		if err != nil {
 			return nil, err
 		}
 
 		log.Debugf("Deployment created: %+v", d.ObjectMeta.Name)
 	} else {
-		d, err = r.Client.Deployments(env).Update(d)
+		d, err = r.Client.Extensions().Deployments(env).Update(d)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +234,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 		ObjectMeta: newMetadata(payload),
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: &payload.Replicas,
-			Selector: &unversioned.LabelSelector{MatchLabels: map[string]string{"name": payload.ServiceID}},
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": payload.ServiceID}},
 			Strategy: v1beta1.DeploymentStrategy{
 				Type: v1beta1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &v1beta1.RollingUpdateDeployment{
@@ -250,7 +252,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 				},
 			},
 		},
-		TypeMeta: unversioned.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Deployment"},
+		TypeMeta: metav1.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Deployment"},
 	}
 }
 
@@ -340,14 +342,14 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 		Spec: v1beta1.IngressSpec{
 			Rules: rules,
 		},
-		TypeMeta: unversioned.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Ingress"},
+		TypeMeta: metav1.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Ingress"},
 	}
 }
 
 func WaitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
 	log.Debugf("waiting for Deployment %s to get a newer generation (30s timeout)", name)
 	for i := 0; i < 30; i++ {
-		dp, err := c.Extensions().Deployments(ns).Get(name)
+		dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				time.Sleep(1 * time.Second)
@@ -365,7 +367,7 @@ func WaitUntilUpdated(c *kubernetes.Clientset, ns, name string) {
 }
 
 func WaitUntilReady(c *kubernetes.Clientset, ns, name string) {
-	dp, err := c.Extensions().Deployments(ns).Get(name)
+	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -405,7 +407,7 @@ func WaitUntilReady(c *kubernetes.Clientset, ns, name string) {
 
 func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]string) {
 	selector := klabels.Set(labels).AsSelector()
-	res, err := c.Core().Pods(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -453,7 +455,7 @@ func podEvents(c *kubernetes.Clientset, ns string, pod *v1.Pod) (*v1.EventList, 
 		"involvedObject.uid":       string(pod.ObjectMeta.UID),
 	}
 
-	res, err := c.Core().Events(ns).List(v1.ListOptions{
+	res, err := c.Core().Events(ns).List(metav1.ListOptions{
 		FieldSelector:   klabels.Set(fields).AsSelector().String(),
 		ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	})
@@ -462,14 +464,14 @@ func podEvents(c *kubernetes.Clientset, ns string, pod *v1.Pod) (*v1.EventList, 
 	}
 
 	sort.Slice(res.Items, func(i, j int) bool {
-		return res.Items[j].LastTimestamp.Before(res.Items[i].LastTimestamp)
+		return res.Items[j].LastTimestamp.Before(&res.Items[i].LastTimestamp)
 	})
 
 	return res, err
 }
 
 func areReplicaReady(c *kubernetes.Clientset, ns, name string, labels map[string]string) (bool, int32) {
-	dp, err := c.Extensions().Deployments(ns).Get(name)
+	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -494,7 +496,7 @@ func areReplicaReady(c *kubernetes.Clientset, ns, name string, labels map[string
 
 func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]string) {
 	selector := klabels.Set(labels).AsSelector()
-	res, err := c.Extensions().ReplicaSets(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+	res, err := c.Extensions().ReplicaSets(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -507,7 +509,7 @@ func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]
 	}
 
 	selector = klabels.Set(fields).AsSelector()
-	response, err := c.Core().Events(ns).List(v1.ListOptions{FieldSelector: selector.String()})
+	response, err := c.Core().Events(ns).List(metav1.ListOptions{FieldSelector: selector.String()})
 
 	for _, event := range response.Items {
 		log.Debugf("event %s reason:%s", event.Message, event.Reason)
@@ -524,7 +526,7 @@ func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]
 
 func RunningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
 	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
-	res, err := c.Core().Pods(ns).List(v1.ListOptions{LabelSelector: selector.String()})
+	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return "", err
 	}

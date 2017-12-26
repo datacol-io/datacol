@@ -9,18 +9,16 @@ import (
 	"path/filepath"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/client"
+	"github.com/dinesh/datacol/cmd/stdcli"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
 	"golang.org/x/net/context"
 	"gopkg.in/urfave/cli.v2"
-
-	log "github.com/Sirupsen/logrus"
-
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/client"
-	"github.com/dinesh/datacol/cmd/stdcli"
 )
 
 func init() {

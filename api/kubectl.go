@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
+	"os/exec"
+	"syscall"
+
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	"golang.org/x/net/context"
-	"os/exec"
-	"syscall"
 )
 
 func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResponse, error) {
@@ -17,22 +18,6 @@ func (s *Server) Kubectl(ctx context.Context, req *pbs.KubectlReq) (*pbs.CmdResp
 	}
 
 	args := append([]string{"--kubeconfig", cfg, "-n", s.StackName}, req.Args...)
-	out := cmd_execute("kubectl", args)
-	return makeResponse(out), nil
-}
-
-func (s *Server) ProcessRun(ctx context.Context, req *pbs.ProcessRunReq) (*pbs.CmdResponse, error) {
-	cfg, err := s.Provider.K8sConfigPath()
-	if err != nil {
-		return nil, internalError(err, "failed to fetch k8s config")
-	}
-
-	pod, err := s.Provider.GetRunningPods(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	args := append([]string{"--kubeconfig", cfg, "-n", s.StackName, "--pod", pod, "exec"}, req.Command...)
 	out := cmd_execute("kubectl", args)
 	return makeResponse(out), nil
 }

@@ -24,10 +24,8 @@ func cmdAppRun(c *cli.Context) error {
 	stdcli.ExitOnError(err)
 
 	args := c.Args().Slice()
-	ret, err := client.RunProcess(name, args)
-	stdcli.ExitOnError(err)
 
-	onApiExec(ret, args)
+	stdcli.ExitOnError(client.RunProcess(name, args))
 
 	return nil
 }

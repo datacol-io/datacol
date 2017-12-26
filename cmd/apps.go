@@ -9,7 +9,7 @@ import (
 	term "github.com/appscode/go/term"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"gopkg.in/urfave/cli.v2"
-	"k8s.io/client-go/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func init() {
@@ -70,7 +70,11 @@ func cmdAppsList(c *cli.Context) error {
 	apps, err := api.GetApps()
 	stdcli.ExitOnError(err)
 
-	fmt.Println(toJson(apps))
+	if len(apps) == 0 {
+		fmt.Println("No apps found.")
+	} else {
+		fmt.Println(toJson(apps))
+	}
 	return nil
 }
 

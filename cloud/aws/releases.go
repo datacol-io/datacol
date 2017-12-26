@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func (a *AwsCloud) dynamoReleases() string {

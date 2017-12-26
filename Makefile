@@ -21,6 +21,12 @@ cmd:
 api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go
 
+proto:
+	go install -v ./vendor/github.com/golang/protobuf/protoc-gen-go
+	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+	go install -v ./vendor/github.com/go-swagger/go-swagger/cmd/swagger
+
 gen:
 	go-bindata -o cmd/provider/aws/templates.go cmd/provider/aws/templates/ && gsed -i 's/main/aws/g' cmd/provider/aws/templates.go
 	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && gsed -i 's/main/aws/g' cloud/aws/templates.go

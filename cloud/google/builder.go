@@ -1,6 +1,7 @@
 package google
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ import (
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
@@ -59,19 +60,19 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 }
 
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	q := datastore.NewQuery(buildKind).Filter("App = ", app).Limit(limit)
+	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("App = ", app).Limit(limit)
 
 	var builds pb.Builds
-	_, err := g.datastore().GetAll(g.ctxNS(), q, &builds)
+	_, err := g.datastore().GetAll(context.Background(), q, &builds)
 
 	return builds, err
 }
 
 func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	q := datastore.NewQuery(releaseKind).Filter("App = ", app).Limit(limit)
+	q := datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("App = ", app).Limit(limit)
 
 	var rs pb.Releases
-	_, err := g.datastore().GetAll(g.ctxNS(), q, &rs)
+	_, err := g.datastore().GetAll(context.Background(), q, &rs)
 
 	return rs, err
 }

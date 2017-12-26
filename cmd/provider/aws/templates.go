@@ -83,7 +83,7 @@ func cmdProviderAwsTemplatesFormationYaml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cmd/provider/aws/templates/formation.yaml", size: 23325, mode: os.FileMode(420), modTime: time.Unix(1504945523, 0)}
+	info := bindataFileInfo{name: "cmd/provider/aws/templates/formation.yaml", size: 23325, mode: os.FileMode(420), modTime: time.Unix(1512724120, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

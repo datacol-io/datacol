@@ -3,7 +3,6 @@ package google
 import (
 	"bufio"
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/appscode/go/crypto/rand"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -32,9 +32,12 @@ func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Que
 	return dc.DeleteMulti(ctx, keys)
 }
 
-func nameKey(kind, id, ns string) (context.Context, *datastore.Key) {
-	ctx := datastore.WithNamespace(context.TODO(), ns)
-	return ctx, datastore.NewKey(ctx, kind, id, 0, nil)
+func nameKey(kind, name, ns string) (context.Context, *datastore.Key) {
+	return context.Background(), &datastore.Key{
+		Kind:      kind,
+		Name:      name,
+		Namespace: ns,
+	}
 }
 
 func ditermineMachineType(nodes int) string {

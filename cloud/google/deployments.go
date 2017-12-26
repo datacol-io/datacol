@@ -133,17 +133,17 @@ func resetDatabase(name, project string) error {
 	s, close := datastoreClient(name, project)
 	defer close()
 
-	ctx := datastore.WithNamespace(context.TODO(), name)
+	ctx := context.Background()
 
-	if err := deleteFromQuery(s, ctx, datastore.NewQuery(appKind)); err != nil {
+	if err := deleteFromQuery(s, ctx, datastore.NewQuery(appKind).Namespace(name)); err != nil {
 		return fmt.Errorf("deleting apps err: %v", err)
 	}
 
-	if err := deleteFromQuery(s, ctx, datastore.NewQuery(buildKind)); err != nil {
+	if err := deleteFromQuery(s, ctx, datastore.NewQuery(buildKind).Namespace(name)); err != nil {
 		return fmt.Errorf("deleting builds err: %v", err)
 	}
 
-	if err := deleteFromQuery(s, ctx, datastore.NewQuery(releaseKind)); err != nil {
+	if err := deleteFromQuery(s, ctx, datastore.NewQuery(releaseKind).Namespace(name)); err != nil {
 		return fmt.Errorf("deleting releases err: %v", err)
 	}
 

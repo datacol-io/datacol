@@ -33,22 +33,15 @@ type Client struct {
 }
 
 func (c *Client) IsGCP() bool {
-	return len(c.Project) > 0
+	return c.Provider == "gcp"
 }
 
 func (c *Client) IsAWS() bool {
-	return !c.IsGCP()
+	return c.Provider == "aws"
 }
 
-func (c *Client) Provider() string {
-	if c.IsAWS() {
-		return "AWS"
-	}
-	if c.IsGCP() {
-		return "GCP"
-	}
-
-	return "Unknown"
+func (c *Client) IsLocal() bool {
+	return c.Provider == "local"
 }
 
 func NewClient(version string) (*Client, func() error) {
@@ -90,7 +83,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}),
 	)
 	if err != nil {
-		if err == grpc.ErrClientConnTimeout {
+		if err == grpc.ErrClientConnTimeout || err == context.DeadlineExceeded {
 			term.Errorln("Couldn't connect to the Controller API. Did you initialize the stack using `datacol init`")
 		}
 
@@ -103,7 +96,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 func (c *Client) SetStack(auth *stdcli.Auth) {
 	c.Auth = *auth
 
-	if len(auth.Region) == 0 {
+	if c.IsGCP() {
 		// for GCP only
 		if len(c.Project) == 0 {
 			c.Project = stdcli.ReadSetting(c.Name, "project")

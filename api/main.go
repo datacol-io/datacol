@@ -3,14 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/controller"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net/http"
-	"os"
-	"time"
 )
 
 var (
@@ -52,7 +53,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
 
-	fmt.Printf("starting proxy on %d and grpc on %d ...\n", port, rpcPort)
+	fmt.Printf("Starting server on http=%d and grpc=%d ports\n", port, rpcPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 

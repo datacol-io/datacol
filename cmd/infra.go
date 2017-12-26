@@ -92,7 +92,7 @@ func cmdResourceList(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Cloud: %s\n", api.Provider())
+	fmt.Printf("Cloud: %s\n", api.Provider)
 	fmt.Printf("Name: %s\n", api.Name)
 
 	fmt.Printf("Datacol API Host: %s\n", api.ApiServer)
