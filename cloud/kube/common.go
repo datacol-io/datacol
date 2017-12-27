@@ -145,10 +145,10 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 	return endpoint, nil
 }
 
-func LogStreamReq(c *kubernetes.Clientset, ns, app string, opts pb.LogStreamOptions) (io.ReadCloser, error) {
-	pod, err := RunningPods(ns, app, c)
+func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.LogStreamOptions) error {
+	pod, err := getRunningPods(ns, app, c)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	log.Debugf("Getting logs from pod %s", pod)
@@ -165,6 +165,11 @@ func LogStreamReq(c *kubernetes.Clientset, ns, app string, opts pb.LogStreamOpti
 		sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
 		req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
 	}
+	r, err := req.Stream()
+	if err != nil {
+		return err
+	}
 
-	return req.Stream()
+	_, err = io.Copy(w, r)
+	return err
 }

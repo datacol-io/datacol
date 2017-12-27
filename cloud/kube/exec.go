@@ -107,7 +107,7 @@ func (p *ExecOptions) Run() error {
 }
 
 func ProcessExec(c *kubernetes.Clientset, cfg *rest.Config, ns, app, command string, stream io.ReadWriter) error {
-	pod, err := RunningPods(ns, app, c)
+	pod, err := getRunningPods(ns, app, c)
 	if err != nil {
 		return err
 	}

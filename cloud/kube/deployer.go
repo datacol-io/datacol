@@ -524,7 +524,7 @@ func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]
 	}
 }
 
-func RunningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
+func getRunningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
 	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
 	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {

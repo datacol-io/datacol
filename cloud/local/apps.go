@@ -55,6 +55,20 @@ func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
 }
 
 func (g *LocalCloud) AppDelete(name string) error {
+	ns := g.Name
+	kube, err := getKubeClientset(ns)
+	if err != nil {
+		return err
+	}
+
+	sched.DeleteApp(kube, ns, name)
+
+	for i, a := range g.Apps {
+		if a.Name == name {
+			g.Apps = append(g.Apps[:i], g.Apps[i+1:]...)
+		}
+	}
+
 	return nil
 }
 
@@ -69,14 +83,4 @@ func (g *LocalCloud) EnvironmentSet(name string, body io.Reader) error {
 	}
 	g.EnvMap[name] = common.LoadEnvironment(data)
 	return nil
-}
-
-func (g *LocalCloud) GetRunningPods(app string) (string, error) {
-	ns := g.Name
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return "", err
-	}
-
-	return sched.RunningPods(ns, app, c)
 }

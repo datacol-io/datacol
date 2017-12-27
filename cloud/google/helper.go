@@ -1,7 +1,6 @@
 package google
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -98,23 +97,6 @@ func toJson(object interface{}) string {
 		log.Fatal(fmt.Errorf("dumping json: %v", err))
 	}
 	return string(dump)
-}
-
-func loadEnv(data []byte) pb.Environment {
-	e := pb.Environment{}
-
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	for scanner.Scan() {
-		parts := strings.SplitN(scanner.Text(), "=", 2)
-
-		if len(parts) == 2 {
-			if key := strings.TrimSpace(parts[0]); key != "" {
-				e[key] = parts[1]
-			}
-		}
-	}
-
-	return e
 }
 
 func getGcpRegion(zone string) string {

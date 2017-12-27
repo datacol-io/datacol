@@ -5,7 +5,7 @@ import (
 	"io"
 
 	pb "github.com/dinesh/datacol/api/models"
-	sched "github.com/dinesh/datacol/cloud/kube"
+	"github.com/dinesh/datacol/cloud/common"
 	"google.golang.org/api/googleapi"
 )
 
@@ -19,20 +19,10 @@ func (g *GCPCloud) EnvironmentGet(name string) (pb.Environment, error) {
 		return nil, err
 	}
 
-	return loadEnv(data), nil
+	return common.LoadEnvironment(data), nil
 }
 
 func (g *GCPCloud) EnvironmentSet(name string, body io.Reader) error {
 	gskey := fmt.Sprintf("%s.env", name)
 	return g.gsPut(g.BucketName, gskey, body)
-}
-
-func (g *GCPCloud) GetRunningPods(app string) (string, error) {
-	ns := g.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return "", err
-	}
-
-	return sched.RunningPods(ns, app, c)
 }

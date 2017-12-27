@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	pb "github.com/dinesh/datacol/api/models"
-	sched "github.com/dinesh/datacol/cloud/kube"
 	"github.com/ejholmes/cloudwatch"
 )
 
@@ -33,13 +32,6 @@ func (a *AwsCloud) dynamoBuilds() string {
 
 func (a *AwsCloud) codeBuildBucket() string {
 	return a.SettingBucket
-}
-
-func (g *AwsCloud) GetRunningPods(app string) (string, error) {
-	ns := g.DeploymentName
-	c := g.kubeClient()
-
-	return sched.RunningPods(ns, app, c)
 }
 
 func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {

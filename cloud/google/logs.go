@@ -1,47 +1,18 @@
 package google
 
 import (
-	"bufio"
-	"math"
-	"strconv"
-	"time"
+	"io"
 
-	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
-func (g *GCPCloud) LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error) {
+func (g *GCPCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error {
 	ns := g.DeploymentName
 	c, err := getKubeClientset(ns)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	pod, err := sched.RunningPods(ns, app, c)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	log.Debugf("Getting logs from pod %s", pod)
-
-	req := c.Core().RESTClient().Get().
-		Namespace(ns).
-		Name(pod).
-		Resource("pods").
-		SubResource("log").
-		Param("container", app).
-		Param("follow", strconv.FormatBool(opts.Follow))
-
-	if opts.Since > 0 {
-		sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
-		req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
-	}
-
-	rc, err := req.Stream()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return bufio.NewReader(rc), rc.Close, nil
+	return sched.LogStreamReq(c, w, ns, app, opts)
 }

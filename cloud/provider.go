@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"bufio"
 	"io"
 
 	pb "github.com/dinesh/datacol/api/models"
@@ -29,7 +28,7 @@ type Provider interface {
 	ReleaseList(string, int) (pb.Releases, error)
 	ReleaseDelete(string, string) error
 
-	LogStream(app string, opts pb.LogStreamOptions) (*bufio.Reader, func() error, error)
+	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
 	ProcessRun(app string, r io.ReadWriter, command string) error
 
 	ResourceList() (pb.Resources, error)
@@ -39,6 +38,5 @@ type Provider interface {
 	ResourceLink(app, name string) (*pb.Resource, error)
 	ResourceUnlink(string, string) (*pb.Resource, error)
 
-	GetRunningPods(string) (string, error)
 	K8sConfigPath() (string, error)
 }
