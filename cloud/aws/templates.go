@@ -203,10 +203,10 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"cloud/aws/templates/app.tmpl": cloudAwsTemplatesAppTmpl,
-	"cloud/aws/templates/mysql.tmpl": cloudAwsTemplatesMysqlTmpl,
+	"cloud/aws/templates/app.tmpl":      cloudAwsTemplatesAppTmpl,
+	"cloud/aws/templates/mysql.tmpl":    cloudAwsTemplatesMysqlTmpl,
 	"cloud/aws/templates/postgres.tmpl": cloudAwsTemplatesPostgresTmpl,
-	"cloud/aws/templates/redis.tmpl": cloudAwsTemplatesRedisTmpl,
+	"cloud/aws/templates/redis.tmpl":    cloudAwsTemplatesRedisTmpl,
 }
 
 // AssetDir returns the file names below a certain
@@ -248,14 +248,15 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
 	"cloud": &bintree{nil, map[string]*bintree{
 		"aws": &bintree{nil, map[string]*bintree{
 			"templates": &bintree{nil, map[string]*bintree{
-				"app.tmpl": &bintree{cloudAwsTemplatesAppTmpl, map[string]*bintree{}},
-				"mysql.tmpl": &bintree{cloudAwsTemplatesMysqlTmpl, map[string]*bintree{}},
+				"app.tmpl":      &bintree{cloudAwsTemplatesAppTmpl, map[string]*bintree{}},
+				"mysql.tmpl":    &bintree{cloudAwsTemplatesMysqlTmpl, map[string]*bintree{}},
 				"postgres.tmpl": &bintree{cloudAwsTemplatesPostgresTmpl, map[string]*bintree{}},
-				"redis.tmpl": &bintree{cloudAwsTemplatesRedisTmpl, map[string]*bintree{}},
+				"redis.tmpl":    &bintree{cloudAwsTemplatesRedisTmpl, map[string]*bintree{}},
 			}},
 		}},
 	}},
@@ -307,4 +308,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-

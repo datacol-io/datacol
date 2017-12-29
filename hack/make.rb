@@ -1,9 +1,5 @@
 require 'rubygems'
 
-$commands = "cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go " +
-            "cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go " + 
-            "cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go"
-
 $version = ENV.fetch('VERSION', "1.0.0-alpha.9")
 $env     = ENV.fetch('DATACOL_ENV') # dev or prod
 
@@ -36,7 +32,7 @@ def build_all
       bin_name = "#{$cli_name}-#{os}-#{arch}"
       bin_name += ".exe" if os == 'windows'
 
-      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} #{$commands}")
+      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} .")
     end
   end
 end

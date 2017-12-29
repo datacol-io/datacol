@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"os"
@@ -35,7 +35,7 @@ func init() {
 	}
 }
 
-func main() {
+func Initialize() {
 	defer handlePanic()
 
 	log.SetFormatter(&log.TextFormatter{

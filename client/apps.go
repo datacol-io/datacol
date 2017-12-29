@@ -133,7 +133,7 @@ func (c *Client) RunProcess(name string, args []string) error {
 				break
 			}
 
-			if serr := stream.Send(&pbs.StreamMsg{buf[:n]}); serr != nil {
+			if serr := stream.Send(&pbs.StreamMsg{Data: buf[:n]}); serr != nil {
 				err = serr
 				break
 			}
