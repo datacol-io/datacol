@@ -296,7 +296,7 @@ func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.Provider
 		}
 		buf = buf[:n]
 
-		if err := stream.Send(&pbs.LogStreamResponse{Data: buf}); err != nil {
+		if err := stream.Send(&pbs.StreamMsg{Data: buf}); err != nil {
 			return err
 		}
 	}

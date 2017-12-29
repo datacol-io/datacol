@@ -40,6 +40,16 @@ func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command strin
 	return sched.ProcessExec(c, cfg, ns, name, g.latestImage(app), command, envVars, stream)
 }
 
+func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {
+	ns := g.Name
+	c, err := getKubeClientset(ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return sched.ProcessList(c, g.Name, app)
+}
+
 func (g *LocalCloud) latestImage(app *pb.App) string {
 	return fmt.Sprintf("%v/%v:%v", g.RegistryAddress, app.Name, app.BuildId)
 }

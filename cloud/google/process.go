@@ -25,6 +25,16 @@ func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string)
 	return kube.ProcessExec(c, cfg, ns, name, g.latestImage(app), command, envVars, stream)
 }
 
+func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
+	ns := g.DeploymentName
+	c, err := getKubeClientset(ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return kube.ProcessList(c, ns, app)
+}
+
 func (g *GCPCloud) latestImage(app *pb.App) string {
 	return fmt.Sprintf("gcr.io/%v/%v:%v", g.Project, app.Name, app.BuildId)
 }

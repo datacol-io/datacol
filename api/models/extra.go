@@ -60,3 +60,5 @@ type CreateBuildOptions struct {
 	Description string
 	Procfile    map[string]string
 }
+
+type ProcessList []*Process

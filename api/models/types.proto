@@ -57,3 +57,8 @@ message ResourceVar {
 message EnvConfig {
   map<string,string> data = 1;
 }
+
+message Process {
+  string name = 2;
+  int32 workers = 3;
+}

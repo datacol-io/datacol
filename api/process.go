@@ -3,6 +3,7 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -17,6 +18,12 @@ func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	}
 
 	return nil
+}
+
+func (s *Server) ProcessList(ctx context.Context, req *pbs.AppRequest) (*pbs.ProcessListResponse, error) {
+	items, err := s.Provider.ProcessList(req.Name)
+
+	return &pbs.ProcessListResponse{Items: items}, err
 }
 
 type runStreamRW struct {

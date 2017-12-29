@@ -29,6 +29,8 @@ type Provider interface {
 	ReleaseDelete(string, string) error
 
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
+
+	ProcessList(app string) ([]*pb.Process, error)
 	ProcessRun(app string, r io.ReadWriter, command string) error
 
 	ResourceList() (pb.Resources, error)

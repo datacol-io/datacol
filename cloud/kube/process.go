@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
+	pb "github.com/dinesh/datacol/api/models"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -105,6 +106,23 @@ func (p *ExecOptions) Run() error {
 	}
 
 	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, true)
+}
+
+func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error) {
+	deployments, err := getAllDeployments(c, ns, app)
+	if err != nil {
+		return nil, err
+	}
+	var items []*pb.Process
+
+	for _, dp := range deployments {
+		items = append(items, &pb.Process{
+			Name:    dp.ObjectMeta.Name,
+			Workers: *dp.Spec.Replicas,
+		})
+	}
+
+	return items, nil
 }
 
 func ProcessExec(

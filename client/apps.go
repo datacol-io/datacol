@@ -70,6 +70,17 @@ func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, ou
 	}
 }
 
+func (c *Client) ListProcess(name string) ([]*pb.Process, error) {
+	resp, err := c.ProviderServiceClient.ProcessList(ctx, &pbs.AppRequest{
+		Name: name,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Items, nil
+}
+
 func (c *Client) RunProcess(name string, args []string) error {
 	newctx := metadata.NewOutgoingContext(ctx, metadata.New(map[string]string{
 		"app":     name,
