@@ -1,6 +1,7 @@
 package local
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -21,7 +22,7 @@ func (g *LocalCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions
 	return sched.LogStreamReq(c, w, g.Name, app, opts)
 }
 
-func (g *LocalCloud) ProcessRun(app string, stream io.ReadWriter, command string) error {
+func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command string) error {
 	ns := g.Name
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
@@ -33,5 +34,12 @@ func (g *LocalCloud) ProcessRun(app string, stream io.ReadWriter, command string
 		return err
 	}
 
-	return sched.ProcessExec(c, cfg, ns, app, command, stream)
+	app, _ := g.AppGet(name)
+	envVars, _ := g.EnvironmentGet(name)
+
+	return sched.ProcessExec(c, cfg, ns, name, g.latestImage(app), command, envVars, stream)
+}
+
+func (g *LocalCloud) latestImage(app *pb.App) string {
+	return fmt.Sprintf("%v/%v:%v", g.RegistryAddress, app.Name, app.BuildId)
 }

@@ -14,31 +14,6 @@ import (
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
-func (a *AwsCloud) dynamoApps() string {
-	return fmt.Sprintf("%s-apps", a.DeploymentName)
-}
-
-func (a *AwsCloud) appFromItem(item map[string]*dynamodb.AttributeValue) *pb.App {
-	name := coalesce(item["name"], "")
-
-	app := &pb.App{
-		Name:      name,
-		Status:    coalesce(item["status"], ""),
-		ReleaseId: coalesce(item["release_id"], ""),
-		Endpoint:  coalesce(item["endpoint"], ""),
-	}
-
-	if domainValues, ok := item["domains"]; ok {
-		domains := []string{}
-		for _, key := range domainValues.L {
-			domains = append(domains, coalesce(key, ""))
-		}
-		app.Domains = domains
-	}
-
-	return app
-}
-
 func (a *AwsCloud) AppList() (pb.Apps, error) {
 	req := &dynamodb.ScanInput{
 		ConsistentRead: aws.Bool(true),
@@ -166,7 +141,7 @@ func (p *AwsCloud) deleteAppResources(name string) error {
 
 func (p *AwsCloud) deleteFromCluster(name string) error {
 	log.Debugf("Removing app from kube cluster ...")
-	return sched.DeleteApp(p.kubeClient(), p.DeploymentName, name)
+	return sched.DeleteService(p.kubeClient(), p.DeploymentName, name)
 }
 
 func (p *AwsCloud) deleteFromDynamo(name string) error {
@@ -195,6 +170,10 @@ func (p *AwsCloud) saveApp(a *pb.App) error {
 		req.Item["endpoint"] = &dynamodb.AttributeValue{S: aws.String(a.Endpoint)}
 	}
 
+	if a.BuildId != "" {
+		req.Item["build_id"] = &dynamodb.AttributeValue{S: aws.String(a.BuildId)}
+	}
+
 	if a.ReleaseId != "" {
 		req.Item["release_id"] = &dynamodb.AttributeValue{S: aws.String(a.ReleaseId)}
 	}
@@ -210,6 +189,32 @@ func (p *AwsCloud) saveApp(a *pb.App) error {
 
 	_, err := p.dynamodb().PutItem(req)
 	return err
+}
+
+func (a *AwsCloud) dynamoApps() string {
+	return fmt.Sprintf("%s-apps", a.DeploymentName)
+}
+
+func (a *AwsCloud) appFromItem(item map[string]*dynamodb.AttributeValue) *pb.App {
+	name := coalesce(item["name"], "")
+
+	app := &pb.App{
+		Name:      name,
+		Status:    coalesce(item["status"], ""),
+		ReleaseId: coalesce(item["release_id"], ""),
+		BuildId:   coalesce(item["build_id"], ""),
+		Endpoint:  coalesce(item["endpoint"], ""),
+	}
+
+	if domainValues, ok := item["domains"]; ok {
+		domains := []string{}
+		for _, key := range domainValues.L {
+			domains = append(domains, coalesce(key, ""))
+		}
+		app.Domains = domains
+	}
+
+	return app
 }
 
 func stackNameForApp(a string) string {

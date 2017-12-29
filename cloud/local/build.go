@@ -46,7 +46,7 @@ func (g *LocalCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Bu
 	return nil, fmt.Errorf("not implemented.")
 }
 
-func (g *LocalCloud) BuildImport(app, filename string) (*pb.Build, error) {
+func (g *LocalCloud) BuildImport(app, filename string, options *pb.CreateBuildOptions) (*pb.Build, error) {
 	r, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -84,9 +84,10 @@ func (g *LocalCloud) BuildImport(app, filename string) (*pb.Build, error) {
 	}
 
 	build := &pb.Build{
-		App:    app,
-		Id:     id,
-		Status: "CREATED",
+		App:      app,
+		Id:       id,
+		Status:   "CREATED",
+		Procfile: options.Procfile,
 	}
 
 	g.Builds = append(g.Builds, build)
@@ -110,6 +111,11 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		return nil, err
 	}
 
+	app, err := g.AppGet(b.App)
+	if err != nil {
+		return nil, err
+	}
+
 	c, err := getKubeClientset(g.Name)
 	if err != nil {
 		return nil, err
@@ -129,8 +135,15 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		port = p
 	}
 
+	var command []string
+	if cmd, ok := b.Procfile["web"]; ok {
+		command = []string{cmd}
+	}
+
 	ret, err := deployer.Run(&sched.DeployRequest{
-		ServiceID:     b.App,
+		Args:          command,
+		ServiceID:     getJobID(b.App, "web"),
+		Tier:          b.App,
 		Image:         image,
 		Replicas:      1,
 		Environment:   g.Name,
@@ -152,6 +165,16 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	}
 
 	g.Releases = append(g.Releases, r)
+	app.BuildId = b.Id
+	app.ReleaseId = r.Id
 
-	return r, err
+	return r, g.saveApp(app)
+}
+
+func getJobID(ns, process_type string) string {
+	if process_type == "" {
+		process_type = "web"
+	}
+
+	return fmt.Sprintf("%s-%s", ns, process_type)
 }

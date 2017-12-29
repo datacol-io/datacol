@@ -17,7 +17,11 @@ import (
 	klabels "k8s.io/apimachinery/pkg/labels"
 )
 
-func DeleteApp(c *kubernetes.Clientset, ns, name string) error {
+const (
+	ServiceLabelKey = "datacol.io/service"
+)
+
+func DeleteService(c *kubernetes.Clientset, ns, name string) error {
 	if _, err := c.Core().Services(ns).Get(name, meta_v1.GetOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
@@ -72,32 +76,42 @@ func DeleteApp(c *kubernetes.Clientset, ns, name string) error {
 }
 
 func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) error {
-	dp, err := c.Extensions().Deployments(ns).Get(app, meta_v1.GetOptions{})
+	deployments, err := getAllDeployments(c, ns, app)
 	if err != nil {
 		return err
 	}
 
-	for i, c := range dp.Spec.Template.Spec.Containers {
-		if c.Name == app {
-			envVars := []core_v1.EnvVar{}
-			for key, value := range env {
-				if len(key) > 0 {
-					envVars = append(envVars, core_v1.EnvVar{Name: key, Value: value})
-				}
+	var containersToWatch []string
+
+	for _, dp := range deployments {
+		//TODO: should have better logic for selecting the container name
+		container := dp.Spec.Template.Spec.Containers[0]
+		containerName := container.Name
+
+		envVars := []core_v1.EnvVar{}
+		for key, value := range env {
+			if len(key) > 0 {
+				envVars = append(envVars, core_v1.EnvVar{Name: key, Value: value})
 			}
-			log.Debugf("setting env vars:\n %s", toJson(env))
-			c.Env = envVars
-
-			dp.Spec.Template.Spec.Containers[i] = c
 		}
+		log.Debugf("setting env vars=\n %s in container=%s", toJson(env), containerName)
+		container.Env = envVars
+
+		dp.Spec.Template.Spec.Containers[0] = container
+
+		if _, err := c.Extensions().Deployments(ns).Update(&dp); err != nil {
+			return err
+		}
+
+		containersToWatch = append(containersToWatch, containerName)
 	}
 
-	if _, err := c.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
+	for _, name := range containersToWatch {
+		go func(cname string) {
+			WaitUntilUpdated(c, ns, cname)
+			WaitUntilReady(c, ns, cname)
+		}(name)
 	}
-
-	WaitUntilUpdated(c, ns, app)
-	WaitUntilReady(c, ns, app)
 
 	return nil
 }
@@ -146,30 +160,31 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 }
 
 func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.LogStreamOptions) error {
-	pod, err := getRunningPods(ns, app, c)
-	if err != nil {
-		return err
+	podNames, err := GetAllPodNames(c, ns, app)
+
+	//TODO: consider using https://github.com/djherbis/stream for reading multiple streams
+	var readers []io.Reader
+
+	log.Debugf("streaming logs from %v", podNames)
+
+	for _, name := range podNames {
+		req := c.Core().RESTClient().Get().
+			Namespace(ns).
+			Name(name).
+			Resource("pods").
+			SubResource("log").
+			Param("follow", strconv.FormatBool(opts.Follow))
+
+		if opts.Since > 0 {
+			sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
+			req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
+		}
+
+		if r, err := req.Stream(); err == nil {
+			readers = append(readers, r)
+		}
 	}
 
-	log.Debugf("Getting logs from pod %s", pod)
-
-	req := c.Core().RESTClient().Get().
-		Namespace(ns).
-		Name(pod).
-		Resource("pods").
-		SubResource("log").
-		Param("container", app).
-		Param("follow", strconv.FormatBool(opts.Follow))
-
-	if opts.Since > 0 {
-		sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
-		req = req.Param("sinceSeconds", strconv.FormatInt(sec, 10))
-	}
-	r, err := req.Stream()
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(w, r)
+	_, err = io.Copy(w, io.MultiReader(readers...))
 	return err
 }

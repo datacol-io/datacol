@@ -30,6 +30,7 @@ func init() {
 }
 
 type Environment map[string]string
+type ProcfileMap map[string]string
 
 type Apps []*App
 type Builds []*Build
@@ -55,6 +56,7 @@ type AppCreateOptions struct {
 
 type CreateBuildOptions struct {
 	Version     string
-	Auther      string
+	Author      string
 	Description string
+	Procfile    map[string]string
 }

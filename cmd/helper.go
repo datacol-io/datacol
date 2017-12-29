@@ -205,3 +205,29 @@ func compileTmpl(content string, opts interface{}) string {
 
 	return doc.String()
 }
+
+func parseProcfile(procfile string) (map[string]string, error) {
+	procfileMap := make(map[string]string)
+
+	if procfile != "" {
+		if procfileMap, err := unmarshalProcfile([]byte(procfile)); err != nil {
+			return procfileMap, err
+		}
+	} else if _, err := os.Stat("Procfile"); err == nil {
+		contents, err := ioutil.ReadFile("Procfile")
+		if err != nil {
+			return procfileMap, err
+		}
+
+		if procfileMap, err = unmarshalProcfile(contents); err != nil {
+			return procfileMap, err
+		}
+	}
+
+	return procfileMap, nil
+}
+
+func unmarshalProcfile(procfile []byte) (map[string]string, error) {
+	procfileMap := make(map[string]string)
+	return procfileMap, yaml.Unmarshal(procfile, &procfileMap)
+}

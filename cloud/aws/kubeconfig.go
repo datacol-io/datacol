@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -44,11 +45,23 @@ func (p *AwsCloud) kubeClient() *kubernetes.Clientset {
 	return kubeClient
 }
 
-func (p *AwsCloud) ProcessRun(app string, r io.ReadWriter, command string) error {
+func (p *AwsCloud) ProcessRun(name string, r io.ReadWriter, command string) error {
 	ns := p.DeploymentName
 	cfg, _ := getKubeClientConfig(ns)
 
-	return kube.ProcessExec(p.kubeClient(), cfg, ns, app, command, r)
+	envVars, _ := p.EnvironmentGet(name)
+	app, _ := p.AppGet(name)
+
+	return kube.ProcessExec(p.kubeClient(), cfg, ns, name, p.latestImage(app), command, envVars, r)
+}
+
+func (p *AwsCloud) latestImage(app *pb.App) string {
+	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
+		os.Getenv("AWS_ACCOUNT_ID"),
+		p.Region,
+		p.ecrRepository(app.Name),
+		app.BuildId,
+	)
 }
 
 func (p *AwsCloud) K8sConfigPath() (string, error) {

@@ -26,32 +26,33 @@ type Deployer struct {
 }
 
 type DeployRequest struct {
-	Args          []string           `json:"arguments"`
-	ContainerPort intstr.IntOrString `json:"containerPort"`
-	Environment   string             `json:"environment"`
-	EnvVars       map[string]string  `json:"envVars"`
+	Args          []string
+	ContainerPort intstr.IntOrString
+	Environment   string
+	EnvVars       map[string]string
 	Heartbeat     struct {
-		Path                         string             `json:"path"`
-		Port                         intstr.IntOrString `json:"port"`
-		InitialDelayLivenessSeconds  int                `json:"initialDelayLivenessSeconds"`
-		InitialDelayReadinessSeconds int                `json:"initialDelayReadinessSeconds"`
-		TimeoutSeconds               int32              `json:"timeoutSeconds"`
-	} `json:"heartbeat"`
-	Image     string `json:"image"`
-	Replicas  int32  `json:"replicas"`
-	ServiceID string `json:"serviceId"`
+		Path                         string
+		Port                         intstr.IntOrString
+		InitialDelayLivenessSeconds  int
+		InitialDelayReadinessSeconds int
+		TimeoutSeconds               int32
+	}
+	Image     string
+	Replicas  int32
+	ServiceID string
 	Secrets   []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"secrets"`
-	Domains []string          `json:"domains"`
-	Tags    map[string]string `json:"tags"`
-	Zone    string            `json:"zone"`
+		Name  string
+		Value string
+	}
+	Domains []string
+	Tags    map[string]string
+	Zone    string
+	Tier    string // to specify pods belonging to an App
 }
 
 type DeployResponse struct {
-	Request  DeployRequest `json:"request"`
-	NodePort int           `json:"nodePort"`
+	Request  DeployRequest
+	NodePort int
 }
 
 func NewDeployer(c *kubernetes.Clientset) (*Deployer, error) {
@@ -72,35 +73,37 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		}
 	}
 
-	// create service
-	svc, err := d.CreateOrUpdateService(newService(payload), payload.Environment)
-	if err != nil {
-		return res, fmt.Errorf("failed to create service %v", err)
-	}
-
-	if len(svc.Spec.Ports) > 0 {
-		res.NodePort = int(svc.Spec.Ports[0].NodePort)
-	}
-
 	// create deployment
-	_, err = d.CreateOrUpdateDeployment(payload)
+	dp, err := d.CreateOrUpdateDeployment(payload)
 	if err != nil {
 		return res, fmt.Errorf("failed to create deployment %v", err)
 	}
 
-	if len(payload.Domains) > 0 {
-		_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Environment)
+	if payload.ContainerPort.IntVal > 0 {
+		// create service only of we have a contanerPort which can be exposed
+		svc, err := d.CreateOrUpdateService(newService(payload), payload.Environment)
 		if err != nil {
-			return res, err
+			return res, fmt.Errorf("failed to create service %v", err)
+		}
+
+		if len(svc.Spec.Ports) > 0 {
+			res.NodePort = int(svc.Spec.Ports[0].NodePort)
+		}
+
+		if len(payload.Domains) > 0 {
+			_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Environment)
+			if err != nil {
+				return res, err
+			}
 		}
 	}
 
-	dpname := svc.ObjectMeta.Name
+	dpname := dp.ObjectMeta.Name
 
 	WaitUntilUpdated(d.Client, payload.Environment, dpname)
 	WaitUntilReady(d.Client, payload.Environment, dpname)
 
-	log.Infof("Deployment completed: %+v", svc.ObjectMeta.Name)
+	log.Infof("Deployment completed: %+v", dpname)
 	return res, nil
 }
 
@@ -171,9 +174,12 @@ func newService(payload *DeployRequest) *v1.Service {
 func newMetadata(payload *DeployRequest) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Annotations: payload.Tags,
-		Labels:      map[string]string{"name": payload.ServiceID},
-		Name:        payload.ServiceID,
-		Namespace:   payload.Environment,
+		Labels: map[string]string{
+			"name":          payload.ServiceID,
+			ServiceLabelKey: payload.Tier,
+		},
+		Name:      payload.ServiceID,
+		Namespace: payload.Environment,
 	}
 }
 
@@ -267,22 +273,39 @@ func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
 	}
 }
 
+func newPod(req *DeployRequest) *v1.Pod {
+	container := newContainer(req)
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: req.ServiceID,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{container},
+		},
+	}
+}
+
 func newContainer(payload *DeployRequest) v1.Container {
 	envVars := []v1.EnvVar{}
 	for k, v := range payload.EnvVars {
 		envVars = append(envVars, v1.EnvVar{Name: k, Value: v})
 	}
 
-	return v1.Container{
+	container := v1.Container{
 		Args:            payload.Args,
 		Name:            payload.ServiceID,
 		Image:           payload.Image,
-		ImagePullPolicy: "Always",
-		Ports: []v1.ContainerPort{{
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Env:             envVars,
+	}
+
+	if payload.ContainerPort.IntVal > 0 {
+		container.Ports = []v1.ContainerPort{{
 			Name:          "http",
 			ContainerPort: int32(payload.ContainerPort.IntVal),
-		}},
-		ReadinessProbe: &v1.Probe{
+		}}
+
+		container.ReadinessProbe = &v1.Probe{
 			Handler: v1.Handler{
 				TCPSocket: &v1.TCPSocketAction{
 					Port: payload.ContainerPort,
@@ -292,9 +315,10 @@ func newContainer(payload *DeployRequest) v1.Container {
 			TimeoutSeconds:      1,
 			PeriodSeconds:       5,
 			FailureThreshold:    1,
-		},
-		Env: envVars,
+		}
 	}
+
+	return container
 }
 
 // CreateOrUpdateIngress creates or updates an ingress rule
@@ -403,6 +427,82 @@ func WaitUntilReady(c *kubernetes.Clientset, ns, name string) {
 	if !ready {
 		handleNotReadyPods(c, ns, labels)
 	}
+}
+
+type podPhaseResponse struct {
+	done  bool
+	phase v1.PodPhase
+	err   error
+}
+
+func waitUntilPodRunning(c *kubernetes.Clientset, ns, name string) error {
+	// give pod 20 minutes to execute (after it got into ready state)
+	pollAttempts := 10
+	pollInterval := 1
+
+	var status v1.PodPhase
+	for i := 0; i <= pollAttempts; i++ {
+		res := getPodPhase(c, ns, name)
+		if !res.done {
+			time.Sleep(time.Duration(pollInterval) * time.Second)
+			continue
+		}
+		status = res.phase
+	}
+
+	if status != v1.PodRunning {
+		return fmt.Errorf("pod failed to enter running state: %s", status)
+	}
+
+	return nil
+}
+
+func isRunning(pod *v1.Pod) (bool, error) {
+	switch pod.Status.Phase {
+	case v1.PodRunning:
+		return true, nil
+	case v1.PodSucceeded:
+		return false, fmt.Errorf("pod already succeeded before it begins running")
+	case v1.PodFailed:
+		return false, fmt.Errorf("pod status is failed")
+	default:
+		return false, nil
+	}
+}
+
+func getPodPhase(c *kubernetes.Clientset, ns, name string) podPhaseResponse {
+	pod, err := c.Core().Pods(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return podPhaseResponse{true, v1.PodUnknown, err}
+	}
+
+	ready, err := isRunning(pod)
+	if err != nil {
+		return podPhaseResponse{true, pod.Status.Phase, err}
+	}
+
+	if ready {
+		return podPhaseResponse{true, pod.Status.Phase, nil}
+	}
+
+	// check status of containers
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Ready {
+			continue
+		}
+		if container.State.Waiting == nil {
+			continue
+		}
+
+		switch container.State.Waiting.Reason {
+		case "ErrImagePull", "ImagePullBackOff":
+			err = fmt.Errorf("image pull failed: %s", container.State.Waiting.Message)
+			return podPhaseResponse{true, v1.PodUnknown, err}
+		}
+	}
+
+	fmt.Printf("Waiting for pod %s/%s to be running, status is %s\n", pod.Namespace, pod.Name, pod.Status.Phase)
+	return podPhaseResponse{false, pod.Status.Phase, nil}
 }
 
 func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]string) {
@@ -524,21 +624,51 @@ func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]
 	}
 }
 
-func getRunningPods(ns, app string, c *kubernetes.Clientset) (string, error) {
-	selector := klabels.Set(map[string]string{"name": app}).AsSelector()
+func GetAllPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
+	tags := map[string]string{ServiceLabelKey: app}
+	selector := klabels.Set(tags).AsSelector()
 	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	return res.Items, nil
+}
+
+func GetAllPodNames(c *kubernetes.Clientset, ns, app string) ([]string, error) {
+	pods, err := GetAllPods(c, ns, app)
+	if err != nil {
+		return nil, err
 	}
 
 	var podNames []string
-	for _, p := range res.Items {
+	for _, p := range pods {
 		podNames = append(podNames, p.Name)
 	}
 
-	if len(podNames) < 1 {
-		return "", fmt.Errorf("No pod running for %s", app)
+	return podNames, nil
+}
+
+func getAllDeployments(c *kubernetes.Clientset, ns, app string) ([]v1beta1.Deployment, error) {
+	tags := map[string]string{ServiceLabelKey: app}
+	selector := klabels.Set(tags).AsSelector()
+	res, err := c.Extensions().Deployments(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
 	}
 
-	return podNames[0], nil
+	return res.Items, nil
+}
+
+func getPodByName(c *kubernetes.Clientset, ns, app string) (*v1.Pod, error) {
+	pods, err := GetAllPods(c, ns, app)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(pods) < 1 {
+		return nil, fmt.Errorf("No Pod found by name=%s", app)
+	}
+
+	return &pods[0], nil
 }

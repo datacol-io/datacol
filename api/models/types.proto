@@ -14,15 +14,17 @@ message App {
   string status     = 2 [(gogoproto.moretags) = "datastore:\"status\""];
   string release_id = 3 [(gogoproto.moretags) = "datastore:\"release_id,noindex\""];
   string endpoint   = 4 [(gogoproto.moretags) = "datastore:\"endpoint,noindex\""];
-  repeated string domains    = 5 [(gogoproto.moretags) = "datastore:\"domains,noindex\""];
+  string build_id   = 5 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
+  repeated string domains  = 6 [(gogoproto.moretags) = "datastore:\"domains,noindex\""];
 }
 
 message Build {
-  string id        = 1 [(gogoproto.moretags) = "datastore:\"id\""];
-  string app       = 2 [(gogoproto.moretags) = "datastore:\"app\""];
-  string remote_id = 3 [(gogoproto.moretags) = "datastore:\"remote_id,noindex\""];
-  string status    = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
-  int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
+  string id             = 1 [(gogoproto.moretags) = "datastore:\"id\""];
+  string app            = 2 [(gogoproto.moretags) = "datastore:\"app\""];
+  string remote_id      = 3 [(gogoproto.moretags) = "datastore:\"remote_id,noindex\""];
+  string status         = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
+  int32 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
+  map<string,string> procfile  = 6 [(gogoproto.moretags) = "datastore:\"procfile,noindex\""];
 }
 
 message Release {

@@ -7,12 +7,18 @@ import (
 
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
+	"google.golang.org/grpc/metadata"
 )
 
 const chunkSize = 1024 * 1024 * 1
 
-func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
-	stream, err := c.ProviderServiceClient.BuildImport(ctx)
+func (c *Client) CreateBuild(app *pb.App, data []byte, procfile map[string]string) (*pb.Build, error) {
+	newctx := metadata.NewOutgoingContext(ctx, metadata.Join(
+		metadata.Pairs("app", app.Name),
+		metadata.New(procfile),
+	))
+
+	stream, err := c.ProviderServiceClient.BuildImport(newctx)
 	defer stream.CloseSend()
 
 	if err != nil {

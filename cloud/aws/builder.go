@@ -97,7 +97,7 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	return builds, nil
 }
 
-func (a *AwsCloud) BuildImport(app, gzipPath string) (*pb.Build, error) {
+func (a *AwsCloud) BuildImport(app, gzipPath string, options *pb.CreateBuildOptions) (*pb.Build, error) {
 	log.Debugf("converting gzip to zip of %s", gzipPath)
 	zipPath, err := convertGzipToZip(app, gzipPath)
 	if err != nil {
@@ -191,10 +191,11 @@ func (a *AwsCloud) BuildLogsStream(id string) (io.Reader, error) {
 
 func (a *AwsCloud) buildFromItem(item map[string]*dynamodb.AttributeValue) *pb.Build {
 	return &pb.Build{
-		Id:       coalesce(item["id"], ""),
-		App:      coalesce(item["app"], ""),
-		Status:   coalesce(item["status"], ""),
-		RemoteId: coalesce(item["remote_id"], ""),
+		Id:        coalesce(item["id"], ""),
+		App:       coalesce(item["app"], ""),
+		Status:    coalesce(item["status"], ""),
+		RemoteId:  coalesce(item["remote_id"], ""),
+		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
 	}
 }
 
@@ -213,6 +214,12 @@ func (a *AwsCloud) buildSave(b *pb.Build) error {
 
 	if b.RemoteId != "" {
 		req.Item["remote_id"] = &dynamodb.AttributeValue{S: aws.String(b.RemoteId)}
+	}
+
+	if b.CreatedAt > 0 {
+		req.Item["created_at"] = &dynamodb.AttributeValue{
+			N: aws.String(fmt.Sprintf("%d", b.CreatedAt)),
+		}
 	}
 
 	_, err := a.dynamodb().PutItem(req)

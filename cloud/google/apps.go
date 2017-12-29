@@ -76,6 +76,12 @@ func (g *GCPCloud) AppDelete(name string) error {
 	return g.deleteAppFromDatastore(name)
 }
 
+func (g *GCPCloud) saveApp(app *pb.App) error {
+	ctx, key := g.nestedKey(appKind, app.Name)
+	_, err := g.datastore().Put(ctx, key, app)
+	return err
+}
+
 func (g *GCPCloud) deleteAppFromDatastore(name string) error {
 	store, ctx := g.datastore(), context.Background()
 
@@ -105,5 +111,5 @@ func (g *GCPCloud) deleteAppFromCluster(name string) error {
 		return err
 	}
 
-	return sched.DeleteApp(kube, ns, name)
+	return sched.DeleteService(kube, ns, name)
 }

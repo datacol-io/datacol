@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/appscode/go/crypto/rand"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -106,25 +107,60 @@ func (p *ExecOptions) Run() error {
 	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, true)
 }
 
-func ProcessExec(c *kubernetes.Clientset, cfg *rest.Config, ns, app, command string, stream io.ReadWriter) error {
-	pod, err := getRunningPods(ns, app, c)
+func ProcessExec(
+	c *kubernetes.Clientset,
+	cfg *rest.Config,
+	ns, name, image, command string,
+	envVars map[string]string,
+	stream io.ReadWriter,
+) error {
+	podName := fmt.Sprintf("%s-%s", name, rand.Characters(6))
+	req := &DeployRequest{
+		ServiceID: podName,
+		Image:     image,
+		Args:      []string{command},
+		EnvVars:   envVars,
+		Tier:      name,
+	}
+
+	// Delete the pod sunce it's ephemeral
+	defer deletePodByName(c, ns, podName)
+
+	return processExec(c, cfg, ns, req, stream)
+}
+
+func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
+	return c.Core().Pods(ns).Delete(name, &metav1.DeleteOptions{})
+}
+
+func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns string, req *DeployRequest, stream io.ReadWriter) error {
+	command := req.Args
+	req.Args = []string{}
+
+	spec := newPod(req)
+	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
+
+	pod, err := c.Core().Pods(ns).Create(newPod(req))
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Running command %v inside pod: %v", command, pod)
+	if err = waitUntilPodRunning(c, ns, pod.ObjectMeta.Name); err != nil {
+		return err
+	}
+
+	log.Debugf("Running command %v inside pod: %v", req.Args, pod.ObjectMeta.Name)
 
 	executer := &ExecOptions{
-		Namespace:     ns,
-		PodName:       pod,
-		ContainerName: app,
-		Command:       []string{command},
-		Stdin:         true,
-		In:            ioutil.NopCloser(stream),
-		Out:           stream,
-		Err:           stream,
-		Client:        c,
-		Config:        cfg,
+		Namespace: ns,
+		PodName:   req.ServiceID,
+		Command:   command,
+		Stdin:     true,
+		In:        ioutil.NopCloser(stream),
+		Out:       stream,
+		Err:       stream,
+		Client:    c,
+		Config:    cfg,
 	}
 
 	return executer.Run()
