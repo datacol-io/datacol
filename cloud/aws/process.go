@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	"github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -23,8 +24,19 @@ func (p *AwsCloud) ProcessRun(name string, r io.ReadWriter, command string) erro
 	return kube.ProcessExec(p.kubeClient(), cfg, ns, name, p.latestImage(app), command, envVars, r)
 }
 
-func (p *AwsCloud) ProcessSave(name string, strucure map[string]int32) error {
-	return nil
+func (p *AwsCloud) ProcessSave(name string, structure map[string]int32) error {
+	app, err := p.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	build, err := p.BuildGet(app.Name, app.BuildId)
+	if err != nil {
+		return err
+	}
+
+	return common.ScaleApp(p.kubeClient(), p.DeploymentName, name,
+		p.latestImage(app), build.Procfile, structure)
 }
 
 func (p *AwsCloud) latestImage(app *pb.App) string {

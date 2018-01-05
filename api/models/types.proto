@@ -62,3 +62,8 @@ message Process {
   string name = 2;
   int32 workers = 3;
 }
+
+message Formation {
+  string app = 1;
+  map<string,int32> structure = 2;
+}

@@ -507,6 +507,30 @@
         ]
       }
     },
+    "/v1/process/formation": {
+      "get": {
+        "operationId": "ProcessSave",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/process/list": {
       "get": {
         "operationId": "ProcessList",

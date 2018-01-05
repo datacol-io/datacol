@@ -13,14 +13,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ScalePodReplicas(c *kubernetes.Clientset, ns, name, image, command string, replicas int32) error {
+func ScalePodReplicas(c *kubernetes.Clientset, ns, name, image string, command []string, replicas int32) error {
 	runner, _ := NewDeployer(c)
 
 	req := &DeployRequest{
 		ServiceID:   name,
 		Environment: ns,
 		Image:       image,
-		Args:        []string{command},
+		Args:        command,
 		Replicas:    replicas,
 	}
 

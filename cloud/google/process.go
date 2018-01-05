@@ -5,6 +5,7 @@ import (
 	"io"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	"github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -35,8 +36,23 @@ func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
 	return kube.ProcessList(c, ns, app)
 }
 
-func (g *GCPCloud) ProcessSave(name string, strucure map[string]int32) error {
-	return nil
+func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
+	app, err := g.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	build, err := g.BuildGet(app.Name, app.BuildId)
+	if err != nil {
+		return err
+	}
+
+	c, err := getKubeClientset(g.DeploymentName)
+	if err != nil {
+		return err
+	}
+
+	return common.ScaleApp(c, g.DeploymentName, name, g.latestImage(app), build.Procfile, structure)
 }
 
 func (g *GCPCloud) latestImage(app *pb.App) string {

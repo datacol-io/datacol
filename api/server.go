@@ -188,8 +188,8 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	app, procfile := md["app"][0], make(map[string]string)
 
 	for k, v := range md {
-		if k != "app" {
-			procfile[k] = v[0]
+		if k != "app" && strings.HasPrefix(k, "datacol-") {
+			procfile[strings.TrimPrefix(k, "datacol-")] = v[0]
 		}
 	}
 
@@ -216,8 +216,6 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 			log.Error(err)
 			return err
 		}
-
-		app = req.App
 	}
 
 	if err := fd.Close(); err != nil {
@@ -227,6 +225,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	b, err := s.Provider.BuildImport(app, fd.Name(), &pb.CreateBuildOptions{
 		Procfile: procfile,
 	})
+
 	if err != nil {
 		return internalError(err, "failed to upload source.")
 	}

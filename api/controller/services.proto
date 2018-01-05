@@ -178,7 +178,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildImport(stream CreateBuildRequest) returns (models.Build) {
+  rpc BuildImport(stream StreamMsg) returns (models.Build) {
     option (google.api.http) = {
       post: "/v1/builds/import"
     };
@@ -302,6 +302,11 @@ service ProviderService {
     };
   }
 
+  rpc ProcessSave(models.Formation) returns (google.protobuf.Empty) {
+    option (google.api.http) = { 
+      get: "/v1/process/formation"
+    };
+  }
 
   //Logs API
   rpc LogStream(LogStreamReq) returns (stream StreamMsg) {

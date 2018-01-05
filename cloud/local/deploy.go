@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -66,15 +67,7 @@ func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error 
 		return err
 	}
 
-	for key, replicas := range structure {
-		if cmd, ok := build.Procfile[key]; ok {
-			if err := sched.ScalePodReplicas(c, g.Name, getJobID(name, key), g.latestImage(app), cmd, replicas); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return common.ScaleApp(c, g.Name, name, g.latestImage(app), build.Procfile, structure)
 }
 
 func (g *LocalCloud) latestImage(app *pb.App) string {

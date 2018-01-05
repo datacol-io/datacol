@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/appscode/go/term"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
 	"google.golang.org/grpc/metadata"
@@ -24,7 +25,10 @@ func (c *Client) ListProcess(name string) ([]*pb.Process, error) {
 }
 
 func (c *Client) SaveProcess(name string, options map[string]string) error {
-	formation := pb.Formation{Structure: make(map[string]int32)}
+	formation := pb.Formation{
+		App:       name,
+		Structure: make(map[string]int32),
+	}
 
 	for key, value := range options {
 		num, err := strconv.Atoi(value)
@@ -33,6 +37,8 @@ func (c *Client) SaveProcess(name string, options map[string]string) error {
 		}
 		formation.Structure[key] = int32(num)
 	}
+
+	term.Printf("scaling processs %v ...", formation.Structure)
 
 	_, err := c.ProviderServiceClient.ProcessSave(ctx, &formation)
 	return err

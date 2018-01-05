@@ -167,7 +167,7 @@ func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns string, req *Depl
 		return err
 	}
 
-	log.Debugf("Running command %v inside pod: %v", req.Args, pod.ObjectMeta.Name)
+	log.Debugf("Running command %v inside pod: %v", command, pod.ObjectMeta.Name)
 
 	executer := &ExecOptions{
 		Namespace: ns,

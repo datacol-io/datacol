@@ -47,8 +47,8 @@ required = [
   version = "0.17.0"
 
 [[constraint]]
-  branch = "v2"
-  name = "gopkg.in/urfave/cli.v2"
+  version = "1.20.0"
+  name = "github.com/urfave/cli"
 
 [[constraint]]
   branch = "v2"

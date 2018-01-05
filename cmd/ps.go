@@ -1,19 +1,21 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/appscode/go/term"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "ps",
 		Usage:  "manage process in an app",
 		Action: cmdAppPS,
 	})
 
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "scale",
 		Usage:  "scale the number of workers for a process",
 		Action: cmdAppScale,
@@ -47,5 +49,10 @@ func cmdAppScale(c *cli.Context) error {
 	_, err = client.GetApp(name)
 	stdcli.ExitOnError(err)
 
+	if err = client.SaveProcess(name, stdcli.FlagsToOptions(c, c.Args())); err != nil {
+		stdcli.ExitOnError(err)
+	}
+
+	fmt.Println("OK")
 	return nil
 }

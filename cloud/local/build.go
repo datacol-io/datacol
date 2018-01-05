@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -136,13 +137,17 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	}
 
 	var command []string
+	var proctype string
 	if cmd, ok := b.Procfile["web"]; ok {
-		command = []string{cmd}
+		command = strings.Split(cmd, " ")
+		proctype = "web"
+	} else {
+		proctype = "cmd"
 	}
 
 	ret, err := deployer.Run(&sched.DeployRequest{
 		Args:          command,
-		ServiceID:     getJobID(b.App, "web"),
+		ServiceID:     getJobID(b.App, proctype),
 		Tier:          b.App,
 		Image:         image,
 		Replicas:      1,
@@ -173,7 +178,7 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 
 func getJobID(ns, process_type string) string {
 	if process_type == "" {
-		process_type = "web"
+		process_type = "cmd"
 	}
 
 	return fmt.Sprintf("%s-%s", ns, process_type)

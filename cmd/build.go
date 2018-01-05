@@ -17,12 +17,12 @@ import (
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "build",
 		Usage:  "build an app from Dockerfile or app.yaml (App-Engine)",
 		Action: cmdBuild,
@@ -32,7 +32,7 @@ func init() {
 				Usage: "branch or commit Id of git repository",
 			},
 		},
-		Subcommands: []*cli.Command{
+		Subcommands: []cli.Command{
 			{
 				Name:   "list",
 				Usage:  "get builds for an app",
@@ -69,7 +69,7 @@ func cmdBuildDelete(c *cli.Context) error {
 	api, close := getApiClient(c)
 	defer close()
 
-	if c.Args().Len() == 0 {
+	if c.NArg() == 0 {
 		stdcli.ExitOnError(fmt.Errorf("Please provide id of the build"))
 	}
 
@@ -126,7 +126,9 @@ func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, er
 
 	fmt.Println("OK")
 
-	procMap, _ := parseProcfile(filepath.Join(dir, "Procfile"))
+	procMap, err := parseProcfile("")
+	stdcli.ExitOnError(err)
+
 	b, err := api.CreateBuild(app, tar, procMap)
 	if err != nil {
 		return nil, err

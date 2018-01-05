@@ -105,6 +105,8 @@ func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) e
 		containersToWatch = append(containersToWatch, containerName)
 	}
 
+	log.Infof("restarted containers: %v", containersToWatch)
+
 	for _, name := range containersToWatch {
 		go func(cname string) {
 			waitUntilDeploymentUpdated(c, ns, cname)

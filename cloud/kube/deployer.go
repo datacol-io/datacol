@@ -203,6 +203,10 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 		i, _ := findContainer(d, payload.ServiceID)
 		if i >= 0 {
 			d.Spec.Template.Spec.Containers[i] = newContainer(payload)
+			//TODO: we are only updating containers schema for existing deployment. Add support for updating any any schema change
+			//Below is one workaround of it.
+
+			d.Spec.Replicas = &payload.Replicas
 		}
 	} else {
 		d = newDeployment(payload)
