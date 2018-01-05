@@ -2,51 +2,55 @@
 
 **ATTN**: This project uses [semantic versioning](http://semver.org/).
 
-## 2.0.0 - (unreleased 2.x series)
-### Added
-- `NewStringSlice` and `NewIntSlice` for creating their related types
-- `Float64SliceFlag` for unmarshaling a list of floats from the user
-- `Context.Lineage` to get all contexts from current up to global
-- `Context.LocalFlagNames` to get the flag names from *only* the current context
-- `BoolFlag.Value` to handle both default-false and default-true
+## [Unreleased]
 
-### Changed
-- `Context.FlagNames` now returns all flags in the context lineage
-- `Context.IsSet` now considers the full context lineage
-
-### Removed
-- the ability to specify `&StringSlice{...string}` or `&IntSlice{...int}`.
-  To migrate to the new API, you may choose to run [the migrator
-  (python) script](./cli-v1-to-v2).
-- The optimistic reordering of arguments and flags introduced by
-  https://github.com/codegangsta/cli/pull/36. This behavior only worked when
-  all arguments appeared before all flags, but caused [weird issues with boolean
-  flags](https://github.com/codegangsta/cli/issues/103) and [reordering of the
-  arguments](https://github.com/codegangsta/cli/issues/355) when the user
-  attempted to mix flags and arguments. Given the trade-offs we removed support
-  for this reordering.
-- adapter code for deprecated `Action` func signature
-- deprecated `App.Author`, `App.Email`, and `Command.ShortName` fields
-- All `Context.Global*` methods, as the non-global versions now traverse up
-  the context lineage automatically.
-- `Context.Parent` method, as this is now available via `Context.Lineage`
-- `BoolTFlag` and related code, as this is now available via `BoolFlag.Value`
-
-## [Unreleased] - (1.x series)
-### Added
-
-### Changed
-
-### Removed
+## 1.20.0 - 2017-08-10
 
 ### Fixed
 
-### Deprecated
+* `HandleExitCoder` is now correctly iterates over all errors in
+  a `MultiError`. The exit code is the exit code of the last error or `1` if
+  there are no `ExitCoder`s in the `MultiError`.
+* Fixed YAML file loading on Windows (previously would fail validate the file path)
+* Subcommand `Usage`, `Description`, `ArgsUsage`, `OnUsageError` correctly
+  propogated
+* `ErrWriter` is now passed downwards through command structure to avoid the
+  need to redefine it
+* Pass `Command` context into `OnUsageError` rather than parent context so that
+  all fields are avaiable
+* Errors occuring in `Before` funcs are no longer double printed
+* Use `UsageText` in the help templates for commands and subcommands if
+  defined; otherwise build the usage as before (was previously ignoring this
+  field)
+* `IsSet` and `GlobalIsSet` now correctly return whether a flag is set if
+  a program calls `Set` or `GlobalSet` directly after flag parsing (would
+  previously only return `true` if the flag was set during parsing)
 
-### Security
+### Changed
+
+* No longer exit the program on command/subcommand error if the error raised is
+  not an `OsExiter`. This exiting behavior was introduced in 1.19.0, but was
+  determined to be a regression in functionality. See [the
+  PR](https://github.com/urfave/cli/pull/595) for discussion.
+
+### Added
+
+* `CommandsByName` type was added to make it easy to sort `Command`s by name,
+  alphabetically
+* `altsrc` now handles loading of string and int arrays from TOML
+* Support for definition of custom help templates for `App` via
+  `CustomAppHelpTemplate`
+* Support for arbitrary key/value fields on `App` to be used with
+  `CustomAppHelpTemplate` via `ExtraInfo`
+* `HelpFlag`, `VersionFlag`, and `BashCompletionFlag` changed to explictly be
+  `cli.Flag`s allowing for the use of custom flags satisfying the `cli.Flag`
+  interface to be used.
+
 
 ## [1.19.1] - 2016-11-21
+
 ### Fixed
+
 - Fixes regression introduced in 1.19.0 where using an `ActionFunc` as
   the `Action` for a command would cause it to error rather than calling the
   function. Should not have a affected declarative cases using `func(c

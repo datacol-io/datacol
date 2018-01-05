@@ -23,6 +23,10 @@ func (p *AwsCloud) ProcessRun(name string, r io.ReadWriter, command string) erro
 	return kube.ProcessExec(p.kubeClient(), cfg, ns, name, p.latestImage(app), command, envVars, r)
 }
 
+func (p *AwsCloud) ProcessSave(name string, strucure map[string]int32) error {
+	return nil
+}
+
 func (p *AwsCloud) latestImage(app *pb.App) string {
 	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
 		os.Getenv("AWS_ACCOUNT_ID"),

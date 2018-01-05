@@ -13,18 +13,23 @@ func TestCommandFlagParsing(t *testing.T) {
 	cases := []struct {
 		testArgs        []string
 		skipFlagParsing bool
+		skipArgReorder  bool
 		expectedErr     error
 	}{
 		// Test normal "not ignoring flags" flow
-		{[]string{"test-cmd", "-break", "blah", "blah"}, false, errors.New("flag provided but not defined: -break")},
+		{[]string{"test-cmd", "blah", "blah", "-break"}, false, false, errors.New("flag provided but not defined: -break")},
 
-		{[]string{"test-cmd", "blah", "blah"}, true, nil},   // Test SkipFlagParsing without any args that look like flags
-		{[]string{"test-cmd", "blah", "-break"}, true, nil}, // Test SkipFlagParsing with random flag arg
-		{[]string{"test-cmd", "blah", "-help"}, true, nil},  // Test SkipFlagParsing with "special" help flag arg
+		// Test no arg reorder
+		{[]string{"test-cmd", "blah", "blah", "-break"}, false, true, nil},
+
+		{[]string{"test-cmd", "blah", "blah"}, true, false, nil},   // Test SkipFlagParsing without any args that look like flags
+		{[]string{"test-cmd", "blah", "-break"}, true, false, nil}, // Test SkipFlagParsing with random flag arg
+		{[]string{"test-cmd", "blah", "-help"}, true, false, nil},  // Test SkipFlagParsing with "special" help flag arg
 	}
 
 	for _, c := range cases {
-		app := &App{Writer: ioutil.Discard}
+		app := NewApp()
+		app.Writer = ioutil.Discard
 		set := flag.NewFlagSet("test", 0)
 		set.Parse(c.testArgs)
 
@@ -37,26 +42,26 @@ func TestCommandFlagParsing(t *testing.T) {
 			Description:     "testing",
 			Action:          func(_ *Context) error { return nil },
 			SkipFlagParsing: c.skipFlagParsing,
+			SkipArgReorder:  c.skipArgReorder,
 		}
 
 		err := command.Run(context)
 
 		expect(t, err, c.expectedErr)
-		expect(t, context.Args().Slice(), c.testArgs)
+		expect(t, []string(context.Args()), c.testArgs)
 	}
 }
 
 func TestCommand_Run_DoesNotOverwriteErrorFromBefore(t *testing.T) {
-	app := &App{
-		Commands: []*Command{
-			{
-				Name: "bar",
-				Before: func(c *Context) error {
-					return fmt.Errorf("before error")
-				},
-				After: func(c *Context) error {
-					return fmt.Errorf("after error")
-				},
+	app := NewApp()
+	app.Commands = []Command{
+		{
+			Name: "bar",
+			Before: func(c *Context) error {
+				return fmt.Errorf("before error")
+			},
+			After: func(c *Context) error {
+				return fmt.Errorf("after error")
 			},
 		},
 	}
@@ -78,30 +83,29 @@ func TestCommand_Run_BeforeSavesMetadata(t *testing.T) {
 	var receivedMsgFromAction string
 	var receivedMsgFromAfter string
 
-	app := &App{
-		Commands: []*Command{
-			{
-				Name: "bar",
-				Before: func(c *Context) error {
-					c.App.Metadata["msg"] = "hello world"
-					return nil
-				},
-				Action: func(c *Context) error {
-					msg, ok := c.App.Metadata["msg"]
-					if !ok {
-						return errors.New("msg not found")
-					}
-					receivedMsgFromAction = msg.(string)
-					return nil
-				},
-				After: func(c *Context) error {
-					msg, ok := c.App.Metadata["msg"]
-					if !ok {
-						return errors.New("msg not found")
-					}
-					receivedMsgFromAfter = msg.(string)
-					return nil
-				},
+	app := NewApp()
+	app.Commands = []Command{
+		{
+			Name: "bar",
+			Before: func(c *Context) error {
+				c.App.Metadata["msg"] = "hello world"
+				return nil
+			},
+			Action: func(c *Context) error {
+				msg, ok := c.App.Metadata["msg"]
+				if !ok {
+					return errors.New("msg not found")
+				}
+				receivedMsgFromAction = msg.(string)
+				return nil
+			},
+			After: func(c *Context) error {
+				msg, ok := c.App.Metadata["msg"]
+				if !ok {
+					return errors.New("msg not found")
+				}
+				receivedMsgFromAfter = msg.(string)
+				return nil
 			},
 		},
 	}
@@ -124,16 +128,15 @@ func TestCommand_Run_BeforeSavesMetadata(t *testing.T) {
 }
 
 func TestCommand_OnUsageError_hasCommandContext(t *testing.T) {
-	app := &App{
-		Commands: []*Command{
-			{
-				Name: "bar",
-				Flags: []Flag{
-					&IntFlag{Name: "flag"},
-				},
-				OnUsageError: func(c *Context, err error, _ bool) error {
-					return fmt.Errorf("intercepted in %s: %s", c.Command.Name, err.Error())
-				},
+	app := NewApp()
+	app.Commands = []Command{
+		{
+			Name: "bar",
+			Flags: []Flag{
+				IntFlag{Name: "flag"},
+			},
+			OnUsageError: func(c *Context, err error, _ bool) error {
+				return fmt.Errorf("intercepted in %s: %s", c.Command.Name, err.Error())
 			},
 		},
 	}
@@ -149,19 +152,18 @@ func TestCommand_OnUsageError_hasCommandContext(t *testing.T) {
 }
 
 func TestCommand_OnUsageError_WithWrongFlagValue(t *testing.T) {
-	app := &App{
-		Commands: []*Command{
-			{
-				Name: "bar",
-				Flags: []Flag{
-					&IntFlag{Name: "flag"},
-				},
-				OnUsageError: func(c *Context, err error, _ bool) error {
-					if !strings.HasPrefix(err.Error(), "invalid value \"wrong\"") {
-						t.Errorf("Expect an invalid value error, but got \"%v\"", err)
-					}
-					return errors.New("intercepted: " + err.Error())
-				},
+	app := NewApp()
+	app.Commands = []Command{
+		{
+			Name: "bar",
+			Flags: []Flag{
+				IntFlag{Name: "flag"},
+			},
+			OnUsageError: func(c *Context, err error, _ bool) error {
+				if !strings.HasPrefix(err.Error(), "invalid value \"wrong\"") {
+					t.Errorf("Expect an invalid value error, but got \"%v\"", err)
+				}
+				return errors.New("intercepted: " + err.Error())
 			},
 		},
 	}
@@ -177,24 +179,23 @@ func TestCommand_OnUsageError_WithWrongFlagValue(t *testing.T) {
 }
 
 func TestCommand_OnUsageError_WithSubcommand(t *testing.T) {
-	app := &App{
-		Commands: []*Command{
-			{
-				Name: "bar",
-				Subcommands: []*Command{
-					{
-						Name: "baz",
-					},
+	app := NewApp()
+	app.Commands = []Command{
+		{
+			Name: "bar",
+			Subcommands: []Command{
+				{
+					Name: "baz",
 				},
-				Flags: []Flag{
-					&IntFlag{Name: "flag"},
-				},
-				OnUsageError: func(c *Context, err error, _ bool) error {
-					if !strings.HasPrefix(err.Error(), "invalid value \"wrong\"") {
-						t.Errorf("Expect an invalid value error, but got \"%v\"", err)
-					}
-					return errors.New("intercepted: " + err.Error())
-				},
+			},
+			Flags: []Flag{
+				IntFlag{Name: "flag"},
+			},
+			OnUsageError: func(c *Context, err error, _ bool) error {
+				if !strings.HasPrefix(err.Error(), "invalid value \"wrong\"") {
+					t.Errorf("Expect an invalid value error, but got \"%v\"", err)
+				}
+				return errors.New("intercepted: " + err.Error())
 			},
 		},
 	}
@@ -210,23 +211,22 @@ func TestCommand_OnUsageError_WithSubcommand(t *testing.T) {
 }
 
 func TestCommand_Run_SubcommandsCanUseErrWriter(t *testing.T) {
-	app := &App{
-		ErrWriter: ioutil.Discard,
-		Commands: []*Command{
-			{
-				Name:  "bar",
-				Usage: "this is for testing",
-				Subcommands: []*Command{
-					{
-						Name:  "baz",
-						Usage: "this is for testing",
-						Action: func(c *Context) error {
-							if c.App.ErrWriter != ioutil.Discard {
-								return fmt.Errorf("ErrWriter not passed")
-							}
+	app := NewApp()
+	app.ErrWriter = ioutil.Discard
+	app.Commands = []Command{
+		{
+			Name:  "bar",
+			Usage: "this is for testing",
+			Subcommands: []Command{
+				{
+					Name:  "baz",
+					Usage: "this is for testing",
+					Action: func(c *Context) error {
+						if c.App.ErrWriter != ioutil.Discard {
+							return fmt.Errorf("ErrWriter not passed")
+						}
 
-							return nil
-						},
+						return nil
 					},
 				},
 			},

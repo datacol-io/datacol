@@ -7,14 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
-
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
 	core_v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -46,7 +45,7 @@ func DeleteService(c *kubernetes.Clientset, ns, name string) error {
 		return err
 	}
 
-	WaitUntilUpdated(c, ns, name)
+	waitUntilDeploymentUpdated(c, ns, name)
 
 	if err = c.Extensions().Deployments(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
 		return err
@@ -108,8 +107,8 @@ func SetPodEnv(c *kubernetes.Clientset, ns, app string, env map[string]string) e
 
 	for _, name := range containersToWatch {
 		go func(cname string) {
-			WaitUntilUpdated(c, ns, cname)
-			WaitUntilReady(c, ns, cname)
+			waitUntilDeploymentUpdated(c, ns, cname)
+			waitUntilDeploymentReady(c, ns, cname)
 		}(name)
 	}
 

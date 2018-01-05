@@ -32,6 +32,7 @@ type Provider interface {
 
 	ProcessList(app string) ([]*pb.Process, error)
 	ProcessRun(app string, r io.ReadWriter, command string) error
+	ProcessSave(app string, formation map[string]int32) error
 
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)
