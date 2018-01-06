@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -7,46 +7,39 @@ import (
 	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "deploy",
 		Usage:  "deploy an app",
 		Action: cmdDeploy,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "image",
-				Aliases: []string{"i"},
-				Usage:   "docker image to use",
+				Name:  "image, i",
+				Usage: "docker image to use",
 			},
 			&cli.IntFlag{
-				Name:    "port",
-				Aliases: []string{"p"},
-				Usage:   "service port",
-				Value:   8080,
+				Name:  "port, p",
+				Usage: "service port",
+				Value: 8080,
 			},
 			&cli.StringFlag{
-				Name:    "build",
-				Aliases: []string{"b"},
-				Usage:   "Build id to use",
+				Name:  "build, b",
+				Usage: "Build id to use",
 			},
-			&cli.BoolFlag{
-				Name:    "wait",
-				Aliases: []string{"w"},
-				Usage:   "Wait for the app become available",
-				Value:   true,
+			&cli.BoolTFlag{
+				Name:  "wait, w",
+				Usage: "Wait for the app become available",
 			},
 			&cli.StringFlag{
-				Name:    "file, f",
-				Aliases: []string{"f"},
-				Usage:   "path of Dockerfile or app.yaml",
+				Name:  "file, f",
+				Usage: "path of Dockerfile or app.yaml",
 			},
 			&cli.StringFlag{
-				Name:    "domain",
-				Aliases: []string{"d"},
-				Usage:   "domain(s) to use with this app",
+				Name:  "domain, d",
+				Usage: "domain(s) to use with this app",
 			},
 		},
 	})

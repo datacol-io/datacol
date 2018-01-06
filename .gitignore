@@ -1,3 +1,7 @@
 .idea
 main
 dist
+.vscode
+datacol
+apictl
+env.sh

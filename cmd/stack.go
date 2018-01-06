@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"encoding/csv"
@@ -18,7 +18,7 @@ import (
 	"github.com/dinesh/datacol/cmd/provider/gcp"
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"github.com/dinesh/datacol/go/env"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 var (
@@ -36,7 +36,7 @@ const (
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:        "init",
 		Usage:       "[cloud-provider] [credentials.csv]",
 		Description: "create new datacol stack",
@@ -83,12 +83,10 @@ func init() {
 			&cli.BoolFlag{
 				Name:  "preemptible",
 				Usage: "use preemptible vm (for GCP)",
-				Value: false,
 			},
 			&cli.BoolFlag{
 				Name:  "opt-out",
 				Usage: "Opt-out from getting updates via email from `datacol`",
-				Value: false,
 			},
 			&cli.StringFlag{
 				Name:  "password",
@@ -106,7 +104,7 @@ func init() {
 		},
 	})
 
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "destroy",
 		Usage:  "destroy the datacol stack from your cloud account",
 		Action: cmdStackDestroy,

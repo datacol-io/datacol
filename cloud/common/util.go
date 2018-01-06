@@ -3,10 +3,14 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/dinesh/datacol/api/models"
+	sched "github.com/dinesh/datacol/cloud/kube"
+	"k8s.io/client-go/kubernetes"
 )
 
 func LoadEnvironment(data []byte) pb.Environment {
@@ -28,4 +32,31 @@ func LoadEnvironment(data []byte) pb.Environment {
 
 func GenerateId(prefix string, size int) string {
 	return prefix + "-" + rand.Characters(size)
+}
+
+func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
+	procfile map[string]string, structure map[string]int32) error {
+
+	var command []string
+
+	log.Debugf("scaling request: %v", structure)
+
+	for key, replicas := range structure {
+		jobID := fmt.Sprintf("%s-%s", app, key)
+
+		if rawCmd, ok := procfile[key]; ok {
+			command = strings.Split(rawCmd, " ")
+			if err := sched.ScalePodReplicas(c, namespace, jobID, image, command, replicas); err != nil {
+				return err
+			}
+		} else if key == "cmd" {
+			if err := sched.ScalePodReplicas(c, namespace, jobID, image, command, replicas); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("Unknown process type: %s", key)
+		}
+	}
+
+	return nil
 }

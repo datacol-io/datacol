@@ -4,15 +4,28 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
+	"google.golang.org/grpc/metadata"
 )
 
 const chunkSize = 1024 * 1024 * 1
 
-func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
-	stream, err := c.ProviderServiceClient.BuildImport(ctx)
+func (c *Client) CreateBuild(app *pb.App, data []byte, procfile map[string]string) (*pb.Build, error) {
+	mdData := map[string]string{}
+	for key, value := range procfile {
+		mdData[fmt.Sprintf("datacol-%s", strings.ToLower(key))] = value
+	}
+
+	md := metadata.Join(
+		metadata.Pairs("app", app.Name),
+		metadata.New(mdData),
+	)
+	newctx := metadata.NewOutgoingContext(ctx, md)
+
+	stream, err := c.ProviderServiceClient.BuildImport(newctx)
 	defer stream.CloseSend()
 
 	if err != nil {
@@ -32,16 +45,15 @@ func (c *Client) CreateBuild(app *pb.App, data []byte) (*pb.Build, error) {
 		}
 
 		fmt.Print(".")
-		size := intMin(chunkSize, len(chunk))
 
-		if err := stream.Send(&pbs.CreateBuildRequest{
+		if err := stream.Send(&pbs.StreamMsg{
 			Data: chunk,
-			Size: int32(size),
-			App:  app.Name,
 		}); err != nil {
 			if err == io.EOF {
-				return nil, err
+				break
 			}
+
+			return nil, err
 		}
 	}
 

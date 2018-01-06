@@ -2,14 +2,12 @@ package aws
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -42,13 +40,6 @@ func (p *AwsCloud) kubeClient() *kubernetes.Clientset {
 	})
 
 	return kubeClient
-}
-
-func (p *AwsCloud) ProcessRun(app string, r io.ReadWriter, command string) error {
-	ns := p.DeploymentName
-	cfg, _ := getKubeClientConfig(ns)
-
-	return kube.ProcessExec(p.kubeClient(), cfg, ns, app, command, r)
 }
 
 func (p *AwsCloud) K8sConfigPath() (string, error) {

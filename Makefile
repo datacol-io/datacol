@@ -1,4 +1,3 @@
-BUILD_CMD=cmd/main.go cmd/build.go cmd/stack.go cmd/apps.go cmd/deploy.go cmd/kubectl.go cmd/env.go cmd/logs.go cmd/helper.go cmd/run.go cmd/infra.go cmd/upgrade.go cmd/login.go
 version=1.0.0-alpha.9
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
@@ -16,7 +15,7 @@ vet:
 	goimports ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/aws/ ./cloud/ ./api ./api/models/ ./api/controller/
 
 cmd:
-	go build -o datacol -ldflags="-s -w" -i ${BUILD_CMD}
+	go build -o datacol -ldflags="-s -w" .
 
 api:
 	go build -o apictl -ldflags="-s -w" -i api/*.go

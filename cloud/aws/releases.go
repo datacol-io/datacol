@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
@@ -18,7 +19,27 @@ func (a *AwsCloud) dynamoReleases() string {
 }
 
 func (a *AwsCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	return nil, nil
+	req := &dynamodb.ScanInput{
+		ConsistentRead: aws.Bool(true),
+		TableName:      aws.String(a.dynamoReleases()),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":app": {S: aws.String(app)},
+		},
+		FilterExpression: aws.String("app=:app"),
+	}
+
+	res, err := a.dynamodb().Scan(req)
+	if err != nil {
+		return nil, err
+	}
+
+	releases := make(pb.Releases, len(res.Items))
+
+	for i, item := range res.Items {
+		releases[i] = a.releaseFromItem(item)
+	}
+
+	return releases, nil
 }
 
 func (a *AwsCloud) ReleaseDelete(app, id string) error {
@@ -89,15 +110,23 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		CreatedAt: timestampNow(),
 	}
 
-	return r, a.releaseSave(r)
+	if err = a.releaseSave(r); err != nil {
+		return r, err
+	}
+
+	app.BuildId = b.Id
+	app.ReleaseId = r.Id
+
+	return r, a.saveApp(app)
 }
 
 func (a *AwsCloud) releaseSave(r *pb.Release) error {
 	req := &dynamodb.PutItemInput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"id":       {S: aws.String(r.Id)},
-			"app":      {S: aws.String(r.App)},
-			"build_id": {S: aws.String(r.BuildId)},
+			"id":         {S: aws.String(r.Id)},
+			"app":        {S: aws.String(r.App)},
+			"build_id":   {S: aws.String(r.BuildId)},
+			"created_at": {N: aws.String(fmt.Sprintf("%d", r.CreatedAt))},
 		},
 		TableName: aws.String(a.dynamoReleases()),
 	}
@@ -108,4 +137,30 @@ func (a *AwsCloud) releaseSave(r *pb.Release) error {
 
 	_, err := a.dynamodb().PutItem(req)
 	return err
+}
+
+func (a *AwsCloud) releaseFromItem(item map[string]*dynamodb.AttributeValue) *pb.Release {
+	return &pb.Release{
+		Id:        coalesce(item["id"], ""),
+		App:       coalesce(item["app"], ""),
+		BuildId:   coalesce(item["build_id"], ""),
+		Status:    coalesce(item["status"], ""),
+		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
+	}
+}
+
+func (a *AwsCloud) latestRelease(app string) *pb.Release {
+	allReleases, err := a.ReleaseList(app, 100)
+	if err != nil {
+		return nil
+	}
+
+	if len(allReleases) > 0 {
+		sort.Slice(allReleases, func(i, j int) bool {
+			return allReleases[i].CreatedAt > allReleases[j].CreatedAt
+		})
+		return allReleases[0]
+	} else {
+		return nil
+	}
 }

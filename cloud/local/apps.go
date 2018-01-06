@@ -30,18 +30,18 @@ func (g *LocalCloud) AppRestart(app string) error {
 	log.Debugf("Restarting %s", app)
 	ns := g.Name
 
-	kube, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
-
 	env, err := g.EnvironmentGet(app)
 	if err != nil {
 		return err
 	}
 
 	env["_RESTARTED"] = time.Now().Format("20060102150405")
-	return sched.SetPodEnv(kube, ns, app, env)
+
+	if err = sched.SetPodEnv(g.kubeClient(), ns, app, env); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
@@ -54,14 +54,28 @@ func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
 	return nil, fmt.Errorf("App Not Found")
 }
 
+func (g *LocalCloud) saveApp(a *pb.App) error {
+	for i, app := range g.Apps {
+		if app.Name == a.Name {
+			g.Apps[i] = a
+			break
+		}
+	}
+
+	return nil
+}
+
 func (g *LocalCloud) AppDelete(name string) error {
 	ns := g.Name
-	kube, err := getKubeClientset(ns)
+
+	podNames, err := sched.GetAllPodNames(g.kubeClient(), ns, name)
 	if err != nil {
 		return err
 	}
 
-	sched.DeleteApp(kube, ns, name)
+	for _, pod := range podNames {
+		sched.DeleteService(g.kubeClient(), ns, pod)
+	}
 
 	for i, a := range g.Apps {
 		if a.Name == name {

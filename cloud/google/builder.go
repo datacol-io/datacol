@@ -86,7 +86,7 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 	return nil, fmt.Errorf("not implemented.")
 }
 
-func (g *GCPCloud) BuildImport(app, filename string) (*pb.Build, error) {
+func (g *GCPCloud) BuildImport(app, filename string, options *pb.CreateBuildOptions) (*pb.Build, error) {
 	service := g.storage()
 	bucket := g.BucketName
 	id := generateId("B", 5)
@@ -194,12 +194,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	domains := sched.MergeAppDomains(app.Domains, options.Domain)
 
-	c, err := getKubeClientset(g.DeploymentName)
-	if err != nil {
-		return nil, err
-	}
-
-	deployer, err := sched.NewDeployer(c)
+	deployer, err := sched.NewDeployer(g.kubeClient())
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +244,14 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 	ctx, key := g.nestedKey(releaseKind, r.Id)
 	_, err = g.datastore().Put(ctx, key, r)
 
-	return r, err
+	if err != nil {
+		return r, err
+	}
+
+	app.ReleaseId = r.Id
+	app.BuildId = b.Id
+
+	return r, g.saveApp(app)
 }
 
 func getBuildID(op *cloudbuild.Operation) (string, error) {

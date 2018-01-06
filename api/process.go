@@ -3,6 +3,9 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/golang/protobuf/ptypes/empty"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -17,6 +20,20 @@ func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	}
 
 	return nil
+}
+
+func (s *Server) ProcessSave(ctx context.Context, req *pb.Formation) (*empty.Empty, error) {
+	if err := s.Provider.ProcessSave(req.App, req.Structure); err != nil {
+		return nil, internalError(err, "Failed to run process")
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (s *Server) ProcessList(ctx context.Context, req *pbs.AppRequest) (*pbs.ProcessListResponse, error) {
+	items, err := s.Provider.ProcessList(req.Name)
+
+	return &pbs.ProcessListResponse{Items: items}, err
 }
 
 type runStreamRW struct {

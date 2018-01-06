@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"github.com/appscode/go/crypto/rand"
 	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -38,18 +38,18 @@ var resourceTypes = []ResourceType{
 }
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "infra",
 		Usage:  "Managed GCP stack resources and infrastructure",
 		Action: cmdResourceList,
-		Subcommands: []*cli.Command{
+		Subcommands: []cli.Command{
 			{
 				Name:   "create",
 				Usage:  "create a new resource",
 				Action: cmdResourceCreate,
 				Flags: []cli.Flag{
 					stackFlag,
-					&cli.BoolFlag{Name: "wait", Aliases: []string{"w"}},
+					&cli.BoolFlag{Name: "wait, w"},
 				},
 				SkipFlagParsing: true,
 			},

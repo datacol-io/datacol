@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"errors"
@@ -8,33 +8,33 @@ import (
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go/term"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "apps",
 		Usage:  "Manage your apps in a stack",
 		Action: cmdAppsList,
-		Subcommands: []*cli.Command{
-			&cli.Command{
+		Subcommands: []cli.Command{
+			cli.Command{
 				Name:   "create",
 				Action: cmdAppCreate,
 				Flags: []cli.Flag{
 					appFlag,
-					&cli.StringFlag{
+					cli.StringFlag{
 						Name:  "repo-url",
 						Usage: "Repository url (github or codecommit)",
 					},
 				},
 			},
-			&cli.Command{
+			cli.Command{
 				Name:   "delete",
 				Action: cmdAppDelete,
 				Flags:  []cli.Flag{appFlag},
 			},
-			&cli.Command{
+			cli.Command{
 				Name:   "info",
 				Action: cmdAppInfo,
 				Flags:  []cli.Flag{},
@@ -42,7 +42,7 @@ func init() {
 		},
 	})
 
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "restart",
 		Usage:  "restart an app",
 		Action: cmdAppRestart,

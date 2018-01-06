@@ -13,13 +13,13 @@ import (
 	term "github.com/appscode/go/term"
 	pb "github.com/dinesh/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 var (
 	Binary      string
 	Version     string
-	Commands    []*cli.Command
+	Commands    []cli.Command
 	LocalAppDir string
 	Stack404    error
 )
@@ -28,17 +28,16 @@ func init() {
 	Version = "1.0.0-alpha.9"
 	LocalAppDir = ".dtcol"
 	Binary = filepath.Base(os.Args[0])
-	Commands = []*cli.Command{}
+	Commands = []cli.Command{}
 	Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")
 }
 
 func New() *cli.App {
-	app := &cli.App{
-		Name:     Binary,
-		Commands: Commands,
-		Version:  Version,
-	}
+	app := cli.NewApp()
 
+	app.Name = Binary
+	app.Commands = Commands
+	app.Version = Version
 	app.CommandNotFound = func(c *cli.Context, cmd string) {
 		fmt.Fprintf(os.Stderr, "No such command \"%s\". Try `%s help`\n", cmd, Binary)
 		os.Exit(1)
@@ -59,7 +58,7 @@ func GetAppStack() string {
 	return stack
 }
 
-func AddCommand(cmd *cli.Command) {
+func AddCommand(cmd cli.Command) {
 	Commands = append(Commands, cmd)
 }
 
@@ -184,6 +183,9 @@ func parseOpts(args []string) map[string]string {
 			}
 
 			key = strings.Replace(key, "-", "_", -1)
+			options[key] = value
+		} else if parts := strings.Split(token, "="); len(parts) == 2 {
+			key, value := parts[0], parts[1]
 			options[key] = value
 		} else {
 			value := options[key]

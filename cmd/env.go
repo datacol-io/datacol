@@ -1,19 +1,19 @@
-package main
+package cmd
 
 import (
 	"fmt"
 
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "env",
 		Usage:  "manage environment variables for an app",
 		Action: cmdConfigList,
-		Subcommands: []*cli.Command{
+		Subcommands: []cli.Command{
 			{
 				Name:      "set",
 				UsageText: "set env variables",
@@ -70,7 +70,7 @@ func cmdConfigSet(c *cli.Context) error {
 	}
 
 	// handle args
-	for _, value := range c.Args().Slice() {
+	for _, value := range c.Args() {
 		data += fmt.Sprintf("%s\n", value)
 	}
 

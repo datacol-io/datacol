@@ -75,6 +75,10 @@ message BuildListResponse {
   repeated models.Build builds = 1;
 }
 
+message ProcessListResponse {
+  repeated models.Process Items = 1;
+}
+
 message CreateResourceRequest {
   string name = 1;
   string kind = 2;
@@ -107,10 +111,6 @@ message LogStreamReq {
   string name = 1;
   bool follow = 2;
   google.protobuf.Duration since = 3;
-}
-
-message LogStreamResponse {
-  bytes data = 1;
 }
 
 message ProcessRunReq {
@@ -178,7 +178,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildImport(stream CreateBuildRequest) returns (models.Build) {
+  rpc BuildImport(stream StreamMsg) returns (models.Build) {
     option (google.api.http) = {
       post: "/v1/builds/import"
     };
@@ -214,7 +214,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildLogsStream(BuildLogStreamReq) returns (stream LogStreamResponse) {
+  rpc BuildLogsStream(BuildLogStreamReq) returns (stream StreamMsg) {
     option (google.api.http) = {
       get: "/v1/builds/{id}/logs/stream"
     };
@@ -296,6 +296,19 @@ service ProviderService {
     };
   }
 
+  rpc ProcessList(AppRequest) returns (ProcessListResponse) {
+    option (google.api.http) = { 
+      get: "/v1/process/list"
+    };
+  }
+
+  rpc ProcessSave(models.Formation) returns (google.protobuf.Empty) {
+    option (google.api.http) = { 
+      get: "/v1/process/formation"
+    };
+  }
+
+  //Logs API
   rpc LogStream(LogStreamReq) returns (stream StreamMsg) {
     option (google.api.http) = {
       get: "/v1/logs/{name}"

@@ -1,10 +1,12 @@
 package local
 
 import (
+	"fmt"
 	"io"
 	"os"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -13,25 +15,40 @@ func (g *LocalCloud) K8sConfigPath() (string, error) {
 }
 
 func (g *LocalCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error {
-	c, err := getKubeClientset(g.Name)
-	if err != nil {
-		return err
-	}
-
-	return sched.LogStreamReq(c, w, g.Name, app, opts)
+	return sched.LogStreamReq(g.kubeClient(), w, g.Name, app, opts)
 }
 
-func (g *LocalCloud) ProcessRun(app string, stream io.ReadWriter, command string) error {
+func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command string) error {
 	ns := g.Name
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
 		return err
 	}
 
-	c, err := getKubeClientset(ns)
+	app, _ := g.AppGet(name)
+	envVars, _ := g.EnvironmentGet(name)
+
+	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, stream)
+}
+
+func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {
+	return sched.ProcessList(g.kubeClient(), g.Name, app)
+}
+
+func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error {
+	app, err := g.AppGet(name)
 	if err != nil {
 		return err
 	}
 
-	return sched.ProcessExec(c, cfg, ns, app, command, stream)
+	build, err := g.BuildGet(app.Name, app.BuildId)
+	if err != nil {
+		return err
+	}
+
+	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), build.Procfile, structure)
+}
+
+func (g *LocalCloud) latestImage(app *pb.App) string {
+	return fmt.Sprintf("%v/%v:%v", g.RegistryAddress, app.Name, app.BuildId)
 }

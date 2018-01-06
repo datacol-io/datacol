@@ -1,12 +1,12 @@
-package main
+package cmd
 
 import (
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "run",
 		Usage:  "execute a command in an app",
 		Action: cmdAppRun,
@@ -23,8 +23,7 @@ func cmdAppRun(c *cli.Context) error {
 	_, err = client.GetApp(name)
 	stdcli.ExitOnError(err)
 
-	args := c.Args().Slice()
-
+	args := c.Args()
 	stdcli.ExitOnError(client.RunProcess(name, args))
 
 	return nil

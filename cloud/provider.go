@@ -17,7 +17,7 @@ type Provider interface {
 	EnvironmentSet(app string, body io.Reader) error
 
 	BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error)
-	BuildImport(app, filename string) (*pb.Build, error)
+	BuildImport(app, filename string, req *pb.CreateBuildOptions) (*pb.Build, error)
 	BuildList(app string, limit int) (pb.Builds, error)
 	BuildGet(app, id string) (*pb.Build, error)
 	BuildDelete(app, id string) error
@@ -29,7 +29,10 @@ type Provider interface {
 	ReleaseDelete(string, string) error
 
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
+
+	ProcessList(app string) ([]*pb.Process, error)
 	ProcessRun(app string, r io.ReadWriter, command string) error
+	ProcessSave(app string, formation map[string]int32) error
 
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)

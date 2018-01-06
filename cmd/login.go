@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bufio"
@@ -10,12 +10,12 @@ import (
 	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/client"
 	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
-	"gopkg.in/urfave/cli.v2"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "login",
 		Usage:  "login in to datacol",
 		Action: cmdLogin,

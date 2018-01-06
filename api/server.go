@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"cloud.google.com/go/compute/metadata"
+	gce_metadata "cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
@@ -20,6 +20,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 )
 
 func newServer() *Server {
@@ -114,13 +115,13 @@ func (s *Server) Run() error {
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
 	if authorize(ctx, s.Password) {
 		var ip, project string
-		if metadata.OnGCE() {
-			_ip, err := metadata.ExternalIP()
+		if gce_metadata.OnGCE() {
+			_ip, err := gce_metadata.ExternalIP()
 			if err != nil {
 				return nil, internalError(err, "couldn't resolve external ip for instance.")
 			}
 			ip = _ip
-			_pid, err := metadata.ProjectID()
+			_pid, err := gce_metadata.ProjectID()
 			if err != nil {
 				return nil, internalError(err, "couldn't get projectId from metadata server.")
 			}
@@ -180,7 +181,18 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 }
 
 func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error {
-	var app string
+	md, ok := metadata.FromIncomingContext(stream.Context())
+	if !ok {
+		return internalError(fmt.Errorf("No context found"), "No context found")
+	}
+	app, procfile := md["app"][0], make(map[string]string)
+
+	for k, v := range md {
+		if k != "app" && strings.HasPrefix(k, "datacol-") {
+			procfile[strings.TrimPrefix(k, "datacol-")] = v[0]
+		}
+	}
+
 	fd, err := ioutil.TempFile(os.TempDir(), "upload-")
 	if err != nil {
 		return err
@@ -204,15 +216,16 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 			log.Error(err)
 			return err
 		}
-
-		app = req.App
 	}
 
 	if err := fd.Close(); err != nil {
 		return internalError(err, "failed to close tmpfile")
 	}
 
-	b, err := s.Provider.BuildImport(app, fd.Name())
+	b, err := s.Provider.BuildImport(app, fd.Name(), &pb.CreateBuildOptions{
+		Procfile: procfile,
+	})
+
 	if err != nil {
 		return internalError(err, "failed to upload source.")
 	}
@@ -282,7 +295,7 @@ func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.Provider
 		}
 		buf = buf[:n]
 
-		if err := stream.Send(&pbs.LogStreamResponse{Data: buf}); err != nil {
+		if err := stream.Send(&pbs.StreamMsg{Data: buf}); err != nil {
 			return err
 		}
 	}

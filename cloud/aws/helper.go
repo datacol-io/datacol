@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +47,15 @@ func stackOutputs(stack *cloudformation.Stack) map[string]string {
 func coalesce(s *dynamodb.AttributeValue, def string) string {
 	if s != nil {
 		return *s.S
+	} else {
+		return def
+	}
+}
+
+func coalesceInt(s *dynamodb.AttributeValue, def int) int {
+	if s != nil {
+		num, _ := strconv.Atoi(*s.N)
+		return num
 	} else {
 		return def
 	}

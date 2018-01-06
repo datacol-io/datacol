@@ -22,6 +22,22 @@ type LocalCloud struct {
 	RegistryAddress string
 }
 
+var cacheClientsetOnce sync.Once
+var kubeClient *kubernetes.Clientset
+
+func (g *LocalCloud) kubeClient() *kubernetes.Clientset {
+	cacheClientsetOnce.Do(func() {
+		kube, err := getKubeClientset(g.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		kubeClient = kube
+	})
+
+	return kubeClient
+}
+
 var dkrOnce sync.Once
 var dkrClient *docker.Client
 

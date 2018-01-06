@@ -220,6 +220,22 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 	return err
 }
 
+var cacheClientsetOnce sync.Once
+var kubeClient *kubernetes.Clientset
+
+func (g *GCPCloud) kubeClient() *kubernetes.Clientset {
+	cacheClientsetOnce.Do(func() {
+		kube, err := getKubeClientset(g.DeploymentName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		kubeClient = kube
+	})
+
+	return kubeClient
+}
+
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {
 	config, err := getKubeClientConfig(name)
 	if err != nil {

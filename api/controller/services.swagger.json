@@ -309,7 +309,7 @@
           "200": {
             "description": "(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/controllerLogStreamResponse"
+              "$ref": "#/definitions/controllerStreamMsg"
             }
           }
         },
@@ -461,6 +461,7 @@
     },
     "/v1/logs/{name}": {
       "get": {
+        "summary": "Logs API",
         "operationId": "LogStream",
         "responses": {
           "200": {
@@ -499,6 +500,60 @@
             "required": false,
             "type": "integer",
             "format": "int32"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/process/formation": {
+      "get": {
+        "operationId": "ProcessSave",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/process/list": {
+      "get": {
+        "operationId": "ProcessList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controllerProcessListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "repo_url",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -869,12 +924,14 @@
         }
       }
     },
-    "controllerLogStreamResponse": {
+    "controllerProcessListResponse": {
       "type": "object",
       "properties": {
-        "data": {
-          "type": "string",
-          "format": "byte"
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsProcess"
+          }
         }
       }
     },
@@ -924,6 +981,9 @@
         "endpoint": {
           "type": "string"
         },
+        "build_id": {
+          "type": "string"
+        },
         "domains": {
           "type": "array",
           "items": {
@@ -950,6 +1010,12 @@
         "created_at": {
           "type": "integer",
           "format": "int32"
+        },
+        "procfile": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -961,6 +1027,18 @@
           "additionalProperties": {
             "type": "string"
           }
+        }
+      }
+    },
+    "modelsProcess": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "workers": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },

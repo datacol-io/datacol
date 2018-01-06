@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -12,11 +12,11 @@ import (
 	"github.com/dinesh/datacol/cmd/stdcli"
 	semver "github.com/hashicorp/go-version"
 	"github.com/inconshreveable/go-update"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "upgrade",
 		Usage:  "upgrade datacol CLI to latest version",
 		Action: cmdUpgrade,

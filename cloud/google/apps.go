@@ -35,18 +35,13 @@ func (g *GCPCloud) AppRestart(app string) error {
 	log.Debugf("Restarting %s", app)
 	ns := g.DeploymentName
 
-	kube, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
-
 	env, err := g.EnvironmentGet(app)
 	if err != nil {
 		return err
 	}
 
 	env["_RESTARTED"] = time.Now().Format("20060102150405")
-	return sched.SetPodEnv(kube, ns, app, env)
+	return sched.SetPodEnv(g.kubeClient(), ns, app, env)
 }
 
 func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
@@ -58,14 +53,11 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 	}
 
 	ns := g.DeploymentName
-	kc, err := getKubeClientset(ns)
+	endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), ns, name)
 	if err != nil {
 		return app, nil
 	}
-
-	if app.Endpoint, err = sched.GetServiceEndpoint(kc, ns, name); err != nil {
-		return app, nil
-	}
+	app.Endpoint = endpoint
 
 	_, err = g.datastore().Put(ctx, key, app)
 	return app, err
@@ -74,6 +66,12 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 func (g *GCPCloud) AppDelete(name string) error {
 	g.deleteAppFromCluster(name)
 	return g.deleteAppFromDatastore(name)
+}
+
+func (g *GCPCloud) saveApp(app *pb.App) error {
+	ctx, key := g.nestedKey(appKind, app.Name)
+	_, err := g.datastore().Put(ctx, key, app)
+	return err
 }
 
 func (g *GCPCloud) deleteAppFromDatastore(name string) error {
@@ -99,11 +97,5 @@ func (g *GCPCloud) deleteAppFromDatastore(name string) error {
 }
 
 func (g *GCPCloud) deleteAppFromCluster(name string) error {
-	ns := g.DeploymentName
-	kube, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
-
-	return sched.DeleteApp(kube, ns, name)
+	return sched.DeleteService(g.kubeClient(), g.DeploymentName, name)
 }

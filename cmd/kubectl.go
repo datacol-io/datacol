@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -9,11 +9,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/dinesh/datacol/api/controller"
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:            "kubectl",
 		Usage:           "kubectl wrapper for datacol",
 		Action:          cmdKubectl,
@@ -25,8 +25,10 @@ func cmdKubectl(c *cli.Context) error {
 	client, close := getApiClient(c)
 	defer close()
 
-	args := c.Args().Slice()
-	ret, err := client.ProviderServiceClient.Kubectl(context.TODO(), &pbs.KubectlReq{Args: args})
+	args := c.Args()
+	ret, err := client.ProviderServiceClient.Kubectl(
+		context.TODO(), &pbs.KubectlReq{Args: args},
+	)
 	stdcli.ExitOnError(err)
 
 	onApiExec(ret, args)

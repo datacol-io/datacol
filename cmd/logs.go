@@ -1,23 +1,22 @@
-package main
+package cmd
 
 import (
 	"os"
 	"time"
 
 	"github.com/dinesh/datacol/cmd/stdcli"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli"
 )
 
 func init() {
-	stdcli.AddCommand(&cli.Command{
+	stdcli.AddCommand(cli.Command{
 		Name:   "logs",
 		Usage:  "streams logs for an app",
 		Action: cmdAppLogStream,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "follow",
-				Aliases: []string{"f"},
-				Usage:   "keep streaming new log output (default)",
+				Name:  "follow, f",
+				Usage: "keep streaming new log output (default)",
 			},
 			&cli.DurationFlag{
 				Name:  "since",
