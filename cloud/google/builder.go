@@ -194,12 +194,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	domains := sched.MergeAppDomains(app.Domains, options.Domain)
 
-	c, err := getKubeClientset(g.DeploymentName)
-	if err != nil {
-		return nil, err
-	}
-
-	deployer, err := sched.NewDeployer(c)
+	deployer, err := sched.NewDeployer(g.kubeClient())
 	if err != nil {
 		return nil, err
 	}

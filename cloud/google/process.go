@@ -16,24 +16,14 @@ func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string)
 		return err
 	}
 
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
 
-	return kube.ProcessExec(c, cfg, ns, name, g.latestImage(app), command, envVars, stream)
+	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, stream)
 }
 
 func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
-	ns := g.DeploymentName
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return kube.ProcessList(c, ns, app)
+	return kube.ProcessList(g.kubeClient(), g.DeploymentName, app)
 }
 
 func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
@@ -47,12 +37,7 @@ func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
 		return err
 	}
 
-	c, err := getKubeClientset(g.DeploymentName)
-	if err != nil {
-		return err
-	}
-
-	return common.ScaleApp(c, g.DeploymentName, name, g.latestImage(app), build.Procfile, structure)
+	return common.ScaleApp(g.kubeClient(), g.DeploymentName, name, g.latestImage(app), build.Procfile, structure)
 }
 
 func (g *GCPCloud) latestImage(app *pb.App) string {

@@ -15,12 +15,7 @@ func (g *LocalCloud) K8sConfigPath() (string, error) {
 }
 
 func (g *LocalCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error {
-	c, err := getKubeClientset(g.Name)
-	if err != nil {
-		return err
-	}
-
-	return sched.LogStreamReq(c, w, g.Name, app, opts)
+	return sched.LogStreamReq(g.kubeClient(), w, g.Name, app, opts)
 }
 
 func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command string) error {
@@ -30,25 +25,14 @@ func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command strin
 		return err
 	}
 
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return err
-	}
-
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
 
-	return sched.ProcessExec(c, cfg, ns, name, g.latestImage(app), command, envVars, stream)
+	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, stream)
 }
 
 func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {
-	ns := g.Name
-	c, err := getKubeClientset(ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return sched.ProcessList(c, g.Name, app)
+	return sched.ProcessList(g.kubeClient(), g.Name, app)
 }
 
 func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error {
@@ -62,12 +46,7 @@ func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error 
 		return err
 	}
 
-	c, err := getKubeClientset(g.Name)
-	if err != nil {
-		return err
-	}
-
-	return common.ScaleApp(c, g.Name, name, g.latestImage(app), build.Procfile, structure)
+	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), build.Procfile, structure)
 }
 
 func (g *LocalCloud) latestImage(app *pb.App) string {

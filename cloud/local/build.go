@@ -117,12 +117,7 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		return nil, err
 	}
 
-	c, err := getKubeClientset(g.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	deployer, err := sched.NewDeployer(c)
+	deployer, err := sched.NewDeployer(g.kubeClient())
 	if err != nil {
 		return nil, err
 	}
