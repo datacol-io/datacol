@@ -5,9 +5,11 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/bjaglin/multiplexio"
 	pb "github.com/dinesh/datacol/api/models"
 	core_v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -164,7 +166,7 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 	podNames, err := GetAllPodNames(c, ns, app)
 
 	//TODO: consider using https://github.com/djherbis/stream for reading multiple streams
-	var readers []io.Reader
+	var sources []multiplexio.Source
 
 	log.Debugf("streaming logs from %v", podNames)
 
@@ -182,10 +184,16 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 		}
 
 		if r, err := req.Stream(); err == nil {
-			readers = append(readers, r)
+			prefix := fmt.Sprintf("[%s] ", strings.TrimPrefix(name, app+"-"))
+			sources = append(sources, multiplexio.Source{
+				Reader: r,
+				Write: func(dest io.Writer, token []byte) (int, error) {
+					return io.WriteString(dest, prefix+string(token)+"\n")
+				},
+			})
 		}
 	}
 
-	_, err = io.Copy(w, io.MultiReader(readers...))
+	_, err = io.Copy(w, multiplexio.NewReader(multiplexio.Options{}, sources...))
 	return err
 }
