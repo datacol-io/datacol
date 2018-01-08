@@ -43,6 +43,12 @@
   version = "v1.10.9"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/bjaglin/multiplexio"
+  packages = ["."]
+  revision = "7477705f395a7cc682ae2453b04377e9f4984779"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
@@ -556,6 +562,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "57e024767ea1480e23cdf5365cfc58ebbff83e0dc665413118631fb37a45e8af"
+  inputs-digest = "16cdf31c9a667773efc73382a9691e7c57e07363dd300466daa2946418ecc04a"
   solver-name = "gps-cdcl"
   solver-version = 1
