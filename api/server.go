@@ -23,6 +23,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+var emptyMsg = &empty.Empty{}
+
 func newServer() *Server {
 	var provider cloud.Provider
 
@@ -163,7 +165,7 @@ func (s *Server) AppDelete(ctx context.Context, req *pbs.AppRequest) (*empty.Emp
 		return nil, internalError(err, "unable to delete app")
 	}
 
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Empty, error) {
@@ -171,11 +173,12 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 		return nil, internalError(err, "unable to restart app")
 	}
 
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
 	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
+		Procfile: req.Procfile,
 		Version: req.Version,
 	})
 }
@@ -185,13 +188,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	if !ok {
 		return internalError(fmt.Errorf("No context found"), "No context found")
 	}
-	app, procfile := md["app"][0], make(map[string]string)
-
-	for k, v := range md {
-		if k != "app" && strings.HasPrefix(k, "datacol-") {
-			procfile[strings.TrimPrefix(k, "datacol-")] = v[0]
-		}
-	}
+	buildId := md["id"][0]
 
 	fd, err := ioutil.TempFile(os.TempDir(), "upload-")
 	if err != nil {
@@ -222,15 +219,11 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 		return internalError(err, "failed to close tmpfile")
 	}
 
-	b, err := s.Provider.BuildImport(app, fd.Name(), &pb.CreateBuildOptions{
-		Procfile: procfile,
-	})
-
-	if err != nil {
+	if err := s.Provider.BuildImport(buildId, fd.Name()); err != nil {
 		return internalError(err, "failed to upload source.")
 	}
 
-	return stream.SendAndClose(b)
+	return stream.SendAndClose(emptyMsg)
 }
 
 func (s *Server) BuildList(ctx context.Context, req *pbs.AppRequest) (*pbs.BuildListResponse, error) {
@@ -253,7 +246,7 @@ func (s *Server) BuildDelete(ctx context.Context, req *pbs.AppIdRequest) (*empty
 	if err := s.Provider.BuildDelete(req.App, req.Id); err != nil {
 		return nil, err
 	}
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) BuildRelease(ctx context.Context, req *pbs.CreateReleaseRequest) (*pb.Release, error) {
@@ -315,7 +308,7 @@ func (s *Server) ReleaseDelete(ctx context.Context, req *pbs.AppIdRequest) (*emp
 	if err != nil {
 		return nil, internalError(err, "failed to delete release.")
 	}
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) EnvironmentGet(ctx context.Context, req *pbs.AppRequest) (*pb.EnvConfig, error) {
@@ -331,7 +324,7 @@ func (s *Server) EnvironmentSet(ctx context.Context, req *pbs.EnvSetRequest) (*e
 	if err != nil {
 		return nil, internalError(err, "failed to set env.")
 	}
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) ResourceList(ctx context.Context, req *pbs.ListRequest) (*pbs.ResourceListResponse, error) {
@@ -354,7 +347,7 @@ func (s *Server) ResourceDelete(ctx context.Context, req *pbs.AppRequest) (*empt
 	if err := s.Provider.ResourceDelete(req.Name); err != nil {
 		return nil, internalError(err, fmt.Sprintf("could not delete %s", req.Name))
 	}
-	return &empty.Empty{}, nil
+	return emptyMsg, nil
 }
 
 func (s *Server) ResourceLink(ctx context.Context, req *pbs.AppResourceReq) (*pb.Resource, error) {

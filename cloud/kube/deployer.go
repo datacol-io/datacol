@@ -61,7 +61,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 	res := &DeployResponse{Request: *payload}
 
 	if payload.Environment == "" {
-		return nil, fmt.Errorf("environment not found.")
+		return nil, fmt.Errorf("environment not set for DeployRequest.")
 	}
 
 	// create namespace if needed

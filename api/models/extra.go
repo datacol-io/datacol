@@ -58,7 +58,7 @@ type CreateBuildOptions struct {
 	Version     string
 	Author      string
 	Description string
-	Procfile    map[string]string
+	Procfile    []byte
 }
 
 type ProcessList []*Process

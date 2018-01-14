@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strings"
 
 	pbs "github.com/dinesh/datacol/api/controller"
 	pb "github.com/dinesh/datacol/api/models"
@@ -13,16 +12,18 @@ import (
 
 const chunkSize = 1024 * 1024 * 1
 
-func (c *Client) CreateBuild(app *pb.App, data []byte, procfile map[string]string) (*pb.Build, error) {
-	mdData := map[string]string{}
-	for key, value := range procfile {
-		mdData[fmt.Sprintf("datacol-%s", strings.ToLower(key))] = value
+func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Build, error) {
+
+	b, err := c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
+		App:      app.Name,
+		Procfile: procfile,
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	md := metadata.Join(
-		metadata.Pairs("app", app.Name),
-		metadata.New(mdData),
-	)
+	md := metadata.Pairs("app", app.Name, "id", b.Id)
 	newctx := metadata.NewOutgoingContext(ctx, md)
 
 	stream, err := c.ProviderServiceClient.BuildImport(newctx)
@@ -58,7 +59,8 @@ func (c *Client) CreateBuild(app *pb.App, data []byte, procfile map[string]strin
 	}
 
 	fmt.Printf(" OK\n")
-	return stream.CloseAndRecv()
+	_, err = stream.CloseAndRecv()
+	return b, err
 }
 
 func (c *Client) CreateBuildGit(app *pb.App, version string) (*pb.Build, error) {

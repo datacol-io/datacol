@@ -83,14 +83,33 @@ func (g *GCPCloud) ReleaseDelete(app, id string) error {
 }
 
 func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
-	return nil, fmt.Errorf("not implemented.")
+	id := generateId("B", 5)
+
+	build := &pb.Build{
+		App:       app,
+		Id:        id,
+		Status:    "CREATED",
+		CreatedAt: timestampNow(),
+	}
+
+	log.Debugf("Saving build %s", toJson(build))
+
+	ctx, key := g.nestedKey(buildKind, build.Id)
+	if _, err := g.datastore().Put(ctx, key, build); err != nil {
+		return nil, fmt.Errorf("saving build err: %v", err)
+	}
+
+	return build, nil
 }
 
-func (g *GCPCloud) BuildImport(app, filename string, options *pb.CreateBuildOptions) (*pb.Build, error) {
-	service := g.storage()
-	bucket := g.BucketName
-	id := generateId("B", 5)
-	gskey := fmt.Sprintf("%s.tar.gz", id)
+func (g *GCPCloud) BuildImport(id, filename string) error {
+	build, err := g.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+
+	service, bucket := g.storage(), g.BucketName
+	gskey, app := fmt.Sprintf("%s.tar.gz", id), build.App
 
 	log.Infof("Pushing code to gs://%s/%s", bucket, gskey)
 
@@ -102,12 +121,12 @@ func (g *GCPCloud) BuildImport(app, filename string, options *pb.CreateBuildOpti
 
 	reader, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("reading tempfile err: %v", err)
+		return fmt.Errorf("reading tempfile err: %v", err)
 	}
 	defer reader.Close()
 
 	if _, err := service.Objects.Insert(bucket, object).Media(reader).Do(); err != nil {
-		return nil, fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
+		return fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
 	}
 
 	cb := g.cloudbuilder()
@@ -138,30 +157,27 @@ func (g *GCPCloud) BuildImport(app, filename string, options *pb.CreateBuildOpti
 			log.Fatal(ae)
 		}
 
-		return nil, fmt.Errorf("failed to initiate build %v", err)
+		return fmt.Errorf("failed to initiate build %v", err)
 	}
 
 	remoteId, err := getBuildID(op)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Id for build %v", err)
+		return fmt.Errorf("failed to get Id for build %v", err)
 	}
 
-	build := &pb.Build{
-		App:       app,
-		Id:        id,
-		RemoteId:  remoteId,
-		Status:    "CREATED",
-		CreatedAt: timestampNow(),
+	build.RemoteId = remoteId
+	return g.saveBuild(build)
+}
+
+func (g *GCPCloud) saveBuild(b *pb.Build) error {
+	log.Debugf("Saving build %s", toJson(b))
+
+	ctx, key := g.nestedKey(buildKind, b.Id)
+	if _, err := g.datastore().Put(ctx, key, b); err != nil {
+		return fmt.Errorf("saving build err: %v", err)
 	}
 
-	log.Debugf("Saving build %s", toJson(build))
-
-	ctx, key := g.nestedKey(buildKind, build.Id)
-	if _, err := g.datastore().Put(ctx, key, build); err != nil {
-		return nil, fmt.Errorf("saving build err: %v", err)
-	}
-
-	return build, nil
+	return nil
 }
 
 func (g *GCPCloud) BuildLogs(app, id string, index int) (int, []string, error) {

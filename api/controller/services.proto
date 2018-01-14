@@ -41,9 +41,8 @@ message AuthResponse {
 
 message CreateBuildRequest {
   string app = 1;
-  bytes data = 2;
-  int32 size = 3;
-  string version = 4;
+  string version = 2;
+  bytes procfile = 3;
 }
 
 message AppIdRequest {
@@ -178,7 +177,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildImport(stream StreamMsg) returns (models.Build) {
+  rpc BuildImport(stream StreamMsg) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/builds/import"
     };
