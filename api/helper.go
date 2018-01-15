@@ -10,8 +10,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -23,8 +21,8 @@ var (
 )
 
 func internalError(err error, message string) error {
-	log.Errorf(err.Error())
-	return grpc.Errorf(codes.Unknown, err.Error())
+	log.Error(err)
+	return err
 }
 
 func toJson(object interface{}) string {
