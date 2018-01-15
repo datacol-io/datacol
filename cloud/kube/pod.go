@@ -1,11 +1,12 @@
 package kube
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
 
-	"github.com/appscode/go/log"
+	log "github.com/Sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,14 +79,14 @@ func getPodByName(c *kubernetes.Clientset, ns, app string) (*v1.Pod, error) {
 	return &pods[0], nil
 }
 
-func podEvents(c *kubernetes.Clientset, ns string, pod *v1.Pod) (*v1.EventList, error) {
+func podEvents(c *kubernetes.Clientset, pod *v1.Pod) (*v1.EventList, error) {
 	fields := map[string]string{
 		"involvedObject.name":      pod.ObjectMeta.Name,
-		"involvedObject.namespace": ns,
+		"involvedObject.namespace": pod.Namespace,
 		"involvedObject.uid":       string(pod.ObjectMeta.UID),
 	}
 
-	res, err := c.Core().Events(ns).List(metav1.ListOptions{
+	res, err := c.Core().Events(pod.Namespace).List(metav1.ListOptions{
 		FieldSelector:   klabels.Set(fields).AsSelector().String(),
 		ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	})
@@ -130,7 +131,7 @@ func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]st
 			continue
 		}
 
-		res, err := podEvents(c, ns, &pod)
+		res, err := podEvents(c, &pod)
 		if err != nil {
 			return err
 		}
@@ -143,6 +144,78 @@ func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]st
 	}
 
 	return nil
+}
+
+// Return timeout if Pod is fetching the image from registry. I am returning 0 always since there is not suppor for it atm.
+func handlePendingPods(c *kubernetes.Clientset, namespace string, labels map[string]string) (int, error) {
+	timeout := 0
+	resp, err := c.Core().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: klabels.Set(labels).AsSelector().String(),
+	})
+
+	if err != nil {
+		return timeout, err
+	}
+
+	log.Infof("Number of pods %d for %v", len(resp.Items), labels)
+
+	for _, item := range resp.Items {
+		log.Debugf("pod %s phase=%s", item.Name, item.Status.Phase)
+
+		if item.Status.Phase != v1.PodPending && item.Status.Phase != v1.PodRunning {
+			continue
+		}
+		reason, message := podPendingStatus(item)
+
+		if err := podErrors(c, item, reason, message); err != nil {
+			return timeout, err
+		}
+	}
+
+	return timeout, nil
+}
+
+// Handle potential pod errors based on the Pending
+// reason passed into the function
+func podErrors(c *kubernetes.Clientset, pod v1.Pod, reason, message string) error {
+	containerErrors := []string{"CrashLoopBackOff", "ErrImagePull"}
+	for _, e := range containerErrors {
+		if e == reason {
+			return errors.New(message)
+		}
+	}
+
+	events, err := podEvents(c, &pod)
+	if err != nil {
+		return err
+	}
+
+	eventErrors := []string{"Failed", "InspectFailed", "ErrImageNeverPull", "FailedScheduling"}
+	for _, event := range events.Items {
+		for _, e := range eventErrors {
+			if e == event.Reason {
+				return errors.New(event.Message)
+			}
+		}
+	}
+
+	return nil
+}
+
+// Introspect the pod containers when pod is in Pending state
+func podPendingStatus(pod v1.Pod) (reason string, message string) {
+	reason = "Pending"
+	statuses := pod.Status.ContainerStatuses
+
+	if len(statuses) > 0 {
+		//FIXME: we should fetch right container by name etc
+		if waiting := statuses[0].State.Waiting; waiting != nil {
+			reason = waiting.Reason
+			message = waiting.Message
+		}
+	}
+
+	return
 }
 
 type podPhaseResponse struct {
@@ -173,31 +246,18 @@ func waitUntilPodRunning(c *kubernetes.Clientset, ns, name string) error {
 	return nil
 }
 
-func isRunning(pod *v1.Pod) (bool, error) {
-	switch pod.Status.Phase {
-	case v1.PodRunning:
-		return true, nil
-	case v1.PodSucceeded:
-		return false, fmt.Errorf("pod already succeeded before it begins running")
-	case v1.PodFailed:
-		return false, fmt.Errorf("pod status is failed")
-	default:
-		return false, nil
-	}
-}
-
 func getPodPhase(c *kubernetes.Clientset, ns, name string) podPhaseResponse {
 	pod, err := c.Core().Pods(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return podPhaseResponse{true, v1.PodUnknown, err}
 	}
 
-	ready, err := isRunning(pod)
+	running, err := isRunning(pod)
 	if err != nil {
 		return podPhaseResponse{true, pod.Status.Phase, err}
 	}
 
-	if ready {
+	if running {
 		return podPhaseResponse{true, pod.Status.Phase, nil}
 	}
 
@@ -219,4 +279,17 @@ func getPodPhase(c *kubernetes.Clientset, ns, name string) podPhaseResponse {
 
 	fmt.Printf("Waiting for pod %s/%s to be running, status is %s\n", pod.Namespace, pod.Name, pod.Status.Phase)
 	return podPhaseResponse{false, pod.Status.Phase, nil}
+}
+
+func isRunning(pod *v1.Pod) (bool, error) {
+	switch pod.Status.Phase {
+	case v1.PodRunning:
+		return true, nil
+	case v1.PodSucceeded:
+		return false, fmt.Errorf("pod already succeeded before it begins running")
+	case v1.PodFailed:
+		return false, fmt.Errorf("pod status is failed")
+	default:
+		return false, nil
+	}
 }

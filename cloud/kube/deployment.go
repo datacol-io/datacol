@@ -132,7 +132,7 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	}
 }
 
-func waitUntilDeploymentUpdated(c *kubernetes.Clientset, ns, name string) {
+func waitUntilDeploymentUpdated(c *kubernetes.Clientset, ns, name string) error {
 	log.Debugf("waiting for Deployment %s to get a newer generation (30s timeout)", name)
 	for i := 0; i < 30; i++ {
 		dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
@@ -141,7 +141,7 @@ func waitUntilDeploymentUpdated(c *kubernetes.Clientset, ns, name string) {
 				time.Sleep(1 * time.Second)
 				continue
 			}
-			log.Fatal(err)
+			return err
 		}
 
 		if dp.Status.ObservedGeneration >= dp.ObjectMeta.Generation {
@@ -150,12 +150,14 @@ func waitUntilDeploymentUpdated(c *kubernetes.Clientset, ns, name string) {
 		}
 		time.Sleep(1 * time.Second)
 	}
+
+	return nil
 }
 
-func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) {
+func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) error {
 	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	labels := dp.Spec.Template.ObjectMeta.Labels
@@ -178,7 +180,16 @@ func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) {
 			break
 		}
 
+		// check every 10 seconds for pod failures.
+		// Depend on Deployment checks for ready pods
 		if waited > 0 && (waited%10) == 0 {
+			additionalTimeout, err := handlePendingPods(c, ns, labels)
+			if err != nil {
+				log.Errorf("checking pending pods %v", err)
+				return err
+			}
+
+			timeout += additionalTimeout
 			log.Infof("waited %ds and %d pods", waited, availablePods)
 		}
 
@@ -188,11 +199,14 @@ func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) {
 	ready, _ := areReplicaReady(c, ns, name, labels)
 	if !ready {
 		if err := handleNotReadyPods(c, ns, labels); err != nil {
-			log.Error(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
+// Verify the status of a Deployment and if it is fully deployed
 func areReplicaReady(c *kubernetes.Clientset, ns, name string, labels map[string]string) (bool, int32) {
 	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {

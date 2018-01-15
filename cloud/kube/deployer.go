@@ -98,8 +98,13 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 
 	dpname := dp.ObjectMeta.Name
 
-	waitUntilDeploymentUpdated(d.Client, payload.Environment, dpname)
-	waitUntilDeploymentReady(d.Client, payload.Environment, dpname)
+	if err := waitUntilDeploymentUpdated(d.Client, payload.Environment, dpname); err != nil {
+		return res, err
+	}
+
+	if err := waitUntilDeploymentReady(d.Client, payload.Environment, dpname); err != nil {
+		return res, err
+	}
 
 	log.Infof("Deployment completed: %+v", dpname)
 	return res, nil
