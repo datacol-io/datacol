@@ -24,6 +24,7 @@ type Deployer struct {
 }
 
 type DeployRequest struct {
+	Entrypoint    []string
 	Args          []string
 	ContainerPort intstr.IntOrString
 	Environment   string
@@ -36,7 +37,7 @@ type DeployRequest struct {
 		TimeoutSeconds               int32
 	}
 	Image     string
-	Replicas  int32
+	Replicas  *int32
 	ServiceID string
 	Secrets   []struct {
 		Name  string
@@ -211,7 +212,9 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 			//TODO: we are only updating containers schema for existing deployment. Add support for updating any any schema change
 			//Below is one workaround of it.
 
-			d.Spec.Replicas = &payload.Replicas
+			if payload.Replicas != nil {
+				d.Spec.Replicas = payload.Replicas
+			}
 		}
 	} else {
 		d = newDeployment(payload)

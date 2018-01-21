@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	log "github.com/Sirupsen/logrus"
+	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
 const (
@@ -224,10 +224,15 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		port = p
 	}
 
+	command, proctype, err := common.GetContainerCommand(b)
+	if err != nil {
+		return nil, err
+	}
+
 	ret, err := deployer.Run(&sched.DeployRequest{
-		ServiceID:     b.App,
+		ServiceID:     common.GetJobID(b.App, proctype),
+		Args:          command,
 		Image:         image,
-		Replicas:      1,
 		Environment:   g.DeploymentName,
 		Zone:          g.DefaultZone,
 		ContainerPort: intstr.FromInt(port),

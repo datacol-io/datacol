@@ -50,29 +50,19 @@ func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
 	}
 
 	scalePodFunc := func(jobID, image string, command []string, replicas int32) error {
-		return sched.ScalePodReplicas(c, namespace, jobID, image, command, replicas)
+		return sched.ScalePodReplicas(c, namespace, app, jobID, image, command, replicas)
 	}
 
 	for key, replicas := range structure {
 		jobID := fmt.Sprintf("%s-%s", app, key)
 
 		if procfile != nil {
-			switch version := procfile.Version(); version {
-			case StandardType:
-				if rawCmd, ok := procfile.(StdProcfile)[key]; ok {
-					command = strings.Split(rawCmd, " ")
-					err = scalePodFunc(jobID, image, command, replicas)
-				} else {
-					err = fmt.Errorf("Unknown process type: %s", key)
+			if procfile.HasProcessType(key) {
+				if cmd, err := procfile.Command(key); err == nil {
+					err = scalePodFunc(jobID, image, cmd, replicas)
 				}
-			case ExtentedType:
-				extendProcfile := procfile.(ExtProcfile)
-				if p, ok := extendProcfile[key]; ok {
-					command = strings.Split(p.Command, " ")
-					err = scalePodFunc(jobID, image, command, replicas)
-				} else {
-					err = fmt.Errorf("Unknown process type: %s", key)
-				}
+			} else {
+				err = fmt.Errorf("Unknown process type: %s", key)
 			}
 		} else if key == "cmd" {
 			err = scalePodFunc(jobID, image, command, replicas)
@@ -83,6 +73,29 @@ func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
 		if err != nil {
 			return err
 		}
+	}
+
+	return
+}
+
+func GetJobID(ns, process_type string) string {
+	if process_type == "" {
+		process_type = "cmd"
+	}
+
+	return fmt.Sprintf("%s-%s", ns, process_type)
+}
+
+func GetContainerCommand(b *pb.Build) (command []string, proctype string, err error) {
+	proctype = "cmd"
+	if len(b.Procfile) > 0 {
+		proctype = "web"
+		procfile, err := ParseProcfile(b.Procfile)
+		if err != nil {
+			return nil, proctype, err
+		}
+
+		command, err = procfile.Command(proctype)
 	}
 
 	return

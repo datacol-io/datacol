@@ -21,7 +21,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 	return &v1beta1.Deployment{
 		ObjectMeta: newMetadata(payload),
 		Spec: v1beta1.DeploymentSpec{
-			Replicas: &payload.Replicas,
+			Replicas: payload.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": payload.ServiceID}},
 			Strategy: v1beta1.DeploymentStrategy{
 				Type: v1beta1.RollingUpdateDeploymentStrategyType,
@@ -74,6 +74,7 @@ func newContainer(payload *DeployRequest) v1.Container {
 	}
 
 	container := v1.Container{
+		Command:         payload.Entrypoint,
 		Args:            payload.Args,
 		Name:            payload.ServiceID,
 		Image:           payload.Image,
@@ -175,7 +176,7 @@ func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) error {
 			break
 		}
 
-		ready, availablePods := areReplicaReady(c, ns, name, labels)
+		ready, availablePods := areReplicaReady(c, ns, name, dp.ObjectMeta.ResourceVersion, labels)
 		if ready {
 			break
 		}
@@ -196,7 +197,7 @@ func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) error {
 		waited += 1
 	}
 
-	ready, _ := areReplicaReady(c, ns, name, labels)
+	ready, _ := areReplicaReady(c, ns, name, dp.ObjectMeta.ResourceVersion, labels)
 	if !ready {
 		if err := handleNotReadyPods(c, ns, labels); err != nil {
 			return err
@@ -207,10 +208,13 @@ func waitUntilDeploymentReady(c *kubernetes.Clientset, ns, name string) error {
 }
 
 // Verify the status of a Deployment and if it is fully deployed
-func areReplicaReady(c *kubernetes.Clientset, ns, name string, labels map[string]string) (bool, int32) {
-	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
+func areReplicaReady(c *kubernetes.Clientset, ns, name, resourceVersion string, labels map[string]string) (bool, int32) {
+	dp, err := c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{
+		ResourceVersion: resourceVersion,
+	})
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return false, 0
 	}
 
 	desired := dp.Spec.Replicas

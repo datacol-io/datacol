@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ScalePodReplicas(c *kubernetes.Clientset, ns, name, image string, command []string, replicas int32) error {
+func ScalePodReplicas(c *kubernetes.Clientset, ns, tier, name, image string, command []string, replicas int32) error {
 	runner, _ := NewDeployer(c)
 
 	req := &DeployRequest{
@@ -22,7 +22,8 @@ func ScalePodReplicas(c *kubernetes.Clientset, ns, name, image string, command [
 		Environment: ns,
 		Image:       image,
 		Args:        command,
-		Replicas:    replicas,
+		Replicas:    &replicas,
+		Tier:        tier,
 	}
 
 	_, err := runner.Run(req)

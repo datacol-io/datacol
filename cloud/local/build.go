@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -136,42 +135,16 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		port = p
 	}
 
-	var command []string
-	var proctype string
-
-	if len(b.Procfile) > 0 {
-		parsed, err := common.ParseProcfile(b.Procfile)
-		if err != nil {
-			return nil, err
-		}
-
-		var (
-			cmd string
-			key = "web"
-		)
-
-		switch parsed.Version() {
-		case common.StandardType:
-			if _cmd, ok := parsed.(common.StdProcfile)[key]; ok {
-				cmd = _cmd
-			}
-		case common.ExtentedType:
-			if _cmd, ok := parsed.(common.ExtProcfile)[key]; ok {
-				cmd = _cmd.Command
-			}
-		}
-		command = strings.Split(cmd, " ")
-		proctype = "web"
-	} else {
-		proctype = "cmd"
+	command, proctype, err := common.GetContainerCommand(b)
+	if err != nil {
+		return nil, err
 	}
 
 	ret, err := deployer.Run(&sched.DeployRequest{
 		Args:          command,
-		ServiceID:     getJobID(b.App, proctype),
+		ServiceID:     common.GetJobID(b.App, proctype),
 		Tier:          b.App,
 		Image:         image,
-		Replicas:      1,
 		Environment:   g.Name,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
@@ -195,12 +168,4 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	app.ReleaseId = r.Id
 
 	return r, g.saveApp(app)
-}
-
-func getJobID(ns, process_type string) string {
-	if process_type == "" {
-		process_type = "cmd"
-	}
-
-	return fmt.Sprintf("%s-%s", ns, process_type)
 }
