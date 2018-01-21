@@ -126,10 +126,14 @@ func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, er
 
 	fmt.Println("OK")
 
-	procMap, err := parseProcfile("")
-	stdcli.ExitOnError(err)
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
 
-	b, err := api.CreateBuild(app, tar, procMap)
+	b, err := api.CreateBuild(app, tar, procfile)
 	if err != nil {
 		return nil, err
 	}

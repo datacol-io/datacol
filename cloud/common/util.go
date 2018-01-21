@@ -35,28 +35,68 @@ func GenerateId(prefix string, size int) string {
 }
 
 func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
-	procfile map[string]string, structure map[string]int32) error {
+	procFileData []byte, structure map[string]int32) (err error) {
 
 	var command []string
 
 	log.Debugf("scaling request: %v", structure)
 
-	for key, replicas := range structure {
-		jobID := fmt.Sprintf("%s-%s", app, key)
-
-		if rawCmd, ok := procfile[key]; ok {
-			command = strings.Split(rawCmd, " ")
-			if err := sched.ScalePodReplicas(c, namespace, jobID, image, command, replicas); err != nil {
-				return err
-			}
-		} else if key == "cmd" {
-			if err := sched.ScalePodReplicas(c, namespace, jobID, image, command, replicas); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("Unknown process type: %s", key)
+	var procfile Procfile
+	if len(procFileData) > 0 {
+		procfile, err = ParseProcfile(procFileData)
+		if err != nil {
+			return err
 		}
 	}
 
-	return nil
+	scalePodFunc := func(jobID, image string, command []string, replicas int32) error {
+		return sched.ScalePodReplicas(c, namespace, app, jobID, image, command, replicas)
+	}
+
+	for key, replicas := range structure {
+		jobID := fmt.Sprintf("%s-%s", app, key)
+
+		if procfile != nil {
+			if procfile.HasProcessType(key) {
+				if cmd, err := procfile.Command(key); err == nil {
+					err = scalePodFunc(jobID, image, cmd, replicas)
+				}
+			} else {
+				err = fmt.Errorf("Unknown process type: %s", key)
+			}
+		} else if key == "cmd" {
+			err = scalePodFunc(jobID, image, command, replicas)
+		} else {
+			err = fmt.Errorf("Unknown process type: %s", key)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return
+}
+
+func GetJobID(ns, process_type string) string {
+	if process_type == "" {
+		process_type = "cmd"
+	}
+
+	return fmt.Sprintf("%s-%s", ns, process_type)
+}
+
+func GetContainerCommand(b *pb.Build) (command []string, proctype string, err error) {
+	proctype = "cmd"
+	if len(b.Procfile) > 0 {
+		proctype = "web"
+		procfile, err := ParseProcfile(b.Procfile)
+		if err != nil {
+			return nil, proctype, err
+		}
+
+		command, err = procfile.Command(proctype)
+	}
+
+	return
 }

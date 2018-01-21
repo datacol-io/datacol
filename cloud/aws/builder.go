@@ -97,18 +97,23 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	return builds, nil
 }
 
-func (a *AwsCloud) BuildImport(app, gzipPath string, options *pb.CreateBuildOptions) (*pb.Build, error) {
+func (a *AwsCloud) BuildImport(id, gzipPath string) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	app := build.App
 	log.Debugf("converting gzip to zip of %s", gzipPath)
 	zipPath, err := convertGzipToZip(app, gzipPath)
 	if err != nil {
-		return nil, fmt.Errorf("converting gzip to zip archive. err: %v", err)
+		return fmt.Errorf("converting gzip to zip archive. err: %v", err)
 	}
 
 	defer os.RemoveAll(zipPath)
 
 	reader, err := os.Open(zipPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading tempfile err: %v", err)
+		return fmt.Errorf("reading tempfile err: %v", err)
 	}
 	defer reader.Close()
 	log.Debugf("Uploading to s3 from %s", zipPath)
@@ -122,23 +127,12 @@ func (a *AwsCloud) BuildImport(app, gzipPath string, options *pb.CreateBuildOpti
 	}, func(u *s3manager.Uploader) {
 		u.PartSize = 64 * 1024 * 1024 // 64MB per part
 	}); err != nil {
-		return nil, fmt.Errorf("uploading source to s3 err: %v", err)
+		return fmt.Errorf("uploading source to s3 err: %v", err)
 	}
 
 	log.Debug("OK \n")
 
-	build := &pb.Build{
-		App:       app,
-		Id:        generateId("B", 5),
-		Status:    pb.StatusCreated,
-		CreatedAt: timestampNow(),
-	}
-
-	if err := a.buildSave(build); err != nil {
-		return nil, fmt.Errorf("saving to dynamodb err: %v", err)
-	}
-
-	return build, a.startBuild(build, &pb.CreateBuildOptions{})
+	return a.startBuild(build, &pb.CreateBuildOptions{})
 }
 
 func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {

@@ -204,7 +204,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/modelsBuild"
+              "$ref": "#/definitions/protobufEmpty"
             }
           }
         },
@@ -1012,10 +1012,8 @@
           "format": "int32"
         },
         "procfile": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "type": "string",
+          "format": "byte"
         }
       }
     },

@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -44,22 +43,35 @@ func (g *LocalCloud) ReleaseDelete(app, id string) error {
 }
 
 func (g *LocalCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
-	return nil, fmt.Errorf("not implemented.")
+	build := &pb.Build{
+		App:      app,
+		Id:       rand.Characters(5),
+		Status:   "CREATED",
+		Procfile: req.Procfile,
+	}
+
+	g.Builds = append(g.Builds, build)
+	return build, nil
 }
 
-func (g *LocalCloud) BuildImport(app, filename string, options *pb.CreateBuildOptions) (*pb.Build, error) {
+func (g *LocalCloud) BuildImport(id, filename string) error {
+	build, err := g.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+
 	r, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	dkr, id := dockerClient(), rand.Characters(5)
+	dkr, app, id := dockerClient(), build.App, build.Id
 
 	if err := dkr.BuildImage(docker.BuildImageOptions{
 		Name:         app,
 		InputStream:  r,
 		OutputStream: os.Stdout,
 	}); err != nil {
-		return nil, fmt.Errorf("failed to build image: %v", err)
+		return fmt.Errorf("failed to build image: %v", err)
 	}
 
 	repo := fmt.Sprintf("%s/%s", g.RegistryAddress, app)
@@ -68,7 +80,7 @@ func (g *LocalCloud) BuildImport(app, filename string, options *pb.CreateBuildOp
 	log.Debugf("Tagging image %s to %s", app, repo, tag)
 
 	if err := dkr.TagImage(app, docker.TagImageOptions{Repo: repo, Tag: tag}); err != nil {
-		return nil, fmt.Errorf("failed to tag image with %v: %v", tag, err)
+		return fmt.Errorf("failed to tag image with %v: %v", tag, err)
 	}
 
 	log.Debugf("Pushing image %s:%s to %s", repo, tag, g.RegistryAddress)
@@ -81,18 +93,10 @@ func (g *LocalCloud) BuildImport(app, filename string, options *pb.CreateBuildOp
 	}, docker.AuthConfiguration{
 		ServerAddress: g.RegistryAddress,
 	}); err != nil {
-		return nil, fmt.Errorf("failed to push image: %v", err)
+		return fmt.Errorf("failed to push image: %v", err)
 	}
 
-	build := &pb.Build{
-		App:      app,
-		Id:       id,
-		Status:   "CREATED",
-		Procfile: options.Procfile,
-	}
-
-	g.Builds = append(g.Builds, build)
-	return build, nil
+	return nil
 }
 
 func (g *LocalCloud) BuildLogs(app, id string, index int) (int, []string, error) {
@@ -131,21 +135,16 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		port = p
 	}
 
-	var command []string
-	var proctype string
-	if cmd, ok := b.Procfile["web"]; ok {
-		command = strings.Split(cmd, " ")
-		proctype = "web"
-	} else {
-		proctype = "cmd"
+	command, proctype, err := common.GetContainerCommand(b)
+	if err != nil {
+		return nil, err
 	}
 
 	ret, err := deployer.Run(&sched.DeployRequest{
 		Args:          command,
-		ServiceID:     getJobID(b.App, proctype),
+		ServiceID:     common.GetJobID(b.App, proctype),
 		Tier:          b.App,
 		Image:         image,
-		Replicas:      1,
 		Environment:   g.Name,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
@@ -169,12 +168,4 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	app.ReleaseId = r.Id
 
 	return r, g.saveApp(app)
-}
-
-func getJobID(ns, process_type string) string {
-	if process_type == "" {
-		process_type = "cmd"
-	}
-
-	return fmt.Sprintf("%s-%s", ns, process_type)
 }

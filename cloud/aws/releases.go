@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -80,10 +81,15 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	domains := sched.MergeAppDomains(app.Domains, options.Domain)
 
+	command, proctype, err := common.GetContainerCommand(b)
+	if err != nil {
+		return nil, err
+	}
+
 	ret, err := deployer.Run(&sched.DeployRequest{
-		ServiceID:     b.App,
+		ServiceID:     common.GetJobID(b.App, proctype),
+		Args:          command,
 		Image:         image,
-		Replicas:      1,
 		Environment:   a.DeploymentName,
 		Zone:          a.Region,
 		ContainerPort: intstr.FromInt(port),
