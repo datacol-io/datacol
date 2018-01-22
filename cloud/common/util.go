@@ -49,23 +49,21 @@ func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
 		}
 	}
 
-	scalePodFunc := func(jobID, image string, command []string, replicas int32) error {
-		return sched.ScalePodReplicas(c, namespace, app, jobID, image, command, replicas)
+	scalePodFunc := func(proctype, image string, command []string, replicas int32) error {
+		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas)
 	}
 
 	for key, replicas := range structure {
-		jobID := fmt.Sprintf("%s-%s", app, key)
-
 		if procfile != nil {
 			if procfile.HasProcessType(key) {
 				if cmd, err := procfile.Command(key); err == nil {
-					err = scalePodFunc(jobID, image, cmd, replicas)
+					err = scalePodFunc(key, image, cmd, replicas)
 				}
 			} else {
 				err = fmt.Errorf("Unknown process type: %s", key)
 			}
 		} else if key == "cmd" {
-			err = scalePodFunc(jobID, image, command, replicas)
+			err = scalePodFunc(key, image, command, replicas)
 		} else {
 			err = fmt.Errorf("Unknown process type: %s", key)
 		}

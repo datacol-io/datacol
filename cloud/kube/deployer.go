@@ -17,6 +17,10 @@ import (
 const (
 	k8sAPIVersion     string = "v1"
 	k8sBetaAPIVersion string = "extensions/v1beta1"
+	managedBy         string = "managed-by"
+	podHeritage       string = "datacol"
+	appLabel          string = "app"
+	typeLabel         string = "type"
 )
 
 type Deployer struct {
@@ -27,7 +31,7 @@ type DeployRequest struct {
 	Entrypoint    []string
 	Args          []string
 	ContainerPort intstr.IntOrString
-	Environment   string
+	Namespace     string
 	EnvVars       map[string]string
 	Heartbeat     struct {
 		Path                         string
@@ -43,10 +47,12 @@ type DeployRequest struct {
 		Name  string
 		Value string
 	}
-	Domains []string
-	Tags    map[string]string
-	Zone    string
-	Tier    string // to specify pods belonging to an App
+	Domains  []string
+	Tags     map[string]string
+	Zone     string
+	App      string // to specify pods belonging to an App
+	Version  string // to specify the version of pod to deploy
+	Proctype string // to specify the type of process web, worker, or other
 }
 
 type DeployResponse struct {
@@ -61,14 +67,22 @@ func NewDeployer(c *kubernetes.Clientset) (*Deployer, error) {
 func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 	res := &DeployResponse{Request: *payload}
 
-	if payload.Environment == "" {
-		return nil, fmt.Errorf("environment not set for DeployRequest.")
+	if payload.Namespace == "" {
+		return nil, fmt.Errorf("Namespace not set for DeployRequest.")
+	}
+
+	if payload.App == "" {
+		return nil, fmt.Errorf("App not set for DeployRequest.")
+	}
+
+	if payload.Proctype == "" {
+		return nil, fmt.Errorf("Proctype not set for DeployRequest.")
 	}
 
 	// create namespace if needed
 	if _, err := d.Client.Core().Namespaces().Create(newNamespace(payload)); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
-			return nil, fmt.Errorf("creating namespace %v err: %v", payload.Environment, err)
+			return nil, fmt.Errorf("creating namespace %v err: %v", payload.Namespace, err)
 		}
 	}
 
@@ -80,7 +94,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 
 	if payload.ContainerPort.IntVal > 0 {
 		// create service only of we have a contanerPort which can be exposed
-		svc, err := d.CreateOrUpdateService(newService(payload), payload.Environment)
+		svc, err := d.CreateOrUpdateService(newService(payload), payload.Namespace)
 		if err != nil {
 			return res, fmt.Errorf("failed to create service %v", err)
 		}
@@ -90,7 +104,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		}
 
 		if len(payload.Domains) > 0 {
-			_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Environment)
+			_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Namespace)
 			if err != nil {
 				return res, err
 			}
@@ -99,11 +113,11 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 
 	dpname := dp.ObjectMeta.Name
 
-	if err := waitUntilDeploymentUpdated(d.Client, payload.Environment, dpname); err != nil {
+	if err := waitUntilDeploymentUpdated(d.Client, payload.Namespace, dpname); err != nil {
 		return res, err
 	}
 
-	if err := waitUntilDeploymentReady(d.Client, payload.Environment, dpname); err != nil {
+	if err := waitUntilDeploymentReady(d.Client, payload.Namespace, dpname); err != nil {
 		return res, err
 	}
 
@@ -117,7 +131,7 @@ func (d *Deployer) Remove(r *DeployRequest) error {
 
 func newNamespace(payload *DeployRequest) *v1.Namespace {
 	return &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: payload.Environment},
+		ObjectMeta: metav1.ObjectMeta{Name: payload.Namespace},
 		TypeMeta:   metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Namespace"},
 	}
 }
@@ -160,30 +174,18 @@ func newService(payload *DeployRequest) *v1.Service {
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: payload.Tags,
-			Labels:      map[string]string{"name": payload.ServiceID},
+			Labels:      map[string]string{appLabel: payload.App},
 			Name:        payload.ServiceID,
-			Namespace:   payload.Environment,
+			Namespace:   payload.Namespace,
 		},
 		Spec: v1.ServiceSpec{
 			Type: serviceType,
 			Ports: []v1.ServicePort{{
 				Port: payload.ContainerPort.IntVal,
 			}},
-			Selector: map[string]string{"name": payload.ServiceID},
+			Selector: map[string]string{appLabel: payload.App},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Service"},
-	}
-}
-
-func newMetadata(payload *DeployRequest) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Annotations: payload.Tags,
-		Labels: map[string]string{
-			"name":          payload.ServiceID,
-			ServiceLabelKey: payload.Tier,
-		},
-		Name:      payload.ServiceID,
-		Namespace: payload.Environment,
 	}
 }
 
@@ -198,7 +200,7 @@ func findContainer(dp *v1beta1.Deployment, name string) (int, *v1.Container) {
 
 // CreateOrUpdateDeployment creates or updates a service
 func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.Deployment, error) {
-	env := payload.Environment
+	env := payload.Namespace
 	var d *v1beta1.Deployment
 
 	found := false

@@ -132,13 +132,15 @@ func ProcessExec(
 	envVars map[string]string,
 	stream io.ReadWriter,
 ) error {
-	podName := fmt.Sprintf("%s-%s", name, rand.Characters(6))
+	proctype = rand.Characters(6)
+	podName := fmt.Sprintf("%s-%s", name, proctype)
 	req := &DeployRequest{
 		ServiceID: podName,
 		Image:     image,
 		Args:      []string{command},
 		EnvVars:   envVars,
-		Tier:      name,
+		App:       name,
+		Proctype:  proctype,
 	}
 
 	// Delete the pod sunce it's ephemeral
@@ -155,10 +157,10 @@ func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns string, req *Depl
 	command := req.Args
 	req.Args = []string{}
 
-	spec := newPod(req)
+	spec := newPodSpec(req)
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 
-	pod, err := c.Core().Pods(ns).Create(newPod(req))
+	pod, err := c.Core().Pods(ns).Create(spec)
 	if err != nil {
 		return err
 	}
