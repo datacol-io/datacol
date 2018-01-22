@@ -18,11 +18,22 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 	maxunavailable := intstr.FromString("25%")
 	maxsurge := intstr.FromString("25%")
 
+	labels := map[string]string{
+		"app":     payload.App,
+		"type":    payload.Proctype,
+		managedBy: podHeritage,
+	}
+
 	return &v1beta1.Deployment{
-		ObjectMeta: newMetadata(payload),
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   payload.ServiceID,
+			Labels: labels,
+		},
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: payload.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": payload.ServiceID}},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Strategy: v1beta1.DeploymentStrategy{
 				Type: v1beta1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &v1beta1.RollingUpdateDeployment{
@@ -31,7 +42,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 				},
 			},
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: newMetadata(payload),
+				ObjectMeta: newPodMetadata(payload),
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						newContainer(payload),
@@ -44,6 +55,29 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 	}
 }
 
+func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Annotations: req.Tags,
+		Labels: map[string]string{
+			"app":     req.App,
+			"version": req.Version,
+			"type":    req.Proctype,
+			managedBy: podHeritage,
+		},
+		Name:      req.ServiceID,
+		Namespace: req.Namespace,
+	}
+}
+
+func newPodSpec(req *DeployRequest) *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: newPodMetadata(req),
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{newContainer(req)},
+		},
+	}
+}
+
 func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
 	return &v1.Probe{
 		Handler: v1.Handler{HTTPGet: &v1.HTTPGetAction{
@@ -52,18 +86,6 @@ func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
 		}},
 		InitialDelaySeconds: delay,
 		TimeoutSeconds:      payload.Heartbeat.TimeoutSeconds,
-	}
-}
-
-func newPod(req *DeployRequest) *v1.Pod {
-	container := newContainer(req)
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: req.ServiceID,
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{container},
-		},
 	}
 }
 
@@ -125,7 +147,9 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	}
 
 	return &v1beta1.Ingress{
-		ObjectMeta: newMetadata(&payload.Request),
+		ObjectMeta: metav1.ObjectMeta{
+			Name: payload.Request.ServiceID,
+		},
 		Spec: v1beta1.IngressSpec{
 			Rules: rules,
 		},

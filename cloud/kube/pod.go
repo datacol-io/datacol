@@ -14,16 +14,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ScalePodReplicas(c *kubernetes.Clientset, ns, tier, name, image string, command []string, replicas int32) error {
+func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string, replicas int32) error {
 	runner, _ := NewDeployer(c)
 
 	req := &DeployRequest{
-		ServiceID:   name,
-		Environment: ns,
-		Image:       image,
-		Args:        command,
-		Replicas:    &replicas,
-		Tier:        tier,
+		ServiceID: fmt.Sprintf("%s-%s", app, proctype),
+		Namespace: ns,
+		Image:     image,
+		Args:      command,
+		Replicas:  &replicas,
+		App:       app,
+		Proctype:  proctype,
 	}
 
 	_, err := runner.Run(req)
@@ -32,7 +33,7 @@ func ScalePodReplicas(c *kubernetes.Clientset, ns, tier, name, image string, com
 }
 
 func GetAllPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
-	tags := map[string]string{ServiceLabelKey: app}
+	tags := map[string]string{appLabel: app, managedBy: podHeritage}
 	selector := klabels.Set(tags).AsSelector()
 	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
@@ -57,7 +58,7 @@ func GetAllPodNames(c *kubernetes.Clientset, ns, app string) ([]string, error) {
 }
 
 func getAllDeployments(c *kubernetes.Clientset, ns, app string) ([]v1beta1.Deployment, error) {
-	tags := map[string]string{ServiceLabelKey: app}
+	tags := map[string]string{appLabel: app, managedBy: podHeritage}
 	selector := klabels.Set(tags).AsSelector()
 	res, err := c.Extensions().Deployments(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {

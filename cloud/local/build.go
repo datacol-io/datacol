@@ -143,9 +143,10 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	ret, err := deployer.Run(&sched.DeployRequest{
 		Args:          command,
 		ServiceID:     common.GetJobID(b.App, proctype),
-		Tier:          b.App,
+		App:           b.App,
+		Proctype:      proctype,
 		Image:         image,
-		Environment:   g.Name,
+		Namespace:     g.Name,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
 	})

@@ -88,9 +88,11 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     common.GetJobID(b.App, proctype),
+		App:           b.App,
+		Proctype:      proctype,
 		Args:          command,
 		Image:         image,
-		Environment:   a.DeploymentName,
+		Namespace:     a.DeploymentName,
 		Zone:          a.Region,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,

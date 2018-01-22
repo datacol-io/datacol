@@ -231,9 +231,11 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     common.GetJobID(b.App, proctype),
+		App:           b.App,
+		Proctype:      proctype,
 		Args:          command,
 		Image:         image,
-		Environment:   g.DeploymentName,
+		Namespace:     g.DeploymentName,
 		Zone:          g.DefaultZone,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
