@@ -21,7 +21,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 	labels := map[string]string{
 		"app":     payload.App,
 		"type":    payload.Proctype,
-		managedBy: podHeritage,
+		managedBy: heritage,
 	}
 
 	return &v1beta1.Deployment{
@@ -62,7 +62,7 @@ func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
 			"app":     req.App,
 			"version": req.Version,
 			"type":    req.Proctype,
-			managedBy: podHeritage,
+			managedBy: heritage,
 		},
 		Name:      req.ServiceID,
 		Namespace: req.Namespace,
@@ -148,7 +148,8 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 
 	return &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: payload.Request.ServiceID,
+			Name:   payload.Request.ServiceID,
+			Labels: map[string]string{appLabel: r.App, managedBy: heritage},
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: rules,

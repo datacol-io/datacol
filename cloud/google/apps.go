@@ -33,7 +33,7 @@ func (g *GCPCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, er
 }
 
 func (g *GCPCloud) AppRestart(app string) error {
-	log.Debugf("Restarting %s", app)
+	log.Debugf("Restarting pods inside %s", app)
 	ns := g.DeploymentName
 
 	env, err := g.EnvironmentGet(app)
@@ -53,28 +53,32 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 		return nil, err
 	}
 
-	b, err := g.BuildGet(name, app.BuildId)
-	if err != nil {
-		return nil, err
+	if app.BuildId != "" {
+		b, err := g.BuildGet(name, app.BuildId)
+		if err != nil {
+			return nil, err
+		}
+
+		// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
+		var proctype string
+		if len(b.Procfile) > 0 {
+			proctype = "web"
+		} else {
+			proctype = "cmd"
+		}
+
+		serviceName := common.GetJobID(name, proctype)
+		endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), g.DeploymentName, serviceName)
+		if err != nil {
+			return app, nil
+		}
+		app.Endpoint = endpoint
+
+		_, err = g.datastore().Put(ctx, key, app)
+		return app, err
 	}
 
-	// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
-	var proctype string
-	if len(b.Procfile) > 0 {
-		proctype = "web"
-	} else {
-		proctype = "cmd"
-	}
-
-	serviceName := common.GetJobID(name, proctype)
-	endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), g.DeploymentName, serviceName)
-	if err != nil {
-		return app, nil
-	}
-	app.Endpoint = endpoint
-
-	_, err = g.datastore().Put(ctx, key, app)
-	return app, err
+	return app, nil
 }
 
 func (g *GCPCloud) AppDelete(name string) error {
@@ -111,5 +115,5 @@ func (g *GCPCloud) deleteAppFromDatastore(name string) error {
 }
 
 func (g *GCPCloud) deleteAppFromCluster(name string) error {
-	return sched.DeleteService(g.kubeClient(), g.DeploymentName, name)
+	return sched.DeleteApp(g.kubeClient(), g.DeploymentName, name)
 }

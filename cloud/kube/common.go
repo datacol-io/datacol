@@ -18,59 +18,60 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	ServiceLabelKey = "datacol.io/service"
-)
-
-func DeleteService(c *kubernetes.Clientset, ns, name string) error {
-	if _, err := c.Core().Services(ns).Get(name, meta_v1.GetOptions{}); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err := c.Core().Services(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
-		return err
+func DeleteApp(c *kubernetes.Clientset, ns, app string) error {
+	listSelector := meta_v1.ListOptions{
+		LabelSelector: klabels.Set(map[string]string{appLabel: app, managedBy: heritage}).AsSelector().String(),
 	}
 
-	labels := klabels.Set(map[string]string{"name": name}).AsSelector()
-
-	dp, err := c.Extensions().Deployments(ns).Get(name, meta_v1.GetOptions{})
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	zerors := int32(0)
-	dp.Spec.Replicas = &zerors
-
-	if dp, err = c.Extensions().Deployments(ns).Update(dp); err != nil {
-		return err
-	}
-
-	waitUntilDeploymentUpdated(c, ns, name)
-
-	if err = c.Extensions().Deployments(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
-		return err
-	}
-
-	// delete replicasets by label name=app
-	res, err := c.Extensions().ReplicaSets(ns).List(meta_v1.ListOptions{LabelSelector: labels.String()})
+	ret, err := c.Core().Services(ns).List(listSelector)
 	if err != nil {
 		return err
 	}
 
-	for _, rs := range res.Items {
-		if err := c.Extensions().ReplicaSets(ns).Delete(rs.Name, &meta_v1.DeleteOptions{}); err != nil {
+	for _, svc := range ret.Items {
+		if err := c.Core().Services(ns).Delete(svc.Name, &meta_v1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	dps, err := c.Extensions().Deployments(ns).List(listSelector)
+
+	for _, dp := range dps.Items {
+		zerors := int32(0)
+		dp.Spec.Replicas = &zerors
+
+		if _, err = c.Extensions().Deployments(ns).Update(&dp); err != nil {
+			return err
+		}
+
+		waitUntilDeploymentUpdated(c, ns, dp.Name)
+
+		if err = c.Extensions().Deployments(ns).Delete(dp.Name, &meta_v1.DeleteOptions{}); err != nil {
+			return err
+		}
+
+		// delete replicasets by label app=<appname>
+		res, err := c.Extensions().ReplicaSets(ns).List(listSelector)
+		if err != nil {
+			return err
+		}
+
+		for _, rs := range res.Items {
+			if err := c.Extensions().ReplicaSets(ns).Delete(rs.Name, &meta_v1.DeleteOptions{}); err != nil {
+				log.Warn(err)
+			}
+		}
+	}
+
+	resp, err := c.Extensions().Ingresses(ns).List(listSelector)
+	if err != nil {
+		return err
+	}
+
+	for _, ing := range resp.Items {
+		if err := c.Extensions().Ingresses(ns).Delete(ing.Name, &meta_v1.DeleteOptions{}); err != nil {
 			log.Warn(err)
 		}
-	}
-
-	if _, err = c.Extensions().Ingresses(ns).Get(name, meta_v1.GetOptions{}); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err = c.Extensions().Ingresses(ns).Delete(name, &meta_v1.DeleteOptions{}); err != nil {
-		return err
 	}
 
 	return nil

@@ -33,7 +33,7 @@ func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 	var b pb.Build
 	ctx, key := g.nestedKey(buildKind, id)
 	if err := g.datastore().Get(ctx, key, &b); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetching build: %v", err)
 	}
 
 	// Sometime GCP don't assign Status for a newly trigged build. We should also check for empty build status.

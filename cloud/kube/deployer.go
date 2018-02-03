@@ -18,7 +18,7 @@ const (
 	k8sAPIVersion     string = "v1"
 	k8sBetaAPIVersion string = "extensions/v1beta1"
 	managedBy         string = "managed-by"
-	podHeritage       string = "datacol"
+	heritage          string = "datacol"
 	appLabel          string = "app"
 	typeLabel         string = "type"
 )
@@ -174,7 +174,7 @@ func newService(payload *DeployRequest) *v1.Service {
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: payload.Tags,
-			Labels:      map[string]string{appLabel: payload.App},
+			Labels:      map[string]string{appLabel: payload.App, managedBy: heritage},
 			Name:        payload.ServiceID,
 			Namespace:   payload.Namespace,
 		},

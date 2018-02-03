@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -87,13 +88,33 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 	}
 
 	app := a.appFromItem(res.Item)
-	kc := a.kubeClient()
 
-	if app.Endpoint, err = sched.GetServiceEndpoint(kc, a.DeploymentName, name); err != nil {
-		return app, err
+	if app.BuildId != "" {
+		b, err := a.BuildGet(name, app.BuildId)
+		if err != nil {
+			return nil, err
+		}
+
+		// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
+		var proctype string
+		if len(b.Procfile) > 0 {
+			proctype = "web"
+		} else {
+			proctype = "cmd"
+		}
+
+		kc := a.kubeClient()
+		serviceName := common.GetJobID(name, proctype)
+
+		if app.Endpoint, err = sched.GetServiceEndpoint(kc, a.DeploymentName, serviceName); err != nil {
+			return app, err
+		}
+
+		return app, a.saveApp(app)
+
 	}
 
-	return app, a.saveApp(app)
+	return app, nil
 }
 
 func (a *AwsCloud) AppDelete(name string) error {
@@ -141,7 +162,7 @@ func (p *AwsCloud) deleteAppResources(name string) error {
 
 func (p *AwsCloud) deleteFromCluster(name string) error {
 	log.Debugf("Removing app from kube cluster ...")
-	return sched.DeleteService(p.kubeClient(), p.DeploymentName, name)
+	return sched.DeleteApp(p.kubeClient(), p.DeploymentName, name)
 }
 
 func (p *AwsCloud) deleteFromDynamo(name string) error {

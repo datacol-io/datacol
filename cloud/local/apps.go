@@ -66,16 +66,7 @@ func (g *LocalCloud) saveApp(a *pb.App) error {
 }
 
 func (g *LocalCloud) AppDelete(name string) error {
-	ns := g.Name
-
-	podNames, err := sched.GetAllPodNames(g.kubeClient(), ns, name)
-	if err != nil {
-		return err
-	}
-
-	for _, pod := range podNames {
-		sched.DeleteService(g.kubeClient(), ns, pod)
-	}
+	sched.DeleteApp(g.kubeClient(), g.Name, name)
 
 	for i, a := range g.Apps {
 		if a.Name == name {

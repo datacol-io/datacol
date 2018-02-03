@@ -33,8 +33,8 @@ func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, 
 }
 
 func GetAllPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
-	tags := map[string]string{appLabel: app, managedBy: podHeritage}
-	selector := klabels.Set(tags).AsSelector()
+	labels := map[string]string{appLabel: app, managedBy: heritage}
+	selector := klabels.Set(labels).AsSelector()
 	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func GetAllPodNames(c *kubernetes.Clientset, ns, app string) ([]string, error) {
 }
 
 func getAllDeployments(c *kubernetes.Clientset, ns, app string) ([]v1beta1.Deployment, error) {
-	tags := map[string]string{appLabel: app, managedBy: podHeritage}
+	tags := map[string]string{appLabel: app, managedBy: heritage}
 	selector := klabels.Set(tags).AsSelector()
 	res, err := c.Extensions().Deployments(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
