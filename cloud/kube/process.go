@@ -132,7 +132,7 @@ func ProcessExec(
 	envVars map[string]string,
 	stream io.ReadWriter,
 ) error {
-	proctype = rand.Characters(6)
+	proctype := rand.Characters(6)
 	podName := fmt.Sprintf("%s-%s", name, proctype)
 	req := &DeployRequest{
 		ServiceID: podName,

@@ -7,6 +7,7 @@ import (
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
 
@@ -52,8 +53,21 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 		return nil, err
 	}
 
-	ns := g.DeploymentName
-	endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), ns, name)
+	b, err := g.BuildGet(name, app.BuildId)
+	if err != nil {
+		return nil, err
+	}
+
+	// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
+	var proctype string
+	if len(b.Procfile) > 0 {
+		proctype = "web"
+	} else {
+		proctype = "cmd"
+	}
+
+	serviceName := common.GetJobID(name, proctype)
+	endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), g.DeploymentName, serviceName)
 	if err != nil {
 		return app, nil
 	}
@@ -77,12 +91,12 @@ func (g *GCPCloud) saveApp(app *pb.App) error {
 func (g *GCPCloud) deleteAppFromDatastore(name string) error {
 	store, ctx := g.datastore(), context.Background()
 
-	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("App =", name).KeysOnly()
+	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("app =", name).KeysOnly()
 	if err := deleteFromQuery(store, ctx, q); err != nil {
 		return err
 	}
 
-	q = datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("App =", name).KeysOnly()
+	q = datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("app =", name).KeysOnly()
 
 	if err := deleteFromQuery(store, ctx, q); err != nil {
 		return err

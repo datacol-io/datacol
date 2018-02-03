@@ -139,6 +139,7 @@ func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 	build := &pb.Build{
 		App:       app,
 		Id:        generateId("B", 5),
+		Procfile:  req.Procfile,
 		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
 	}
@@ -189,6 +190,7 @@ func (a *AwsCloud) buildFromItem(item map[string]*dynamodb.AttributeValue) *pb.B
 		App:       coalesce(item["app"], ""),
 		Status:    coalesce(item["status"], ""),
 		RemoteId:  coalesce(item["remote_id"], ""),
+		Procfile:  coalesceBytes(item["procfile"]),
 		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
 	}
 }
@@ -208,6 +210,10 @@ func (a *AwsCloud) buildSave(b *pb.Build) error {
 
 	if b.RemoteId != "" {
 		req.Item["remote_id"] = &dynamodb.AttributeValue{S: aws.String(b.RemoteId)}
+	}
+
+	if len(b.Procfile) > 0 {
+		req.Item["procfile"] = &dynamodb.AttributeValue{B: b.Procfile}
 	}
 
 	if b.CreatedAt > 0 {

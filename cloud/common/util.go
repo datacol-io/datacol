@@ -76,12 +76,12 @@ func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
 	return
 }
 
-func GetJobID(ns, process_type string) string {
+func GetJobID(name, process_type string) string {
 	if process_type == "" {
 		process_type = "cmd"
 	}
 
-	return fmt.Sprintf("%s-%s", ns, process_type)
+	return fmt.Sprintf("%s-%s", name, process_type)
 }
 
 func GetContainerCommand(b *pb.Build) (command []string, proctype string, err error) {

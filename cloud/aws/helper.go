@@ -61,6 +61,14 @@ func coalesceInt(s *dynamodb.AttributeValue, def int) int {
 	}
 }
 
+func coalesceBytes(s *dynamodb.AttributeValue) (data []byte) {
+	if s != nil {
+		return s.B
+	} else {
+		return data
+	}
+}
+
 func camelize(dasherized string) string {
 	tokens := strings.Split(dasherized, "-")
 

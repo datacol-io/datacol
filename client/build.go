@@ -13,7 +13,6 @@ import (
 const chunkSize = 1024 * 1024 * 1
 
 func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Build, error) {
-
 	b, err := c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
 		App:      app.Name,
 		Procfile: procfile,

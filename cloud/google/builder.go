@@ -3,6 +3,7 @@ package google
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,7 +36,8 @@ func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 		return nil, err
 	}
 
-	if b.Status == "WORKING" || b.Status == "CREATED" {
+	// Sometime GCP don't assign Status for a newly trigged build. We should also check for empty build status.
+	if b.Status == "WORKING" || b.Status == "CREATED" || b.Status == "" {
 		cb := g.cloudbuilder()
 		rb, err := cb.Projects.Builds.Get(g.Project, b.RemoteId).Do()
 		if err != nil {
@@ -44,10 +46,7 @@ func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 
 		if b.Status != rb.Status {
 			b.Status = rb.Status
-
-			if _, err := g.datastore().Put(ctx, key, &b); err != nil {
-				return nil, fmt.Errorf("updating build status err: %v", err)
-			}
+			return &b, g.saveBuild(&b)
 		}
 	}
 
@@ -60,7 +59,7 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 }
 
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("App = ", app).Limit(limit)
+	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("app = ", app).Limit(limit)
 
 	var builds pb.Builds
 	_, err := g.datastore().GetAll(context.Background(), q, &builds)
@@ -69,7 +68,7 @@ func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 }
 
 func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	q := datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("App = ", app).Limit(limit)
+	q := datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("app = ", app).Limit(limit)
 
 	var rs pb.Releases
 	_, err := g.datastore().GetAll(context.Background(), q, &rs)
@@ -89,17 +88,11 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		App:       app,
 		Id:        id,
 		Status:    "CREATED",
+		Procfile:  req.Procfile,
 		CreatedAt: timestampNow(),
 	}
 
-	log.Debugf("Saving build %s", toJson(build))
-
-	ctx, key := g.nestedKey(buildKind, build.Id)
-	if _, err := g.datastore().Put(ctx, key, build); err != nil {
-		return nil, fmt.Errorf("saving build err: %v", err)
-	}
-
-	return build, nil
+	return build, g.saveBuild(build)
 }
 
 func (g *GCPCloud) BuildImport(id, filename string) error {
@@ -291,6 +284,10 @@ func getBuildID(op *cloudbuild.Operation) (string, error) {
 }
 
 func buildLogs(service *storage.Service, bucket, bid string, index int) (int, []string, error) {
+	if bid == "" {
+		return 0, []string{}, errors.New("GCR build Id (build.RemoteID) is not provided")
+	}
+
 	key := fmt.Sprintf("log-%s.txt", bid)
 	log.Debugf("fetching logs from gs://%s/%s", bucket, bid)
 	lines := []string{}

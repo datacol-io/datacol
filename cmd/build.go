@@ -291,8 +291,13 @@ func finishBuildAws(api *client.Client, b *pb.Build) error {
 	return nil
 }
 
-func finishBuildGCP(api *client.Client, b *pb.Build) error {
+func finishBuildGCP(api *client.Client, b *pb.Build) (err error) {
 	index := int32(0)
+
+	b, err = api.GetBuild(b.App, b.Id)
+	if err != nil {
+		return err
+	}
 
 OUTER:
 	for {
@@ -325,7 +330,9 @@ OUTER:
 			break OUTER
 		case "WORKING":
 		default:
-			return fmt.Errorf("Build status: %s", b.Status)
+			if b.Status != "" {
+				return fmt.Errorf("Build status: %s", b.Status)
+			}
 		}
 	}
 
