@@ -15,7 +15,7 @@ func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	stream := &runStreamRW{srv}
 
 	if err := s.Provider.ProcessRun(app, stream, command); err != nil {
-		log.Errorf("failed run process: %v", err)
+		log.Errorf("failed to run the process: %v", err)
 		return err
 	}
 

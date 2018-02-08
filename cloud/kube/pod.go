@@ -14,17 +14,20 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string, replicas int32) error {
+//ScalePodReplicas can scale up/down pods as per replicas count
+func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string, replicas int32, sqlproxy bool, envVars map[string]string) error {
 	runner, _ := NewDeployer(c)
 
 	req := &DeployRequest{
-		ServiceID: fmt.Sprintf("%s-%s", app, proctype),
-		Namespace: ns,
-		Image:     image,
-		Args:      command,
-		Replicas:  &replicas,
-		App:       app,
-		Proctype:  proctype,
+		ServiceID:           fmt.Sprintf("%s-%s", app, proctype),
+		Namespace:           ns,
+		Image:               image,
+		Args:                command,
+		Replicas:            &replicas,
+		App:                 app,
+		Proctype:            proctype,
+		EnableCloudSqlProxy: sqlproxy,
+		EnvVars:             envVars,
 	}
 
 	_, err := runner.Run(req)
@@ -103,6 +106,7 @@ func podEvents(c *kubernetes.Clientset, pod *v1.Pod) (*v1.EventList, error) {
 	return res, err
 }
 
+//Read https://github.com/kubernetes/kubernetes/issues/1899
 func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]string) error {
 	selector := klabels.Set(labels).AsSelector()
 	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
@@ -128,7 +132,7 @@ func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]st
 			}
 		}
 
-		log.Debugf("status: %s", toJson(cstatus))
+		log.Debugf("pod %s status: %s", pod.Name, toJson(cstatus))
 		if cstatus.Ready {
 			continue
 		}
@@ -167,9 +171,9 @@ func handlePendingPods(c *kubernetes.Clientset, namespace string, labels map[str
 		if item.Status.Phase != v1.PodPending && item.Status.Phase != v1.PodRunning {
 			continue
 		}
-		reason, message := podPendingStatus(item)
+		reason, message := podPendingStatus(c, &item)
 
-		if err := podErrors(c, item, reason, message); err != nil {
+		if err := podErrors(c, &item, reason, message); err != nil {
 			return timeout, err
 		}
 	}
@@ -179,7 +183,7 @@ func handlePendingPods(c *kubernetes.Clientset, namespace string, labels map[str
 
 // Handle potential pod errors based on the Pending
 // reason passed into the function
-func podErrors(c *kubernetes.Clientset, pod v1.Pod, reason, message string) error {
+func podErrors(c *kubernetes.Clientset, pod *v1.Pod, reason, message string) error {
 	containerErrors := []string{"CrashLoopBackOff", "ErrImagePull"}
 	for _, e := range containerErrors {
 		if e == reason {
@@ -187,7 +191,7 @@ func podErrors(c *kubernetes.Clientset, pod v1.Pod, reason, message string) erro
 		}
 	}
 
-	events, err := podEvents(c, &pod)
+	events, err := podEvents(c, pod)
 	if err != nil {
 		return err
 	}
@@ -205,15 +209,27 @@ func podErrors(c *kubernetes.Clientset, pod v1.Pod, reason, message string) erro
 }
 
 // Introspect the pod containers when pod is in Pending state
-func podPendingStatus(pod v1.Pod) (reason string, message string) {
+func podPendingStatus(c *kubernetes.Clientset, pod *v1.Pod) (reason string, message string) {
 	reason = "Pending"
 	statuses := pod.Status.ContainerStatuses
 
-	if len(statuses) > 0 {
-		//FIXME: we should fetch right container by name etc
-		if waiting := statuses[0].State.Waiting; waiting != nil {
-			reason = waiting.Reason
-			message = waiting.Message
+	name := containerNameInPod(pod)
+
+	for _, cs := range statuses {
+		if cs.Name == name {
+			if waiting := cs.State.Waiting; waiting != nil {
+				reason = waiting.Reason
+				message = waiting.Message
+
+				if reason == "ContainerCreating" {
+					if events, err := podEvents(c, pod); err == nil {
+						ev := events.Items
+						reason = ev[len(ev)-1].Reason
+						message = ev[len(ev)-1].Message
+						return
+					}
+				}
+			}
 		}
 	}
 
@@ -228,17 +244,58 @@ type podPhaseResponse struct {
 
 func waitUntilPodRunning(c *kubernetes.Clientset, ns, name string) error {
 	// give pod 20 minutes to execute (after it got into ready state)
-	pollAttempts := 10
+	pollAttempts := 20
 	pollInterval := 1
 
 	var status v1.PodPhase
 	for i := 0; i <= pollAttempts; i++ {
 		res := getPodPhase(c, ns, name)
+
 		if !res.done {
 			time.Sleep(time.Duration(pollInterval) * time.Second)
 			continue
 		}
+		if res.err != nil {
+			return res.err
+		}
+
 		status = res.phase
+
+		if status == v1.PodRunning {
+			break
+		}
+	}
+
+	if status != v1.PodRunning {
+		return fmt.Errorf("pod %s failed to enter running state (%s)", name, status)
+	}
+
+	return nil
+}
+
+func waitUntilPodCreated(c *kubernetes.Clientset, ns, name string) error {
+	// give pod 20 minutes to execute (after it got into ready state)
+	pollAttempts := 20
+	pollInterval := 1
+
+	var status v1.PodPhase
+	for i := 0; i <= pollAttempts; i++ {
+		res := getPodPhase(c, ns, name)
+		log.Debugf("checking pod %s status: %+v", name, res)
+
+		if !res.done {
+			time.Sleep(time.Duration(pollInterval) * time.Second)
+			continue
+		}
+		if res.err != nil {
+			return res.err
+		}
+
+		status = res.phase
+
+		if status == v1.PodRunning {
+			break
+		}
 	}
 
 	if status != v1.PodRunning {
@@ -265,15 +322,12 @@ func getPodPhase(c *kubernetes.Clientset, ns, name string) podPhaseResponse {
 
 	// check status of containers
 	for _, container := range pod.Status.ContainerStatuses {
-		if container.Ready {
-			continue
-		}
-		if container.State.Waiting == nil {
+		if container.Ready || container.State.Waiting == nil {
 			continue
 		}
 
 		switch container.State.Waiting.Reason {
-		case "ErrImagePull", "ImagePullBackOff":
+		case "ErrImagePull", "ImagePullBackOff", "InvalidImageName":
 			err = fmt.Errorf("image pull failed: %s", container.State.Waiting.Message)
 			return podPhaseResponse{true, v1.PodUnknown, err}
 		}
@@ -294,4 +348,94 @@ func isRunning(pod *v1.Pod) (bool, error) {
 	default:
 		return false, nil
 	}
+}
+
+func containerNameInPod(pod *v1.Pod) string {
+	return fmt.Sprintf("%s-%s", pod.ObjectMeta.Labels[appLabel], pod.ObjectMeta.Labels[typeLabel])
+}
+
+type podStatus int
+
+const (
+	podInitializing podStatus = iota + 1
+	podCreating
+	podStarting
+	podUp
+	podTerminating
+	podDown
+	podCrashed
+	podError
+	podDestroyed
+)
+
+func getPodStatus(c *kubernetes.Clientset, pod *v1.Pod) podStatus {
+	statesMap := map[string]podStatus{
+		"Pending":           podInitializing,
+		"ContainerCreating": podCreating,
+		"Starting":          podStarting,
+		"Running":           podUp,
+		"Terminating":       podTerminating,
+		"Succeeded":         podDown,
+		"Failed":            podCrashed,
+		"Unknown":           podError,
+	}
+
+	if pod == nil {
+		return podDestroyed
+	}
+
+	var status string
+	if pod.Status.Phase == v1.PodPending {
+		status, _ = podPendingStatus(c, pod)
+	} else if pod.Status.Phase == v1.PodRunning {
+		status = podReadinessStatus(pod)
+		if status == "Starting" || status == "Terminating" {
+			return statesMap[status]
+		} else if status == "Running" && podLivenessStatus(pod) {
+			return statesMap[status]
+		}
+	} else {
+		status = string(pod.Status.Phase)
+	}
+
+	if v, ok := statesMap[status]; ok {
+		return v
+	} else {
+		return podError
+	}
+}
+
+func podReadinessStatus(pod *v1.Pod) string {
+	status := "Unknown"
+	name := containerNameInPod(pod)
+
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.Name == name {
+			if cs.Ready {
+				if pod.ObjectMeta.DeletionTimestamp != nil {
+					return "Terminating"
+				}
+				return "Running"
+			}
+
+			if cs.State.Running != nil {
+				return "Starting"
+			}
+
+			if cs.State.Terminated != nil && pod.ObjectMeta.DeletionTimestamp != nil {
+				return "Terminating"
+			}
+		}
+	}
+
+	return status
+}
+func podLivenessStatus(pod *v1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == v1.PodReady && cond.Status != v1.ConditionTrue {
+			return false
+		}
+	}
+
+	return true
 }

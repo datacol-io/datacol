@@ -16,6 +16,7 @@ message App {
   string endpoint   = 4 [(gogoproto.moretags) = "datastore:\"endpoint,noindex\""];
   string build_id   = 5 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
   repeated string domains  = 6 [(gogoproto.moretags) = "datastore:\"domains,noindex\""];
+  repeated string resources = 7 [(gogoproto.moretags) = "datastore:\"resources,noindex\""];
 }
 
 message Build {
@@ -59,8 +60,9 @@ message EnvConfig {
 }
 
 message Process {
-  string name = 2;
-  int32 workers = 3;
+  string name = 1;
+  int32 workers = 2;
+  string status = 3;
 }
 
 message Formation {

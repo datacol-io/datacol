@@ -989,6 +989,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1037,6 +1043,9 @@
         "workers": {
           "type": "integer",
           "format": "int32"
+        },
+        "status": {
+          "type": "string"
         }
       }
     },

@@ -21,7 +21,7 @@ func (p *AwsCloud) ProcessRun(name string, r io.ReadWriter, command string) erro
 	envVars, _ := p.EnvironmentGet(name)
 	app, _ := p.AppGet(name)
 
-	return kube.ProcessExec(p.kubeClient(), cfg, ns, name, p.latestImage(app), command, envVars, r)
+	return kube.ProcessExec(p.kubeClient(), cfg, ns, name, p.latestImage(app), command, envVars, false, r)
 }
 
 func (p *AwsCloud) ProcessSave(name string, structure map[string]int32) error {
@@ -35,8 +35,10 @@ func (p *AwsCloud) ProcessSave(name string, structure map[string]int32) error {
 		return err
 	}
 
+	envVars, _ := p.EnvironmentGet(name)
+
 	return common.ScaleApp(p.kubeClient(), p.DeploymentName, name,
-		p.latestImage(app), build.Procfile, structure)
+		p.latestImage(app), envVars, false, build.Procfile, structure)
 }
 
 func (p *AwsCloud) latestImage(app *pb.App) string {

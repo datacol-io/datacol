@@ -201,7 +201,17 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
 
-	appendApp(app, rs)
+	dbApp, err := g.AppGet(app)
+	if err != nil {
+		return nil, err
+	}
+
+	appendApp(dbApp, rs)
+
+	if err := g.saveApp(dbApp); err != nil {
+		log.Warnf("saving app %v", err)
+	}
+
 	return rs, nil
 }
 
@@ -228,11 +238,15 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 		return nil, fmt.Errorf("link is not necessary for %s", rs.Name)
 	}
 
-	removeApp(app, rs)
-
-	ctx, key := g.nestedKey(buildKind, rs.Name)
-	if _, err := g.datastore().Put(ctx, key, rs); err != nil {
+	dbApp, err := g.AppGet(app)
+	if err != nil {
 		return nil, err
+	}
+
+	removeApp(dbApp, rs)
+
+	if err := g.saveApp(dbApp); err != nil {
+		log.Warnf("saving app %v", err)
 	}
 
 	return rs, nil
@@ -278,26 +292,45 @@ func (g *GCPCloud) resourceFromDeployment(dp *dm.Deployment, manifest *dm.Manife
 	return rs, nil
 }
 
-func removeApp(app string, rs *pb.Resource) {
+func removeApp(app *pb.App, rs *pb.Resource) {
 	for i, a := range rs.Apps {
-		if app == a {
+		if app.Name == a {
 			rs.Apps = append(rs.Apps[:i], rs.Apps[i+1:]...)
+			break
+		}
+	}
+
+	for i, r := range app.Resources {
+		if rs.Name == r {
+			app.Resources = append(app.Resources[:i], app.Resources[i+1:]...)
 			break
 		}
 	}
 }
 
-func appendApp(app string, rs *pb.Resource) {
+func appendApp(app *pb.App, rs *pb.Resource) {
 	found := false
 	for _, a := range rs.Apps {
-		if app == a {
+		if app.Name == a {
 			found = true
 		}
 	}
 
 	if !found {
-		rs.Apps = append(rs.Apps, app)
+		rs.Apps = append(rs.Apps, app.Name)
 	}
+
+	found = false
+	for _, r := range app.Resources {
+		if rs.Name == r {
+			found = true
+		}
+	}
+
+	if !found {
+		app.Resources = append(app.Resources, rs.Name)
+	}
+
 }
 
 func deploymentLabels(dp *dm.Deployment) map[string]string {
