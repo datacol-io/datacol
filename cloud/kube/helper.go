@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"k8s.io/api/extensions/v1beta1"
 )
 
 func toJson(object interface{}) string {
@@ -44,4 +45,26 @@ func MergeAppDomains(domains []string, item string) []string {
 	}
 
 	return domains
+}
+
+func mergeIngressRules(dest *v1beta1.Ingress, source *v1beta1.Ingress) *v1beta1.Ingress {
+	for _, r := range source.Spec.Rules {
+		foundAt := -1
+		for i, rr := range dest.Spec.Rules {
+			if rr.Host == r.Host {
+				foundAt = i
+				break
+			}
+		}
+
+		if foundAt >= 0 {
+			dest.Spec.Rules[foundAt] = r
+		} else {
+			dest.Spec.Rules = append(dest.Spec.Rules, r)
+		}
+	}
+
+	log.Debugf("ingress rules %s", toJson(dest.Spec))
+
+	return dest
 }

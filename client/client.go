@@ -17,6 +17,7 @@ import (
 const (
 	apiHttpPort = 8080
 	apiRpcPort  = 10000
+	apiTimeout  = 10
 )
 
 func init() {
@@ -79,7 +80,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 	conn, err := grpc.Dial(address,
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
-		grpc.WithTimeout(time.Second*5),
+		grpc.WithTimeout(time.Second*apiTimeout),
 		grpc.WithPerRPCCredentials(&loginCreds{ApiKey: password}),
 	)
 	if err != nil {

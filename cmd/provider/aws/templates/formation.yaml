@@ -40,7 +40,7 @@ Metadata:
       Zone0:
         default: Availability Zone
       Zone1:
-        default: Availability Zone
+        default: Second Availability Zone
       AdminIngressLocation:
         default: Admin Ingress Location
       InstanceType:
