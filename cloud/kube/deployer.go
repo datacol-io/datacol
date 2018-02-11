@@ -174,7 +174,7 @@ func newService(payload *DeployRequest) *v1.Service {
 		serviceType = v1.ServiceTypeNodePort
 	}
 
-	return &v1.Service{
+	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: payload.Tags,
 			Labels:      map[string]string{appLabel: payload.App, managedBy: heritage},
@@ -184,12 +184,18 @@ func newService(payload *DeployRequest) *v1.Service {
 		Spec: v1.ServiceSpec{
 			Type: serviceType,
 			Ports: []v1.ServicePort{{
-				Port: payload.ContainerPort.IntVal,
+				TargetPort: payload.ContainerPort,
 			}},
 			Selector: map[string]string{appLabel: payload.App},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Service"},
 	}
+
+	if len(payload.Domains) == 0 {
+		svc.Spec.Ports[0].Port = 80
+	}
+
+	return svc
 }
 
 func findContainer(dp *v1beta1.Deployment, name string) (int, *v1.Container) {
@@ -249,21 +255,23 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 
 // CreateOrUpdateIngress creates or updates an ingress rule
 func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (*v1beta1.Ingress, error) {
-	newIngress, err := r.Client.Extensions().Ingresses(env).Create(ingress)
+	existing, err := r.Client.Extensions().Ingresses(env).Get(ingress.Name, metav1.GetOptions{})
 	if err != nil {
-		if !kerrors.IsAlreadyExists(err) {
-			return nil, err
+		if kerrors.IsNotFound(err) {
+			log.Debugf("Ingress created: %+v", ingress.Name)
+			return r.Client.Extensions().Ingresses(env).Create(ingress)
 		}
-
-		ingress, err = r.Client.Extensions().Ingresses(env).Update(ingress)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Debugf("Ingress updated: %+v", ingress.ObjectMeta.Name)
-		return ingress, nil
+		return nil, err
 	}
-	log.Debugf("Ingress created: %+v", ingress.ObjectMeta.Name)
+
+	ingress = mergeIngressRules(existing, ingress)
+
+	newIngress, err := r.Client.Extensions().Ingresses(env).Update(ingress)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Ingress updated: %s", newIngress.Name)
 	return newIngress, nil
 }
 

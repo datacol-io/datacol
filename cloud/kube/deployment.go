@@ -139,18 +139,26 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 		rules[i] = v1beta1.IngressRule{
 			Host: domain,
 			IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
-				Paths: []v1beta1.HTTPIngressPath{{Path: "/", Backend: v1beta1.IngressBackend{
-					ServiceName: r.ServiceID,
-					ServicePort: r.ContainerPort,
-				}}},
+				Paths: []v1beta1.HTTPIngressPath{{
+					Path: "/",
+					Backend: v1beta1.IngressBackend{
+						ServiceName: r.ServiceID,
+						ServicePort: r.ContainerPort,
+					},
+				}},
 			}},
 		}
 	}
 
+	//Note: making name dependent on namespace i.e. stackName will only provision one load-balancer per stack
+	// change this if you want to allocate individual load balanacer for each app and use Name = payload.Request.ServiceID
+	// Also if you change this remember to chage in AppGet to fetch IP of load balancer code
+	name := fmt.Sprintf("%s-ing", payload.Request.Namespace)
+
 	return &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   payload.Request.ServiceID,
-			Labels: map[string]string{appLabel: r.App, managedBy: heritage},
+			Name:   name,
+			Labels: map[string]string{managedBy: heritage},
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: rules,

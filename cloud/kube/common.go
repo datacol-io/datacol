@@ -64,14 +64,27 @@ func DeleteApp(c *kubernetes.Clientset, ns, app string) error {
 		}
 	}
 
-	resp, err := c.Extensions().Ingresses(ns).List(listSelector)
+	commonListSelector := meta_v1.ListOptions{
+		LabelSelector: klabels.Set(map[string]string{managedBy: heritage}).String(),
+	}
+	resp, err := c.Core().Services(ns).List(commonListSelector)
 	if err != nil {
 		return err
 	}
 
-	for _, ing := range resp.Items {
-		if err := c.Extensions().Ingresses(ns).Delete(ing.Name, &meta_v1.DeleteOptions{}); err != nil {
-			log.Warn(err)
+	if len(resp.Items) == 0 {
+		// Delete the ingress common to this namespace
+		resp, err := c.Extensions().Ingresses(ns).List(commonListSelector)
+		if err != nil {
+			return err
+		}
+
+		for _, ing := range resp.Items {
+			log.Debugf("deleting the ingress %s", ing.Name)
+
+			if err := c.Extensions().Ingresses(ns).Delete(ing.Name, &meta_v1.DeleteOptions{}); err != nil {
+				log.Warn(err)
+			}
 		}
 	}
 
@@ -146,7 +159,8 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 	}
 
 	if svc.Spec.Type == core_v1.ServiceTypeNodePort {
-		ing, err := c.Extensions().Ingresses(ns).Get(name, meta_v1.GetOptions{})
+		ingName := fmt.Sprintf("%s-ing", ns)
+		ing, err := c.Extensions().Ingresses(ns).Get(ingName, meta_v1.GetOptions{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				return endpoint, nil

@@ -84,7 +84,7 @@ func (c *Client) RunProcess(name string, args []string) error {
 
 	go func(r io.Reader) {
 		defer wg.Done()
-		buf := make([]byte, 1024*1024)
+		buf := make([]byte, 1024)
 
 		for {
 			n, serr := r.Read(buf)

@@ -90,9 +90,8 @@ type Server struct {
 }
 
 func (s *Server) Run() error {
-	//TODO: should we expose K8sConfigPath for a provider ?
 	if _, err := s.Provider.K8sConfigPath(); err != nil {
-		log.Warn(fmt.Errorf("caching kubernetes config err: %v", err))
+		log.Warnf("attempting to cache kubeconfig: %v. ", err)
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", rpcPort))
@@ -179,7 +178,7 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
 	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
 		Procfile: req.Procfile,
-		Version: req.Version,
+		Version:  req.Version,
 	})
 }
 

@@ -31,7 +31,7 @@ func init() {
 func runRpcServer() error {
 	go func() {
 		if err := newServer().Run(); err != nil {
-			log.Fatal(fmt.Errorf("serveGRPC err: %v", err))
+			log.Fatalf("serveGRPC err: %v", err)
 		}
 	}()
 
