@@ -53,6 +53,9 @@ type DeployRequest struct {
 	App      string // to specify pods belonging to an App
 	Version  string // to specify the version of pod to deploy
 	Proctype string // to specify the type of process web, worker, or other
+
+	// For GCP, we need to provision cloudsql-proxy as a sidecar container.
+	EnableCloudSqlProxy bool
 }
 
 type DeployResponse struct {

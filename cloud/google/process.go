@@ -18,8 +18,9 @@ func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string)
 
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
+	sqlproxy := g.appLinkedDB(app)
 
-	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, stream)
+	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, sqlproxy, stream)
 }
 
 func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
@@ -37,7 +38,9 @@ func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
 		return err
 	}
 
-	return common.ScaleApp(g.kubeClient(), g.DeploymentName, name, g.latestImage(app), build.Procfile, structure)
+	envVars, _ := g.EnvironmentGet(name)
+
+	return common.ScaleApp(g.kubeClient(), g.DeploymentName, name, g.latestImage(app), envVars, g.appLinkedDB(app), build.Procfile, structure)
 }
 
 func (g *GCPCloud) latestImage(app *pb.App) string {

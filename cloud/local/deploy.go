@@ -28,7 +28,7 @@ func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command strin
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
 
-	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, stream)
+	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, false, stream)
 }
 
 func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {
@@ -46,7 +46,9 @@ func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error 
 		return err
 	}
 
-	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), build.Procfile, structure)
+	envVars, _ := g.EnvironmentGet(name)
+
+	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), envVars, false, build.Procfile, structure)
 }
 
 func (g *LocalCloud) latestImage(app *pb.App) string {

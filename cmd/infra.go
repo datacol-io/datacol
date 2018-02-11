@@ -27,7 +27,7 @@ var resourceTypes = []ResourceType{
 	},
 	{
 		name:    "postgres",
-		gcpArgs: "--cpu=1,--memory=4096,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
+		gcpArgs: "--tier=db-g1-small,--db-version=POSTGRES_9_6,--activation-policy=ALWAYS",
 		awsArgs: "--allocated-storage=10,--database=app,--instance-type=db.t2.micro,--max-connections={DBInstanceClassMemory/15000000},--multi-az=false,--password=,--private,--username=app,--version=9.6.1",
 	},
 	{

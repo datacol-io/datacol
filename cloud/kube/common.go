@@ -11,6 +11,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/bjaglin/multiplexio"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	core_v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,20 +165,27 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 }
 
 func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.LogStreamOptions) error {
-	podNames, err := GetAllPodNames(c, ns, app)
+	pods, err := GetAllPods(c, ns, app)
 
 	//TODO: consider using https://github.com/djherbis/stream for reading multiple streams
 	var sources []multiplexio.Source
 
-	log.Debugf("streaming logs from %v", podNames)
+	for _, pod := range pods {
+		name := pod.Name
+		log.Debugf("streaming logs from %v", name)
 
-	for _, name := range podNames {
 		req := c.Core().RESTClient().Get().
 			Namespace(ns).
 			Name(name).
 			Resource("pods").
 			SubResource("log").
 			Param("follow", strconv.FormatBool(opts.Follow))
+
+		if len(pod.Spec.Containers) > 0 {
+			cntName := pod.Spec.Containers[0].Name
+			log.Debugf("defaulting to container: %s since we have multiple", cntName)
+			req = req.Param("container", cntName)
+		}
 
 		if opts.Since > 0 {
 			sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
@@ -197,4 +205,119 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 
 	_, err = io.Copy(w, multiplexio.NewReader(multiplexio.Options{}, sources...))
 	return err
+}
+
+func PruneCloudSQLManifest(spec *core_v1.PodSpec) {
+	containers := spec.Containers
+
+	for i, ctnr := range spec.Containers {
+		if ctnr.Name == cloud.CloudsqlContainerName {
+			spec.Containers = append(containers[:i], containers[i+1:]...)
+			break
+		}
+	}
+
+	vls := []core_v1.Volume{}
+	for _, v := range spec.Volumes {
+		if v.Name != cloud.CloudsqlCredVolName && v.Name != "cloudsql" {
+			vls = append(vls, v)
+		}
+	}
+
+	spec.Volumes = vls
+}
+
+func MergeCloudSQLManifest(spec *core_v1.PodSpec, app string, env map[string]string) {
+	secretName := fmt.Sprintf("%s-%s", app, cloud.CloudsqlSecretName)
+
+	containers := spec.Containers
+	var port int
+
+	if dburl, ok := env["DATABASE_URL"]; ok {
+		parts := strings.Split(dburl, "://")
+		port = getDefaultPort(parts[0])
+	} else {
+		log.Warnf("Skipping Cloudsql sidekar manifest since DATABASE_URL is not present in %v", env)
+		return
+	}
+
+	sqlContainer := core_v1.Container{
+		Command: []string{"/cloud_sql_proxy", "--dir=/cloudsql",
+			fmt.Sprintf("-instances=%s=tcp:%d", env["INSTANCE_NAME"], port),
+			"-credential_file=/secrets/cloudsql/credentials.json"},
+		Name:            cloud.CloudsqlContainerName,
+		Image:           cloud.CloudsqlImage,
+		ImagePullPolicy: "IfNotPresent",
+		VolumeMounts: []core_v1.VolumeMount{
+			{
+				Name:      cloud.CloudsqlCredVolName,
+				MountPath: "/secrets/cloudsql",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "cloudsql",
+				MountPath: "/cloudsql",
+			},
+		},
+	}
+
+	found := false
+	for i, c := range containers {
+		if c.Name == cloud.CloudsqlContainerName {
+			containers[i] = sqlContainer
+			found = true
+		}
+	}
+
+	if !found {
+		containers = append(containers, sqlContainer)
+	}
+
+	spec.Containers = containers
+
+	if !found {
+		volfound := false
+		dpvolumes := spec.Volumes
+
+		for _, v := range dpvolumes {
+			if v.Name == cloud.CloudsqlCredVolName {
+				volfound = true
+			}
+		}
+
+		if !volfound {
+			volumes := []core_v1.Volume{
+				{
+					Name: cloud.CloudsqlCredVolName,
+					VolumeSource: core_v1.VolumeSource{
+						Secret: &core_v1.SecretVolumeSource{
+							SecretName: secretName,
+						},
+					},
+				},
+				{
+					Name: "cloudsql",
+					VolumeSource: core_v1.VolumeSource{
+						EmptyDir: &core_v1.EmptyDirVolumeSource{},
+					},
+				},
+			}
+
+			spec.Volumes = append(dpvolumes, volumes...)
+		}
+	}
+}
+
+func getDefaultPort(kind string) int {
+	var port int
+	switch kind {
+	case "mysql":
+		port = 3306
+	case "postgres":
+		port = 5432
+	default:
+		log.Fatal(fmt.Errorf("No default port defined for kind=%s", kind))
+	}
+
+	return port
 }

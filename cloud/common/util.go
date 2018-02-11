@@ -34,8 +34,12 @@ func GenerateId(prefix string, size int) string {
 	return prefix + "-" + rand.Characters(size)
 }
 
-func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
-	procFileData []byte, structure map[string]int32) (err error) {
+func ScaleApp(c *kubernetes.Clientset,
+	namespace, app, image string,
+	envVars map[string]string,
+	enableSQLproxy bool,
+	procFileData []byte, structure map[string]int32,
+) (err error) {
 
 	var command []string
 
@@ -50,7 +54,7 @@ func ScaleApp(c *kubernetes.Clientset, namespace, app, image string,
 	}
 
 	scalePodFunc := func(proctype, image string, command []string, replicas int32) error {
-		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas)
+		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas, enableSQLproxy, envVars)
 	}
 
 	for key, replicas := range structure {

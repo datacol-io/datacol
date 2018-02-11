@@ -19,8 +19,8 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 	maxsurge := intstr.FromString("25%")
 
 	labels := map[string]string{
-		"app":     payload.App,
-		"type":    payload.Proctype,
+		appLabel:  payload.App,
+		typeLabel: payload.Proctype,
 		managedBy: heritage,
 	}
 
@@ -43,12 +43,7 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: newPodMetadata(payload),
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						newContainer(payload),
-					},
-					RestartPolicy: "Always",
-				},
+				Spec:       newPodSpec(payload).Spec,
 			},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Deployment"},
@@ -70,12 +65,18 @@ func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
 }
 
 func newPodSpec(req *DeployRequest) *v1.Pod {
-	return &v1.Pod{
+	pod := &v1.Pod{
 		ObjectMeta: newPodMetadata(req),
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{newContainer(req)},
 		},
 	}
+
+	if req.EnableCloudSqlProxy {
+		MergeCloudSQLManifest(&pod.Spec, req.App, req.EnvVars)
+	}
+
+	return pod
 }
 
 func newProbe(payload *DeployRequest, delay int32) *v1.Probe {

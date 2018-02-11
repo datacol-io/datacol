@@ -24,6 +24,10 @@ func init() {
 				Flags: []cli.Flag{
 					appFlag,
 					cli.StringFlag{
+						Name:  "app",
+						Usage: "Appliction name (alphanumeric)",
+					},
+					cli.StringFlag{
 						Name:  "repo-url",
 						Usage: "Repository url (github or codecommit)",
 					},

@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/dinesh/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
@@ -13,6 +16,7 @@ func init() {
 	})
 }
 
+// follow https://github.com/openshift/origin/search?utf8=%E2%9C%93&q=exec+arrow&type=Issues
 func cmdAppRun(c *cli.Context) error {
 	_, name, err := getDirApp(".")
 	stdcli.ExitOnError(err)
@@ -23,8 +27,18 @@ func cmdAppRun(c *cli.Context) error {
 	_, err = client.GetApp(name)
 	stdcli.ExitOnError(err)
 
-	args := c.Args()
+	args := prepareCommand(c)
 	stdcli.ExitOnError(client.RunProcess(name, args))
 
 	return nil
+}
+
+func prepareCommand(c *cli.Context) []string {
+	args := c.Args()
+	term := os.Getenv("TERM")
+	if term == "" {
+		term = "xterm"
+	}
+
+	return append([]string{"env", fmt.Sprintf("TERM=%s", term)}, args...)
 }

@@ -2,6 +2,7 @@ package google
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -90,6 +91,21 @@ func (g *GCPCloud) saveApp(app *pb.App) error {
 	ctx, key := g.nestedKey(appKind, app.Name)
 	_, err := g.datastore().Put(ctx, key, app)
 	return err
+}
+
+func (g *GCPCloud) appLinkedDB(app *pb.App) bool {
+	return g.appLinkedWith(app, "mysql") || g.appLinkedWith(app, "postgres")
+}
+
+func (g *GCPCloud) appLinkedWith(app *pb.App, kind string) bool {
+	for _, r := range app.Resources {
+		parts := strings.Split(r, "-")
+		if parts[0] == kind {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (g *GCPCloud) deleteAppFromDatastore(name string) error {

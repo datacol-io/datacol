@@ -3,7 +3,6 @@ package kube
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -90,8 +90,8 @@ func (p *ExecOptions) Run() error {
 		SubResource("exec").
 		Param("container", containerName).
 		Param("command", "/bin/sh").
-		Param("tty", "true").
-		Param("command", "-c")
+		Param("command", "-c").
+		Param("tty", "true")
 
 	req.VersionedParams(&corev1.PodExecOptions{
 		Container: containerName,
@@ -99,6 +99,7 @@ func (p *ExecOptions) Run() error {
 		Stdin:     stdin != nil,
 		Stdout:    p.Out != nil,
 		Stderr:    p.Err != nil,
+		TTY:       true,
 	}, scheme.ParameterCodec)
 
 	if p.Executor == nil {
@@ -130,35 +131,37 @@ func ProcessExec(
 	cfg *rest.Config,
 	ns, name, image, command string,
 	envVars map[string]string,
+	sqlproxy bool,
 	stream io.ReadWriter,
 ) error {
 	proctype := rand.Characters(6)
 	podName := fmt.Sprintf("%s-%s", name, proctype)
 	req := &DeployRequest{
-		ServiceID: podName,
-		Image:     image,
-		Args:      []string{command},
-		EnvVars:   envVars,
-		App:       name,
-		Proctype:  proctype,
+		ServiceID:           podName,
+		Image:               image,
+		Entrypoint:          []string{"/bin/bash", "-c"},
+		Args:                []string{"trap : TERM INT; sleep infinity & wait"}, //FIXME: To let the pod stay around until being told to exit
+		EnvVars:             envVars,
+		App:                 name,
+		Proctype:            proctype,
+		EnableCloudSqlProxy: sqlproxy,
 	}
 
 	// Delete the pod sunce it's ephemeral
 	defer deletePodByName(c, ns, podName)
 
-	return processExec(c, cfg, ns, req, stream)
+	return processExec(c, cfg, ns, command, req, stream)
 }
 
 func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 	return c.Core().Pods(ns).Delete(name, &metav1.DeleteOptions{})
 }
 
-func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns string, req *DeployRequest, stream io.ReadWriter) error {
-	command := req.Args
-	req.Args = []string{}
-
+func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns, command string, req *DeployRequest, stream io.ReadWriter) error {
 	spec := newPodSpec(req)
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
+
+	log.Debugf("creating pod with spec %s", toJson(spec))
 
 	pod, err := c.Core().Pods(ns).Create(spec)
 	if err != nil {
@@ -174,9 +177,9 @@ func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns string, req *Depl
 	executer := &ExecOptions{
 		Namespace: ns,
 		PodName:   req.ServiceID,
-		Command:   command,
+		Command:   []string{command},
 		Stdin:     true,
-		In:        ioutil.NopCloser(stream),
+		In:        stream,
 		Out:       stream,
 		Err:       stream,
 		Client:    c,
