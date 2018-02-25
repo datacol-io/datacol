@@ -5,6 +5,7 @@ import (
 	"io"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	"github.com/dinesh/datacol/cloud/kube"
 )
@@ -20,7 +21,7 @@ func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string)
 	envVars, _ := g.EnvironmentGet(name)
 	sqlproxy := g.appLinkedDB(app)
 
-	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, sqlproxy, stream)
+	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, sqlproxy, stream, cloud.GCPProvider)
 }
 
 func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
@@ -40,7 +41,7 @@ func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
 
 	envVars, _ := g.EnvironmentGet(name)
 
-	return common.ScaleApp(g.kubeClient(), g.DeploymentName, name, g.latestImage(app), envVars, g.appLinkedDB(app), build.Procfile, structure)
+	return common.ScaleApp(g.kubeClient(), g.DeploymentName, name, g.latestImage(app), envVars, g.appLinkedDB(app), build.Procfile, structure, cloud.GCPProvider)
 }
 
 func (g *GCPCloud) latestImage(app *pb.App) string {

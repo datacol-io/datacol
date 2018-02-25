@@ -16,6 +16,7 @@ import (
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"google.golang.org/api/cloudbuild/v1"
@@ -234,6 +235,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		EnvVars:             envVars,
 		Domains:             domains,
 		EnableCloudSqlProxy: g.appLinkedDB(app),
+		Provider:            cloud.GCPProvider,
 	})
 
 	if err != nil {

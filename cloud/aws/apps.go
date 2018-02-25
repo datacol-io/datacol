@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
@@ -162,7 +163,7 @@ func (p *AwsCloud) deleteAppResources(name string) error {
 
 func (p *AwsCloud) deleteFromCluster(name string) error {
 	log.Debugf("Removing app from kube cluster ...")
-	return sched.DeleteApp(p.kubeClient(), p.DeploymentName, name)
+	return sched.DeleteApp(p.kubeClient(), p.DeploymentName, name, cloud.AwsProvider)
 }
 
 func (p *AwsCloud) deleteFromDynamo(name string) error {

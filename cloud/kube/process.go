@@ -8,6 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -133,6 +134,7 @@ func ProcessExec(
 	envVars map[string]string,
 	sqlproxy bool,
 	stream io.ReadWriter,
+	provider cloud.CloudProvider,
 ) error {
 	proctype := rand.Characters(6)
 	podName := fmt.Sprintf("%s-%s", name, proctype)
@@ -145,6 +147,7 @@ func ProcessExec(
 		App:                 name,
 		Proctype:            proctype,
 		EnableCloudSqlProxy: sqlproxy,
+		Provider:            provider,
 	}
 
 	// Delete the pod sunce it's ephemeral

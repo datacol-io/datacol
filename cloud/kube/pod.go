@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/dinesh/datacol/cloud"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,9 @@ import (
 )
 
 //ScalePodReplicas can scale up/down pods as per replicas count
-func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string, replicas int32, sqlproxy bool, envVars map[string]string) error {
+func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string,
+	replicas int32, sqlproxy bool, envVars map[string]string, provider cloud.CloudProvider,
+) error {
 	runner, _ := NewDeployer(c)
 
 	req := &DeployRequest{
@@ -28,6 +31,7 @@ func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, 
 		Proctype:            proctype,
 		EnableCloudSqlProxy: sqlproxy,
 		EnvVars:             envVars,
+		Provider:            provider,
 	}
 
 	_, err := runner.Run(req)
@@ -430,6 +434,7 @@ func podReadinessStatus(pod *v1.Pod) string {
 
 	return status
 }
+
 func podLivenessStatus(pod *v1.Pod) bool {
 	for _, cond := range pod.Status.Conditions {
 		if cond.Type == v1.PodReady && cond.Status != v1.ConditionTrue {

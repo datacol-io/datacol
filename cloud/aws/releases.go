@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -97,6 +98,7 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
 		Domains:       domains,
+		Provider:      cloud.AwsProvider,
 	})
 
 	if err != nil {

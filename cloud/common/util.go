@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	"k8s.io/client-go/kubernetes"
 )
@@ -38,7 +39,9 @@ func ScaleApp(c *kubernetes.Clientset,
 	namespace, app, image string,
 	envVars map[string]string,
 	enableSQLproxy bool,
-	procFileData []byte, structure map[string]int32,
+	procFileData []byte,
+	structure map[string]int32,
+	provider cloud.CloudProvider,
 ) (err error) {
 
 	var command []string
@@ -54,7 +57,7 @@ func ScaleApp(c *kubernetes.Clientset,
 	}
 
 	scalePodFunc := func(proctype, image string, command []string, replicas int32) error {
-		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas, enableSQLproxy, envVars)
+		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas, enableSQLproxy, envVars, provider)
 	}
 
 	for key, replicas := range structure {

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
@@ -28,7 +29,7 @@ func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command strin
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
 
-	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, false, stream)
+	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, false, stream, cloud.LocalProvider)
 }
 
 func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {
@@ -48,7 +49,7 @@ func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error 
 
 	envVars, _ := g.EnvironmentGet(name)
 
-	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), envVars, false, build.Procfile, structure)
+	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), envVars, false, build.Procfile, structure, cloud.LocalProvider)
 }
 
 func (g *LocalCloud) latestImage(app *pb.App) string {
