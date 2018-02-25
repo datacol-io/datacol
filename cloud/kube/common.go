@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func DeleteApp(c *kubernetes.Clientset, ns, app string) error {
+func DeleteApp(c *kubernetes.Clientset, ns, app string, provider cloud.CloudProvider) error {
 	listSelector := meta_v1.ListOptions{
 		LabelSelector: klabels.Set(map[string]string{appLabel: app, managedBy: heritage}).AsSelector().String(),
 	}
@@ -86,6 +86,11 @@ func DeleteApp(c *kubernetes.Clientset, ns, app string) error {
 				log.Warn(err)
 			}
 		}
+
+		if provider == cloud.AwsProvider {
+			awsing := &awsIngress{Client: c, Namespace: ingressDefaultNamespace, ParentNamespace: ns}
+			awsing.Remove()
+		}
 	}
 
 	return nil
@@ -145,6 +150,9 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		return endpoint, err
 	}
 
+	log.Debugf("service %s", toJson(svc))
+
+	// If a service is deployed without domainName. We use ServceType = LoadBalancer and cloud load balancer will expose the service
 	if svc.Spec.Type == core_v1.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
 		ing := svc.Status.LoadBalancer.Ingress[0]
 		if len(ing.Hostname) > 0 {
@@ -158,22 +166,41 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		}
 	}
 
+	// If a service is of type NodePort.
 	if svc.Spec.Type == core_v1.ServiceTypeNodePort {
 		ingName := fmt.Sprintf("%s-ing", ns)
 		ing, err := c.Extensions().Ingresses(ns).Get(ingName, meta_v1.GetOptions{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
+				log.Error(err)
 				return endpoint, nil
 			}
 			return endpoint, err
 		}
 
-		lBIngresses := ing.Status.LoadBalancer.Ingress
-		if len(lBIngresses) > 0 {
-			endpoint = lBIngresses[0].IP
+		log.Debugf("ingress %s", toJson(ing))
+
+		if lBIngresses := ing.Status.LoadBalancer.Ingress; len(lBIngresses) > 0 {
+			return lBIngresses[0].IP, nil
 		}
 
+		if _, ok := ing.Annotations[ingressAnnotationName]; ok {
+			svc, err := c.Core().Services(ingressNamespace(ns)).Get(nginxAppName, meta_v1.GetOptions{})
+			if err != nil {
+				return endpoint, fmt.Errorf("No Load Balancer found for %s. err: %v", name, err)
+			}
+
+			log.Debugf("Got ingress service in %s: %s", ingressNamespace, toJson(svc))
+
+			ings := svc.Status.LoadBalancer.Ingress
+			if len(ings) > 0 {
+				return ings[0].Hostname, nil
+			}
+			return endpoint, fmt.Errorf("Load balancer don't have any IP yet.")
+		}
 	}
+
+	log.Warnf("no load balancer IP found for app: %s", name)
 
 	return endpoint, nil
 }
@@ -251,7 +278,7 @@ func MergeCloudSQLManifest(spec *core_v1.PodSpec, app string, env map[string]str
 		parts := strings.Split(dburl, "://")
 		port = getDefaultPort(parts[0])
 	} else {
-		log.Warnf("Skipping Cloudsql sidekar manifest since DATABASE_URL is not present in %v", env)
+		log.Errorf("Skipping Cloudsql sidekar manifest since DATABASE_URL is not present in %v", env)
 		return
 	}
 

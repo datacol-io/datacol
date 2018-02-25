@@ -8,6 +8,7 @@ import (
 
 	"github.com/appscode/go/log"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
@@ -66,7 +67,7 @@ func (g *LocalCloud) saveApp(a *pb.App) error {
 }
 
 func (g *LocalCloud) AppDelete(name string) error {
-	sched.DeleteApp(g.kubeClient(), g.Name, name)
+	sched.DeleteApp(g.kubeClient(), g.Name, name, cloud.LocalProvider)
 
 	for i, a := range g.Apps {
 		if a.Name == name {

@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/dinesh/datacol/cloud"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
@@ -56,6 +57,8 @@ type DeployRequest struct {
 
 	// For GCP, we need to provision cloudsql-proxy as a sidecar container.
 	EnableCloudSqlProxy bool
+
+	Provider cloud.CloudProvider // cloud provider aws, gcp or local
 }
 
 type DeployResponse struct {
@@ -82,6 +85,11 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		return nil, fmt.Errorf("Proctype not set for DeployRequest.")
 	}
 
+	if string(payload.Provider) == "" {
+		log.Debugf("DeploymentRequest %s", toJson(payload))
+		return nil, fmt.Errorf("Provider is not set for DeployRequest")
+	}
+
 	// create namespace if needed
 	if _, err := d.Client.Core().Namespaces().Create(newNamespace(payload)); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
@@ -99,7 +107,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		// create service only of we have a contanerPort which can be exposed
 		svc, err := d.CreateOrUpdateService(newService(payload), payload.Namespace)
 		if err != nil {
-			return res, fmt.Errorf("failed to create service %v", err)
+			return res, err
 		}
 
 		if len(svc.Spec.Ports) > 0 {
@@ -107,7 +115,7 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		}
 
 		if len(payload.Domains) > 0 {
-			_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Namespace)
+			_, err = d.CreateOrUpdateIngress(newIngress(res, payload.Domains), payload.Namespace, payload.Provider)
 			if err != nil {
 				return res, err
 			}
@@ -154,15 +162,19 @@ func (r *Deployer) CreateOrUpdateService(svc *v1.Service, env string) (*v1.Servi
 		svc.ObjectMeta.ResourceVersion = oldSvc.ObjectMeta.ResourceVersion
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		svc.Spec.Ports[0].NodePort = oldSvc.Spec.Ports[0].NodePort
-		svc, err = r.Client.Core().Services(env).Update(svc)
+
+		updatedSvc, err := r.Client.Core().Services(env).Update(svc)
 
 		if err != nil {
-			return nil, err
+			log.Debugf("was trying to update service %s with %s", svc.Name, toJson(svc))
+			return nil, fmt.Errorf("Failed to update service %s: %v", svc.Name, err)
 		}
-		log.Debugf("Service updated: %+v", svc.ObjectMeta.Name)
-		return svc, nil
+
+		log.Debugf("Service updated: %+v", svc.Name)
+		return updatedSvc, nil
 	}
-	log.Debugf("Service created: %+v", svc.ObjectMeta.Name)
+
+	log.Debugf("Service created: %+v", svc.Name)
 	return newsSvc, nil
 }
 
@@ -185,6 +197,7 @@ func newService(payload *DeployRequest) *v1.Service {
 			Type: serviceType,
 			Ports: []v1.ServicePort{{
 				TargetPort: payload.ContainerPort,
+				Port:       payload.ContainerPort.IntVal,
 			}},
 			Selector: map[string]string{appLabel: payload.App},
 		},
@@ -253,8 +266,23 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 	return d, nil
 }
 
+// Values can be taken from https://github.com/giantswarm/k8scloudconfig/blob/master/v_2_0_0/master_template.go
+// OR https://github.com/Electroid/infrastructure/tree/master/kubernetes/ingress
+func (r *Deployer) setupAWSIngressController(ns string) (err error) {
+	runner := &awsIngress{Client: r.Client, Namespace: ingressDefaultNamespace, ParentNamespace: ns}
+	return runner.CreateOrUpdate()
+}
+
 // CreateOrUpdateIngress creates or updates an ingress rule
-func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (*v1beta1.Ingress, error) {
+func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string, provider cloud.CloudProvider) (*v1beta1.Ingress, error) {
+	if provider == cloud.AwsProvider {
+		log.Debugf("Will try to setup nginx ingress controller for ingress:%s/%s", env, ingress.Name)
+		if err := r.setupAWSIngressController(env); err != nil {
+			log.Error(err)
+			return nil, fmt.Errorf("nginx ingress controller setup error: %v", err)
+		}
+	}
+
 	existing, err := r.Client.Extensions().Ingresses(env).Get(ingress.Name, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -271,7 +299,7 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string) (
 		return nil, err
 	}
 
-	log.Debugf("Ingress updated: %s", newIngress.Name)
+	log.Debugf("Ingress spec updated: %v", toJson(newIngress))
 	return newIngress, nil
 }
 

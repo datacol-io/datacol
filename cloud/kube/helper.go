@@ -2,18 +2,23 @@ package kube
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"k8s.io/api/extensions/v1beta1"
 )
 
+func ingressNamespace(parentNS string) string {
+	// return ingressDefaultNamespace
+	return parentNS
+}
+
 func toJson(object interface{}) string {
 	dump, err := json.MarshalIndent(object, " ", "  ")
 	if err != nil {
-		log.Fatal(fmt.Errorf("dumping json: %v", err))
+		log.Warnf("dumping json: %v", err)
 	}
+
 	return string(dump)
 }
 

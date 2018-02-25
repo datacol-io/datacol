@@ -10,6 +10,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 	docker "github.com/fsouza/go-dockerclient"
@@ -149,6 +150,7 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		Namespace:     g.Name,
 		ContainerPort: intstr.FromInt(port),
 		EnvVars:       envVars,
+		Provider:      cloud.LocalProvider,
 	})
 
 	if err != nil {

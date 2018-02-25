@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/dinesh/datacol/api/models"
+	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
 )
@@ -131,5 +132,5 @@ func (g *GCPCloud) deleteAppFromDatastore(name string) error {
 }
 
 func (g *GCPCloud) deleteAppFromCluster(name string) error {
-	return sched.DeleteApp(g.kubeClient(), g.DeploymentName, name)
+	return sched.DeleteApp(g.kubeClient(), g.DeploymentName, name, cloud.GCPProvider)
 }

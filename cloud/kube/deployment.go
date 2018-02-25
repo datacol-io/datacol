@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/dinesh/datacol/cloud"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -155,16 +156,23 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	// Also if you change this remember to chage in AppGet to fetch IP of load balancer code
 	name := fmt.Sprintf("%s-ing", payload.Request.Namespace)
 
-	return &v1beta1.Ingress{
+	ing := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: map[string]string{managedBy: heritage},
+			Name:        name,
+			Labels:      map[string]string{managedBy: heritage},
+			Annotations: make(map[string]string),
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: rules,
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Ingress"},
 	}
+
+	if payload.Request.Provider == cloud.AwsProvider {
+		ing.Annotations[ingressAnnotationName] = ingressClassName
+	}
+
+	return ing
 }
 
 func waitUntilDeploymentUpdated(c *kubernetes.Clientset, ns, name string) error {
