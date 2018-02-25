@@ -200,7 +200,7 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		}
 	}
 
-	log.Warnf("no load balancer IP found for app: %s", name)
+	log.Infof("found endpoint:%s for %s", endpoint, name)
 
 	return endpoint, nil
 }
@@ -213,7 +213,6 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 
 	for _, pod := range pods {
 		name := pod.Name
-		log.Debugf("streaming logs from %v", name)
 
 		req := c.Core().RESTClient().Get().
 			Namespace(ns).
@@ -222,11 +221,13 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 			SubResource("log").
 			Param("follow", strconv.FormatBool(opts.Follow))
 
+		var cntName string
 		if len(pod.Spec.Containers) > 0 {
-			cntName := pod.Spec.Containers[0].Name
-			log.Debugf("defaulting to container: %s since we have multiple", cntName)
-			req = req.Param("container", cntName)
+			cntName = pod.Spec.Containers[0].Name
 		}
+
+		req = req.Param("container", cntName)
+		log.Debugf("streaming logs from pod:%v container:%s", name, cntName)
 
 		if opts.Since > 0 {
 			sec := int64(math.Ceil(float64(opts.Since) / float64(time.Second)))
@@ -238,7 +239,7 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 			sources = append(sources, multiplexio.Source{
 				Reader: r,
 				Write: func(dest io.Writer, token []byte) (int, error) {
-					return io.WriteString(dest, prefix+string(token)+"\n")
+					return multiplexio.WriteNewLine(dest, append([]byte(prefix), token...))
 				},
 			})
 		}
