@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,7 +12,6 @@ import (
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
 	sched "github.com/dinesh/datacol/cloud/kube"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func (a *AwsCloud) dynamoReleases() string {
@@ -66,42 +64,9 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	c := a.kubeClient()
 
-	deployer, err := sched.NewDeployer(c)
-	if err != nil {
-		return nil, err
-	}
-
-	port := 8080
-	if pv, ok := envVars["PORT"]; ok {
-		p, err := strconv.Atoi(pv)
-		if err != nil {
-			return nil, err
-		}
-		port = p
-	}
-
 	domains := sched.MergeAppDomains(app.Domains, options.Domain)
 
-	command, proctype, err := common.GetContainerCommand(b)
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := deployer.Run(&sched.DeployRequest{
-		ServiceID:     common.GetJobID(b.App, proctype),
-		App:           b.App,
-		Proctype:      proctype,
-		Args:          command,
-		Image:         image,
-		Namespace:     a.DeploymentName,
-		Zone:          a.Region,
-		ContainerPort: intstr.FromInt(port),
-		EnvVars:       envVars,
-		Domains:       domains,
-		Provider:      cloud.AwsProvider,
-	})
-
-	if err != nil {
+	if err := common.UpdateApp(c, b, a.DeploymentName, image, false, domains, envVars, cloud.AwsProvider); err != nil {
 		return nil, err
 	}
 
@@ -109,8 +74,6 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		app.Domains = domains
 		a.saveApp(app)
 	}
-
-	log.Debugf("Deployed %s with %s", b.App, toJson(ret.Request))
 
 	r := &pb.Release{
 		Id:        generateId("R", 5),

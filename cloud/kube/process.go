@@ -119,8 +119,9 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 
 	for _, dp := range deployments {
 		items = append(items, &pb.Process{
-			Name:    dp.ObjectMeta.Name,
-			Workers: *dp.Spec.Replicas,
+			Proctype: dp.ObjectMeta.Labels[typeLabel],
+			Workers:  *dp.Spec.Replicas,
+			Name:     dp.Name,
 		})
 	}
 

@@ -5,6 +5,7 @@ const (
 	CloudsqlContainerName = "cloudsql-proxy"
 	CloudsqlImage         = "gcr.io/cloudsql-docker/gce-proxy:1.09"
 	CloudsqlCredVolName   = "cloudsql-instance-credentials"
+	DefaultProcPort       = 8080
 )
 
 type CloudProvider string

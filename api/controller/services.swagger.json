@@ -500,6 +500,12 @@
             "required": false,
             "type": "integer",
             "format": "int32"
+          },
+          {
+            "name": "proctype",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1038,6 +1044,9 @@
       "type": "object",
       "properties": {
         "name": {
+          "type": "string"
+        },
+        "proctype": {
           "type": "string"
         },
         "workers": {

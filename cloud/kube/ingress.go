@@ -13,6 +13,9 @@ import (
 )
 
 const (
+	// The domain when --domain is not provided by user. will be used for configuring Host based ingress rule
+	defaultIngressDomain = "datacol.io"
+
 	ingressAnnotationName = "kubernetes.io/ingress.class"
 	ingressClassName      = "nginx"
 
