@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -12,9 +11,7 @@ import (
 	pb "github.com/dinesh/datacol/api/models"
 	"github.com/dinesh/datacol/cloud"
 	"github.com/dinesh/datacol/cloud/common"
-	sched "github.com/dinesh/datacol/cloud/kube"
 	docker "github.com/fsouza/go-dockerclient"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func (g *LocalCloud) BuildGet(app, id string) (*pb.Build, error) {
@@ -122,42 +119,9 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		return nil, err
 	}
 
-	deployer, err := sched.NewDeployer(g.kubeClient())
-	if err != nil {
+	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false, []string{}, envVars, cloud.LocalProvider); err != nil {
 		return nil, err
 	}
-
-	port := 8080
-	if pv, ok := envVars["PORT"]; ok {
-		p, err := strconv.Atoi(pv)
-		if err != nil {
-			return nil, err
-		}
-		port = p
-	}
-
-	command, proctype, err := common.GetContainerCommand(b)
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := deployer.Run(&sched.DeployRequest{
-		Args:          command,
-		ServiceID:     common.GetJobID(b.App, proctype),
-		App:           b.App,
-		Proctype:      proctype,
-		Image:         image,
-		Namespace:     g.Name,
-		ContainerPort: intstr.FromInt(port),
-		EnvVars:       envVars,
-		Provider:      cloud.LocalProvider,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("Deployed %s with %+v\n", b.App, ret.Request)
 
 	r := &pb.Release{
 		Id:      common.GenerateId("R", 5),

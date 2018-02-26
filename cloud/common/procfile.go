@@ -9,6 +9,10 @@ import (
 const (
 	StandardType = "standard"
 	ExtentedType = "extended"
+
+	WebProcessKind = "web"
+	CmdProcessKind = "cmd"
+
 	defaultShell = "sh"
 )
 

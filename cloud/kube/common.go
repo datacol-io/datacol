@@ -212,8 +212,11 @@ func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.
 	var sources []multiplexio.Source
 
 	for _, pod := range pods {
-		name := pod.Name
+		if opts.Proctype != "" && opts.Proctype != pod.ObjectMeta.Labels[typeLabel] {
+			continue
+		}
 
+		name := pod.Name
 		req := c.Core().RESTClient().Get().
 			Namespace(ns).
 			Name(name).

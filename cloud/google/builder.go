@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +21,6 @@ import (
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -204,41 +202,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	domains := sched.MergeAppDomains(app.Domains, options.Domain)
 
-	deployer, err := sched.NewDeployer(g.kubeClient())
-	if err != nil {
-		return nil, err
-	}
-
-	port := 8080
-	if pv, ok := envVars["PORT"]; ok {
-		p, err := strconv.Atoi(pv)
-		if err != nil {
-			return nil, err
-		}
-		port = p
-	}
-
-	command, proctype, err := common.GetContainerCommand(b)
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := deployer.Run(&sched.DeployRequest{
-		ServiceID:           common.GetJobID(b.App, proctype),
-		App:                 b.App,
-		Proctype:            proctype,
-		Args:                command,
-		Image:               image,
-		Namespace:           g.DeploymentName,
-		Zone:                g.DefaultZone,
-		ContainerPort:       intstr.FromInt(port),
-		EnvVars:             envVars,
-		Domains:             domains,
-		EnableCloudSqlProxy: g.appLinkedDB(app),
-		Provider:            cloud.GCPProvider,
-	})
-
-	if err != nil {
+	if err := common.UpdateApp(g.kubeClient(), b, g.DeploymentName, image, g.appLinkedDB(app), domains, envVars, cloud.GCPProvider); err != nil {
 		return nil, err
 	}
 
@@ -249,8 +213,6 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 			log.Warnf("datastore put failed: %v", err)
 		}
 	}
-
-	log.Debugf("Deployed %s with %s", b.App, toJson(ret.Request))
 
 	r := &pb.Release{
 		Id:        generateId("R", 5),

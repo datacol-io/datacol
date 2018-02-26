@@ -61,14 +61,7 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 			return nil, err
 		}
 
-		// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
-		var proctype string
-		if len(b.Procfile) > 0 {
-			proctype = "web"
-		} else {
-			proctype = "cmd"
-		}
-
+		proctype := common.GetDefaultProctype(b)
 		serviceName := common.GetJobID(name, proctype)
 		endpoint, err := sched.GetServiceEndpoint(g.kubeClient(), g.DeploymentName, serviceName)
 		if err != nil {

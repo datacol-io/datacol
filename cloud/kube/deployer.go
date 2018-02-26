@@ -3,16 +3,15 @@ package kube
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/dinesh/datacol/cloud"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -50,7 +49,6 @@ type DeployRequest struct {
 	}
 	Domains  []string
 	Tags     map[string]string
-	Zone     string
 	App      string // to specify pods belonging to an App
 	Version  string // to specify the version of pod to deploy
 	Proctype string // to specify the type of process web, worker, or other
@@ -132,7 +130,8 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 		return res, err
 	}
 
-	log.Infof("Deployment completed: %+v", dpname)
+	log.Infof("Deployed %s in %s", payload.Proctype, payload.App)
+
 	return res, nil
 }
 

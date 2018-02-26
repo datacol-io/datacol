@@ -96,23 +96,13 @@ func (a *AwsCloud) AppGet(name string) (*pb.App, error) {
 			return nil, err
 		}
 
-		// FIXME: Have a better way to determine name for the deployed service(s). This will change if we support multiple processes for an app.
-		var proctype string
-		if len(b.Procfile) > 0 {
-			proctype = "web"
-		} else {
-			proctype = "cmd"
-		}
-
-		kc := a.kubeClient()
+		proctype, kc := common.GetDefaultProctype(b), a.kubeClient()
 		serviceName := common.GetJobID(name, proctype)
 
 		if app.Endpoint, err = sched.GetServiceEndpoint(kc, a.DeploymentName, serviceName); err != nil {
 			return app, err
 		}
-
 		return app, a.saveApp(app)
-
 	}
 
 	return app, nil

@@ -45,8 +45,9 @@ type ReleaseOptions struct {
 }
 
 type LogStreamOptions struct {
-	Follow bool
-	Since  time.Duration
+	Follow   bool
+	Proctype string
+	Since    time.Duration
 }
 
 type AppCreateOptions struct {

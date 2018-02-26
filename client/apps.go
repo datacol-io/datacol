@@ -40,16 +40,16 @@ func (c *Client) RestartApp(name string) error {
 	return err
 }
 
-func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, out io.Writer) error {
+func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, proctype string, out io.Writer) error {
 	stream, err := c.ProviderServiceClient.LogStream(ctx, &pbs.LogStreamReq{
-		Name:   name,
-		Since:  ptypes.DurationProto(since),
-		Follow: follow,
+		Name:     name,
+		Since:    ptypes.DurationProto(since),
+		Follow:   follow,
+		Proctype: proctype,
 	})
 	if err != nil {
 		return err
 	}
-
 	defer stream.CloseSend()
 
 	for {

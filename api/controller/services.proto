@@ -110,6 +110,7 @@ message LogStreamReq {
   string name = 1;
   bool follow = 2;
   google.protobuf.Duration since = 3;
+  string proctype = 4;
 }
 
 message ProcessRunReq {

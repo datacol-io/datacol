@@ -132,7 +132,7 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	r := payload.Request
 
 	if len(domains) == 0 {
-		domains = []string{fmt.Sprintf("%s.%s", r.ServiceID, r.Zone)}
+		domains = []string{fmt.Sprintf("%s.%s", r.ServiceID, defaultIngressDomain)}
 	}
 
 	rules := make([]v1beta1.IngressRule, len(domains))

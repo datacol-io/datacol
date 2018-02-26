@@ -14,8 +14,9 @@ func (s *Server) LogStream(req *pbs.LogStreamReq, stream pbs.ProviderService_Log
 	}
 
 	return s.Provider.LogStream(req.Name, logStreamW{stream}, pb.LogStreamOptions{
-		Follow: req.Follow,
-		Since:  since,
+		Follow:   req.Follow,
+		Since:    since,
+		Proctype: req.Proctype,
 	})
 }
 

@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -85,19 +86,30 @@ func ScaleApp(c *kubernetes.Clientset,
 
 func GetJobID(name, process_type string) string {
 	if process_type == "" {
-		process_type = "cmd"
+		process_type = CmdProcessKind
 	}
 
 	return fmt.Sprintf("%s-%s", name, process_type)
 }
 
-func GetContainerCommand(b *pb.Build) (command []string, proctype string, err error) {
-	proctype = "cmd"
+func GetDefaultProctype(b *pb.Build) string {
+	proctype := CmdProcessKind
 	if len(b.Procfile) > 0 {
-		proctype = "web"
+		proctype = WebProcessKind
+	}
+
+	return proctype
+}
+
+func GetProcessCommand(proctype string, b *pb.Build) (command []string, err error) {
+	if proctype == "" {
+		err = errors.New("Empty process type")
+	}
+
+	if len(b.Procfile) > 0 {
 		procfile, err := ParseProcfile(b.Procfile)
 		if err != nil {
-			return nil, proctype, err
+			return nil, err
 		}
 
 		command, err = procfile.Command(proctype)
