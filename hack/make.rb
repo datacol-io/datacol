@@ -1,6 +1,6 @@
 require 'rubygems'
 
-$version = ENV.fetch('VERSION', "1.0.0-alpha.10")
+$version = ENV.fetch('VERSION', "1.0.0-alpha.11")
 $env     = ENV.fetch('DATACOL_ENV') # dev or prod
 
 $bin_matrix =
