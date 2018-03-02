@@ -127,6 +127,14 @@ func (g *GCPCloud) BuildImport(id, filename string) error {
 	tag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:%v", app, id)
 	latestTag := fmt.Sprintf("gcr.io/$PROJECT_ID/%v:latest", app)
 
+	stepBuildArgs := []string{"build", "-t", tag, "-t", latestTag}
+	envVars, _ := g.EnvironmentGet(app)
+	for key, val := range envVars {
+		if val != "" {
+			stepBuildArgs = append(stepBuildArgs, fmt.Sprintf("--build-arg=%s=%s", key, val))
+		}
+	}
+
 	op, err := cb.Projects.Builds.Create(g.Project, &cloudbuild.Build{
 		LogsBucket: bucket,
 		Source: &cloudbuild.Source{
@@ -137,8 +145,8 @@ func (g *GCPCloud) BuildImport(id, filename string) error {
 		},
 		Steps: []*cloudbuild.BuildStep{
 			{
-				Name: "gcr.io/cloud-builders/docker:17.05",
-				Args: []string{"build", "-t", tag, "-t", latestTag, "."},
+				Name: "gcr.io/cloud-builders/docker:17.06.1",
+				Args: append(stepBuildArgs, "."),
 			},
 		},
 		Images: []string{tag},

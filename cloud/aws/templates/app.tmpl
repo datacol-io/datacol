@@ -127,7 +127,7 @@
           },
           "Environment": {
             "ComputeType": "BUILD_GENERAL1_MEDIUM",
-            "Image": "aws/codebuild/docker:1.12.1",
+            "Image": "aws/codebuild/docker:17.09.0",
             "Type": "LINUX_CONTAINER",
             "EnvironmentVariables": [{
                 "Name": "IMAGE_REPO_NAME",
@@ -156,6 +156,12 @@
                 "Value": {
                   "Ref": "AppName"
                 }
+              },
+              {
+                "Name": "BUCKET",
+                "Value": {
+                    "Ref": "BucketPrefix"
+                }
               }
             ]
           },
@@ -182,12 +188,14 @@
                 " pre_build:",
                 "   commands:",
                 "     - echo Logging into Amazon ECR...",
-                "     - $(aws ecr get-login --region $REGION)",
+                "     - $(aws ecr get-login --no-include-email --region $REGION)",
                 " build:",
                 "   commands:",
                 "     - echo Build started on `date`",
                 "     - echo Building the Docker image",
-                "     - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .",
+                "     - aws s3 cp s3://$BUCKET/.env docker.env && echo fetched env vars || touch docker.env",
+                "     - echo `cat docker.env | awk '{print \"--build-arg \" $0}' ORS=' '`",
+                "     - docker build `cat docker.env | awk '{print \"--build-arg \" $0}' ORS=' '` -t $IMAGE_REPO_NAME:$IMAGE_TAG .",
                 "     - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG",
                 "     - echo ***** Build completed *****",
                 " post_build:",
