@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/client"
-	"github.com/dinesh/datacol/cmd/stdcli"
-	"github.com/dinesh/datacol/go/env"
+	"github.com/datacol-io/datacol/client"
+	"github.com/datacol-io/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/go/env"
 	"github.com/urfave/cli"
 )
 

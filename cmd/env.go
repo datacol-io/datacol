@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
 

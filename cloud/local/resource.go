@@ -1,7 +1,7 @@
 package local
 
 import (
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 )
 
 func (g *LocalCloud) ResourceGet(name string) (*pb.Resource, error) {

@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	pbs "github.com/dinesh/datacol/api/controller"
+	pbs "github.com/datacol-io/datacol/api/controller"
 	"golang.org/x/net/context"
 )
 

@@ -15,7 +15,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 	"google.golang.org/api/compute/v1"
 )
 

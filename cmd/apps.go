@@ -7,7 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go/term"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 	"k8s.io/apimachinery/pkg/util/validation"
 )

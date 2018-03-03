@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

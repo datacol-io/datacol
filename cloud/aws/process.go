@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/common"
-	"github.com/dinesh/datacol/cloud/kube"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
+	"github.com/datacol-io/datacol/cloud/common"
+	"github.com/datacol-io/datacol/cloud/kube"
 )
 
 func (p *AwsCloud) ProcessList(app string) ([]*pb.Process, error) {

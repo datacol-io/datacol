@@ -7,8 +7,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

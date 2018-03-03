@@ -13,11 +13,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	term "github.com/appscode/go/term"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cmd/provider/aws"
-	"github.com/dinesh/datacol/cmd/provider/gcp"
-	"github.com/dinesh/datacol/cmd/stdcli"
-	"github.com/dinesh/datacol/go/env"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cmd/provider/aws"
+	"github.com/datacol-io/datacol/cmd/provider/gcp"
+	"github.com/datacol-io/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/go/env"
 	"github.com/urfave/cli"
 )
 

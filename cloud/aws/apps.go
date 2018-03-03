@@ -10,10 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/common"
-	sched "github.com/dinesh/datacol/cloud/kube"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
+	"github.com/datacol-io/datacol/cloud/common"
+	sched "github.com/datacol-io/datacol/cloud/kube"
 )
 
 func (a *AwsCloud) AppList() (pb.Apps, error) {

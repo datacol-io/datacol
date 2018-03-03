@@ -10,10 +10,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/client"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pbs "github.com/datacol-io/datacol/api/controller"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/client"
+	"github.com/datacol-io/datacol/cmd/stdcli"
+
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"

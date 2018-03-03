@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
 

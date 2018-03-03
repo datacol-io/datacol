@@ -14,7 +14,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"gopkg.in/yaml.v2"
 )
 

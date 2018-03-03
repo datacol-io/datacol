@@ -19,7 +19,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 )
 
 func deleteFromQuery(dc *datastore.Client, ctx context.Context, q *datastore.Query) error {

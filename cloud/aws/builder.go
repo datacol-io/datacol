@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/ejholmes/cloudwatch"
 )
 

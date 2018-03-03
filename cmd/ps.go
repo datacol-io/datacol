@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/appscode/go/term"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
 

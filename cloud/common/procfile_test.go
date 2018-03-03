@@ -3,7 +3,7 @@ package common_test
 import (
 	"testing"
 
-	"github.com/dinesh/datacol/cloud/common"
+	"github.com/datacol-io/datacol/cloud/common"
 	"github.com/stretchr/testify/assert"
 )
 

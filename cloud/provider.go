@@ -3,7 +3,7 @@ package cloud
 import (
 	"io"
 
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 )
 
 type Provider interface {

@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dinesh/datacol/cloud"
+	"github.com/datacol-io/datacol/cloud"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

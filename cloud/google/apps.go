@@ -7,10 +7,10 @@ import (
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/common"
-	sched "github.com/dinesh/datacol/cloud/kube"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
+	"github.com/datacol-io/datacol/cloud/common"
+	sched "github.com/datacol-io/datacol/cloud/kube"
 )
 
 const appKind = "App"
