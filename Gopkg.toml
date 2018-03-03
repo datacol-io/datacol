@@ -24,10 +24,6 @@ required = [
 
 [[constraint]]
   branch = "master"
-  name = "github.com/jhoonb/archivex"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/mitchellh/go-homedir"
 
 [[constraint]]
@@ -69,6 +65,3 @@ required = [
 [[override]]
   name =  "github.com/juju/ratelimit"
   branch = "master"
-[[constraint]]
-  name = "github.com/moby/moby"
-  version = "1.13.1"

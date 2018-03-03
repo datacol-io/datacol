@@ -73,12 +73,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/dsnet/compress"
-  packages = [".","bzip2","bzip2/internal/sais","internal","internal/errors","internal/prefix"]
-  revision = "c4dbed65594871659ea7347a85e1b8dcd97b9990"
-
-[[projects]]
-  branch = "master"
   name = "github.com/ejholmes/cloudwatch"
   packages = ["."]
   revision = "c2bae568a25431c6c82170dd18361a478bd1f1b5"
