@@ -3,8 +3,8 @@ package google
 import (
 	"fmt"
 
-	"github.com/dinesh/datacol/cloud"
-	"github.com/dinesh/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/cloud"
+	"github.com/datacol-io/datacol/cloud/kube"
 	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

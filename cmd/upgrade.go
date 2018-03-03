@@ -9,7 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go/term"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	semver "github.com/hashicorp/go-version"
 	"github.com/inconshreveable/go-update"
 	"github.com/urfave/cli"

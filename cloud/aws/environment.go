@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud/common"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud/common"
 )
 
 func (a *AwsCloud) s3KeyForEnv(name string) string {

@@ -5,8 +5,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go/term"
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
 

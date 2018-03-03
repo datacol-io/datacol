@@ -7,8 +7,8 @@ import (
 	"golang.org/x/net/context"
 
 	log "github.com/Sirupsen/logrus"
-	pbs "github.com/dinesh/datacol/api/controller"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pbs "github.com/datacol-io/datacol/api/controller"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 )
 

@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/appscode/go/term"
-	pbs "github.com/dinesh/datacol/api/controller"
-	pb "github.com/dinesh/datacol/api/models"
+	pbs "github.com/datacol-io/datacol/api/controller"
+	pb "github.com/datacol-io/datacol/api/models"
 	"google.golang.org/grpc/metadata"
 )
 

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/appscode/go/crypto/rand"
-	"github.com/dinesh/datacol/client"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	"github.com/datacol-io/datacol/client"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 
 	log "github.com/Sirupsen/logrus"

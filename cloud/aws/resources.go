@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 )
 
 var notImplemented = fmt.Errorf("Not Implemented yet.")

@@ -7,9 +7,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/io"
 	term "github.com/appscode/go/term"
-	pb "github.com/dinesh/datacol/api/controller"
-	"github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cmd/stdcli"
+	pb "github.com/datacol-io/datacol/api/controller"
+	"github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cmd/stdcli"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

@@ -5,7 +5,7 @@ import (
 
 	"github.com/appscode/go/io"
 	term "github.com/appscode/go/term"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 )
 
 var apprcPath string

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
-	pbs "github.com/dinesh/datacol/api/controller"
-	"github.com/dinesh/datacol/api/models"
+	pbs "github.com/datacol-io/datacol/api/controller"
+	"github.com/datacol-io/datacol/api/models"
 
 	"time"
 )

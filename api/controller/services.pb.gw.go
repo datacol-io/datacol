@@ -12,7 +12,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/dinesh/datacol/api/models"
+	"github.com/datacol-io/datacol/api/models"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"

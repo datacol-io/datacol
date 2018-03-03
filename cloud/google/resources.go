@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 	dm "google.golang.org/api/deploymentmanager/v2"
 	"gopkg.in/yaml.v2"
 )

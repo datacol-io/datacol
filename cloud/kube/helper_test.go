@@ -3,7 +3,7 @@ package kube_test
 import (
 	"testing"
 
-	"github.com/dinesh/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/cloud/kube"
 	"github.com/stretchr/testify/assert"
 )
 

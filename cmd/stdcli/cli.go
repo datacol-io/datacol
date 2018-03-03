@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	term "github.com/appscode/go/term"
-	pb "github.com/dinesh/datacol/api/models"
+	pb "github.com/datacol-io/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"github.com/urfave/cli"
 )

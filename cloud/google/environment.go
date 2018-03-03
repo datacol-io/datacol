@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	pb "github.com/dinesh/datacol/api/models"
-	"github.com/dinesh/datacol/cloud/common"
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud/common"
 	"google.golang.org/api/googleapi"
 )
 

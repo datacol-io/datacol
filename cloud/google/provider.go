@@ -30,8 +30,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	pb "github.com/dinesh/datacol/api/models"
-	gcp "github.com/dinesh/datacol/cmd/provider/gcp"
+	pb "github.com/datacol-io/datacol/api/models"
+	gcp "github.com/datacol-io/datacol/cmd/provider/gcp"
 	"google.golang.org/grpc"
 )
 

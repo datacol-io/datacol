@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dinesh/datacol/cmd"
+	"github.com/datacol-io/datacol/cmd"
 )
 
 func main() {

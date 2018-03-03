@@ -42,7 +42,7 @@ import _ "google.golang.org/genproto/googleapis/api/annotations"
 import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
 import google_protobuf2 "github.com/golang/protobuf/ptypes/duration"
 import _ "github.com/gogo/protobuf/gogoproto"
-import models "github.com/dinesh/datacol/api/models"
+import models "github.com/datacol-io/datacol/api/models"
 
 import (
 	context "golang.org/x/net/context"
