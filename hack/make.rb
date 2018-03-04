@@ -2,6 +2,7 @@ require 'rubygems'
 
 $version = ENV.fetch('VERSION', "1.0.0-alpha.11")
 $env     = ENV.fetch('DATACOL_ENV') # dev or prod
+$cgo     = ENV.fetch("CGO_ENABLED", "0")
 
 $bin_matrix =
   case $env
@@ -32,7 +33,7 @@ def build_all
       bin_name = "#{$cli_name}-#{os}-#{arch}"
       bin_name += ".exe" if os == 'windows'
 
-      with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} .")
+      with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} .")
     end
   end
 end
@@ -45,7 +46,7 @@ end
 def apictl
   api_name = "apictl"
   os, arch = 'linux', 'amd64'
-  with_cmd("GOOS=#{os} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{api_name} api/*.go")
+  with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{api_name} api/*.go")
 
   binary_dest = "#{$bucket_prefix}/binaries/#{$version}/#{api_name}.zip"
   version_dir = "dist/#{$version}"

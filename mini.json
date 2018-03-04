@@ -12,11 +12,9 @@
         "args": ["apictl.zip", "apictl"]
     }, {
         "name": "gcr.io/cloud-builders/gsutil",
-        "args": ["cp", "apictl.zip", "datacol-dev/binaries/$VERSION/apictl.zip"],
-        "env": ["VERSION=1.0.1-alpha.11"]
+        "args": ["cp", "apictl.zip", "datacol-dev/binaries/${_DATACOL_VERSION}/apictl.zip"]
     }, {
         "name": "gcr.io/cloud-builders/gsutil",
-        "args": ["acl", "ch", "-u", "allUsers:R", "datacol-dev/binaries/$VERSION/apictl.zip"],
-        "env": ["VERSION=1.0.1-alpha.11"]
+        "args": ["acl", "ch", "-u", "allUsers:R", "gs://datacol-dev/binaries/${_DATACOL_VERSION}/apictl.zip"]
     }]
 }
