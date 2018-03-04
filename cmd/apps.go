@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -155,5 +154,5 @@ func cmdAppDelete(c *cli.Context) error {
 }
 
 func app404Err(name string) error {
-	return errors.New(fmt.Sprintf("No app found by name: %s. Please create by running `datacol apps create`", name))
+	return fmt.Errorf("No app found by name: %s. Please create by running `datacol apps create`", name)
 }
