@@ -38,6 +38,9 @@ func (a *AwsCloud) ResourceGet(name string) (*pb.Resource, error) {
 		rs.Exports["URL"] = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", rs.Outputs["EnvPostgresUsername"], rs.Outputs["EnvPostgresPassword"], rs.Outputs["Port5432TcpAddr"], rs.Outputs["Port5432TcpPort"], rs.Outputs["EnvPostgresDatabase"])
 	case "redis":
 		rs.Exports["URL"] = fmt.Sprintf("redis://%s:%s/%s", rs.Outputs["Port6379TcpAddr"], rs.Outputs["Port6379TcpPort"], rs.Outputs["EnvRedisDatabase"])
+	case "elasticsearch":
+		rs.Exports["DOMAIN_URL"] = rs.Outputs["EnvEndpoint"]
+		rs.Exports["DOMAIN_ARN"] = rs.Outputs["EnvArn"]
 	}
 
 	return rs, nil
@@ -107,10 +110,10 @@ func (a *AwsCloud) ResourceCreate(name, kind string, params map[string]string) (
 	var err error
 
 	switch rs.Kind {
-	case "mysql", "postgres", "redis", "app":
+	case "mysql", "postgres", "redis", "app", "elasticsearch":
 		req, err = a.createResource(rs)
 	default:
-		return nil, fmt.Errorf("Unsupported resource type: %s", rs.Kind)
+		err = fmt.Errorf("Unsupported resource type: %s", rs.Kind)
 	}
 
 	if err != nil {
@@ -203,7 +206,7 @@ func (a *AwsCloud) createResource(s *pb.Resource) (*cloudformation.CreateStackIn
 		return nil, err
 	}
 
-	log.Debugf("parameters: %s", toJson(s.Parameters))
+	log.Debugf("creating resource with %s", toJson(s.Parameters))
 
 	req := &cloudformation.CreateStackInput{
 		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
@@ -253,6 +256,16 @@ func (p *AwsCloud) appendSystemParameters(s *pb.Resource) error {
 	s.Parameters["SecurityGroups"] = os.Getenv("AWS_SECURITY_GROUP")
 	s.Parameters["Subnets"] = os.Getenv("AWS_SUBNETS")
 	s.Parameters["SubnetsPrivate"] = coalesceString(os.Getenv("AWS_SUBNETS_PRIVATE"), os.Getenv("AWS_SUBNETS"))
+
+	// Expose the public and private subnet since some of the resource only accept single subnet
+	if s.Parameters["Subnets"] != "" {
+		s.Parameters["Subnet"] = strings.Split(s.Parameters["Subnets"], ",")[0]
+	}
+
+	if s.Parameters["SubnetsPrivate"] != "" {
+		s.Parameters["SubnetPrivate"] = strings.Split(s.Parameters["SubnetsPrivate"], ",")[0]
+	}
+
 	s.Parameters["Vpc"] = os.Getenv("AWS_VPC_ID")
 	s.Parameters["VpcCidr"] = os.Getenv("AWS_VPC_CIDR")
 
@@ -296,6 +309,7 @@ func coalesceString(ss ...string) string {
 	return ""
 }
 
+// filterFormationParameters will filter the parameters not defined in CF template
 func filterFormationParameters(s *pb.Resource, formation string) error {
 	var params struct {
 		Parameters map[string]interface{}

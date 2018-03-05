@@ -35,6 +35,11 @@ var resourceTypes = []ResourceType{
 		gcpArgs: "",
 		awsArgs: "--automatic-failover-enabled,--database=app,--instance-type=cache.t2.micro,--num-cache-clusters=1,--private=false",
 	},
+	{
+		name:    "elasticsearch",
+		gcpArgs: "",
+		awsArgs: "--version=5.3,--instance-type=t2.small.elasticsearch,--instance-count=1,--role-id=",
+	},
 }
 
 func init() {
@@ -204,6 +209,13 @@ func cmdResourceCreate(c *cli.Context) error {
 	fmt.Printf(")... ")
 	fmt.Printf("\n")
 
+	if api.IsAWS() && t.name == "elasticsearch" && options["role_id"] == "" {
+		stdcli.ExitOnError(fmt.Errorf("Please make sure to create a service linked role for AWS ES domain. \n" +
+			"You can use `awscli` or go to AWS console https://console.aws.amazon.com/iam/home#/home. \n" +
+			"\n\t aws iam create-service-linked-role --aws-service-name es.amazonaws.com",
+		))
+	}
+
 	rs, err := api.CreateResource(t.name, options)
 	stdcli.ExitOnError(err)
 
@@ -259,7 +271,7 @@ func checkResourceType(t string) (*ResourceType, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("unsupported resource type %s; see 'datacol infra create --help'", t)
+	return nil, fmt.Errorf("unsupported resource type %s. see 'datacol infra create --help'", t)
 }
 
 func jsonDecode(b []byte) map[string]string {
@@ -270,6 +282,10 @@ func jsonDecode(b []byte) map[string]string {
 	return opts
 }
 
+/*
+	While creating AWS resource, the status can be CREATE_IN_PROGRESS, CREATE_FAILED OR CREATE_COMPLETE. The CF template status will vary from
+	CREATE_IN_PGORESS, ROLLBACK_IN_PROGRESS, ROLLBACK_COMPLETE
+*/
 func waitForAwsResource(name, event string, c *client.Client) error {
 	tick := time.Tick(time.Second * 2)
 	timeout := time.After(time.Minute * 5)

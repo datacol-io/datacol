@@ -2,6 +2,9 @@ version=1.0.0-alpha.10
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
+VEDNOR_GOLANG_PROTOS=./vendor/github.com/golang/protobuf
+VEDNOR_GOGO_PROTOS=./vendor/github.com/gogo/protobuf/protobuf
+PROTOC_INCLUDE_DIR=-I $(VEDNOR_GOOGLE_APIS) -I $(VEDNOR_GOLANG_PROTOS) -I $(VEDNOR_GOGO_PROTOS) -I ./vendor -I $(GOPATH)/src
 
 zip:
 	env VERSION=${version} ruby hack/make.rb push_zip
@@ -22,9 +25,15 @@ api:
 
 proto:
 	go install -v ./vendor/github.com/golang/protobuf/protoc-gen-go
+	go install -v ./vendor/github.com/gogo/protobuf/protoc-gen-gogo	
 	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 	go install -v ./vendor/github.com/go-swagger/go-swagger/cmd/swagger
+
+gentest:
+	protoc -I $(SERVICE_PROTO_DIR) $(PROTOC_INCLUDE_DIR) \
+		--go_out=plugins=grpc:$(SERVICE_PROTO_DIR) \
+		$(SERVICE_PROTO_DIR)/*.proto
 
 gen:
 	go-bindata -o cmd/provider/aws/templates.go cmd/provider/aws/templates/ && sed -i 's/main/aws/g' cmd/provider/aws/templates.go
@@ -32,29 +41,23 @@ gen:
 	go-bindata -o cloud/google/templates.go cloud/google/templates/ && sed -i 's/main/google/g' cloud/google/templates.go
 
 	## building api/models/*.proto
-	protoc -I $(GOPATH)/src -I ./vendor/ \
-		-I $(MODEL_PROTO_DIR) \
-		-I $(VEDNOR_GOOGLE_APIS) \
+	protoc -I $(MODEL_PROTO_DIR) $(PROTOC_INCLUDE_DIR) \
 		--gogo_out=plugins=grpc:$(MODEL_PROTO_DIR) \
 		$(MODEL_PROTO_DIR)/*.proto
 
   #building api/controller/*.proto
-	protoc -I $(GOPATH)/src -I ./vendor/ \
-		-I $(SERVICE_PROTO_DIR) \
-		-I $(VEDNOR_GOOGLE_APIS) \
+	protoc -I $(SERVICE_PROTO_DIR) \
+		$(PROTOC_INCLUDE_DIR) \
 		--go_out=plugins=grpc:$(SERVICE_PROTO_DIR) \
 		$(SERVICE_PROTO_DIR)/*.proto
 
-	protoc -I $(GOPATH)/src -I ./vendor/ \
-		-I $(SERVICE_PROTO_DIR) \
-		-I $(VEDNOR_GOOGLE_APIS) \
+	protoc -I $(SERVICE_PROTO_DIR) \
+		$(PROTOC_INCLUDE_DIR) \
     --grpc-gateway_out=logtostderr=true:$(SERVICE_PROTO_DIR) \
 		$(SERVICE_PROTO_DIR)/*.proto
 
-	protoc \
-		-I $(GOPATH)/src -I ./vendor/ \
- 		-I $(SERVICE_PROTO_DIR) \
-		-I $(VEDNOR_GOOGLE_APIS) \
-    --swagger_out=logtostderr=true:$(SERVICE_PROTO_DIR) \
-    $(SERVICE_PROTO_DIR)/*.proto
+	protoc -I $(SERVICE_PROTO_DIR) \
+		$(PROTOC_INCLUDE_DIR) \
+    	--swagger_out=logtostderr=true:$(SERVICE_PROTO_DIR) \
+    	$(SERVICE_PROTO_DIR)/*.proto
 
