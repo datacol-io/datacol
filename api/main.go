@@ -52,7 +52,6 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
-
 	fmt.Printf("Starting server on http=%d and grpc=%d ports\n", port, rpcPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }

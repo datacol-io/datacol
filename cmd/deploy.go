@@ -59,17 +59,17 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	var build *pb.Build
-	buildId := c.String("build")
+	buildID := c.String("build")
 
-	if len(buildId) == 0 {
+	if len(buildID) == 0 {
 		build, err = executeBuildDir(client, app, dir)
 		stdcli.ExitOnError(err)
 	} else {
-		b, err := client.GetBuild(name, buildId)
+		b, err := client.GetBuild(name, buildID)
 		stdcli.ExitOnError(err)
 
 		if b == nil {
-			err = fmt.Errorf("No build found by id: %s.", buildId)
+			err = fmt.Errorf("No build found by id: %s.", buildID)
 			stdcli.ExitOnError(err)
 		}
 
@@ -77,7 +77,7 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	if build.Status == "FAILED" {
-		term.Fatalln("BUILD FAILED")
+		term.Fatalln(fmt.Sprintf("BUILD=%s is having FAILED status.", buildID))
 	}
 
 	fmt.Printf("Deploying build %s\n", build.Id)

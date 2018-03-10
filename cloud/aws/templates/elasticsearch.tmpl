@@ -1,0 +1,119 @@
+{{ define "resource" }}
+  {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {
+      "Private": { "Fn::Equals": [ { "Ref": "Private" }, "true" ] }
+    },
+    "Parameters": {
+       "Name" : {
+          "Description" : "User defined Elasticsearch Domain name",
+          "Type" : "String"
+        },
+        "Version" : {
+            "Description" : "User defined Elasticsearch Version",
+            "Type" : "String"
+        },
+        "InstanceType": {
+            "Type": "String",
+            "Default": "t2.small.elasticsearch",
+            "Description" : "Elastic Search node instance type"
+        },
+        "InstanceCount": {
+            "Type": "Number",
+            "Description": "Number of instances to use",
+            "Default": "1",
+            "MinValue": "1",
+            "MaxValue": "12"
+        },
+        "Vpc": {
+            "Description" : "VPC you are trying launch the instances in",
+            "Type" : "AWS::EC2::VPC::Id",
+            "ConstraintDescription" : "Must be a valid vpc ID"
+        },
+        "VpcCidr": {
+            "Description": "VPC CIDR Block",
+            "Type": "String"
+        },
+        "Private": {
+            "Type": "String",
+            "Description": "Create in private subnets",
+            "Default": "false",
+            "AllowedValues": [ "true", "false" ]
+        },
+        "Subnet": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "VPC subnets"
+        },
+        "SubnetPrivate": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "VPC private subnets"
+        }
+    },
+    "Resources": {
+        "SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "elasticsearch resource",
+                "SecurityGroupIngress": [
+                    { "IpProtocol": "tcp", "FromPort": "443", "ToPort": "443", "CidrIp": { "Ref": "VpcCidr" } }
+                ],
+                "VpcId": { "Ref": "Vpc" }
+            }
+        },
+        "ElasticsearchDomain": {
+            "Type": "AWS::Elasticsearch::Domain",
+            "Properties": {
+                "AccessPolicies": {
+                    "Statement": [
+                        {
+                            "Action": "es:*",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "AdvancedOptions": {
+                    "rest.action.multi.allow_explicit_index": "true"
+                },
+                "DomainName": { "Ref" : "Name" },
+                "ElasticsearchVersion": { "Ref": "Version" },
+                "EBSOptions": {
+                    "EBSEnabled": "true",
+                    "Iops": 0,
+                    "VolumeSize": 20,
+                    "VolumeType": "gp2"
+                },
+                "ElasticsearchClusterConfig": {
+                    "InstanceCount": { "Ref": "InstanceCount" },
+                    "InstanceType": { "Ref": "InstanceType" }
+                },
+                "SnapshotOptions": {
+                    "AutomatedSnapshotStartHour": 0
+                },
+                "VPCOptions": {
+                    "SecurityGroupIds": [{ "Ref": "SecurityGroup"}],
+                    "SubnetIds": { "Fn::If": [ "Private",
+                        { "Ref": "SubnetPrivate" },
+                        { "Ref": "Subnet" }
+                    ] }
+                }
+            }
+        }
+    },
+    "Outputs" : {
+        "EnvArn": {
+            "Value": { "Fn::GetAtt": ["ElasticsearchDomain", "DomainArn"] }
+        },
+        "EnvEndpoint": {
+            "Value": { "Fn::Join": [ "://", [
+                "https", 
+                { "Fn::GetAtt": ["ElasticsearchDomain", "DomainEndpoint"] } ] ] 
+            }
+        }
+    }
+  }
+{{ end }}

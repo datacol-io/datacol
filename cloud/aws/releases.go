@@ -11,7 +11,7 @@ import (
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
 	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/cloud/kube"
 )
 
 func (a *AwsCloud) dynamoReleases() string {
@@ -62,19 +62,6 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return nil, err
 	}
 
-	c := a.kubeClient()
-
-	domains := sched.MergeAppDomains(app.Domains, options.Domain)
-
-	if err := common.UpdateApp(c, b, a.DeploymentName, image, false, domains, envVars, cloud.AwsProvider); err != nil {
-		return nil, err
-	}
-
-	if len(app.Domains) != len(domains) {
-		app.Domains = domains
-		a.saveApp(app)
-	}
-
 	r := &pb.Release{
 		Id:        generateId("R", 5),
 		App:       b.App,
@@ -87,10 +74,23 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return r, err
 	}
 
+	domains := kube.MergeAppDomains(app.Domains, options.Domain)
+	if len(app.Domains) != len(domains) {
+		app.Domains = domains
+	}
+
 	app.BuildId = b.Id
 	app.ReleaseId = r.Id
 
-	return r, a.saveApp(app)
+	log.Debugf("Saving app state: %s err:%v", toJson(app), a.saveApp(app)) // note the mutate function
+
+	if err := common.UpdateApp(a.kubeClient(), b, a.DeploymentName, image, false, domains, envVars, cloud.AwsProvider); err != nil {
+		return nil, err
+	}
+
+	//TODO: update release status
+
+	return r, nil
 }
 
 func (a *AwsCloud) releaseSave(r *pb.Release) error {

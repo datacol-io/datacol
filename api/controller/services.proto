@@ -2,8 +2,8 @@ syntax = "proto3";
 package controller;
 
 import "google/api/annotations.proto";
-import "google/protobuf/empty.proto";
-import "google/protobuf/duration.proto";
+import "ptypes/empty/empty.proto";
+import "ptypes/duration/duration.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/datacol-io/datacol/api/models/types.proto";
 

@@ -243,9 +243,9 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 func finishBuild(api *client.Client, b *pb.Build) error {
 	if api.IsGCP() {
 		return finishBuildGCP(api, b)
-	} else {
-		return finishBuildAws(api, b)
 	}
+
+	return finishBuildAws(api, b)
 }
 
 func finishBuildAws(api *client.Client, b *pb.Build) error {
@@ -256,13 +256,13 @@ func finishBuildAws(api *client.Client, b *pb.Build) error {
 	defer stream.CloseSend()
 	out := os.Stdout
 
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second * 3)
 	defer ticker.Stop()
 
 	buildStatus := b.Status
 
 	go func() {
-		for _ = range ticker.C {
+		for range ticker.C {
 			newb, _ := api.GetBuild(b.App, b.Id)
 			if newb.Status != buildStatus {
 				buildStatus = newb.Status
@@ -349,10 +349,7 @@ func mkBuildPackDockerfile(dir string, env map[string]string) error {
 	content := compileTmpl(herokuishTmpl, herokuishOpts{env})
 	log.Debugf("--- generated Dockerfile ------\n %s --------", content)
 
-	if err := ioutil.WriteFile(dockerfile, []byte(content), 0644); err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(dockerfile, []byte(content), 0644)
 }
 
 var herokuishTmpl = `FROM gliderlabs/herokuish:v0.3.29

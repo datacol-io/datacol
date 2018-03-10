@@ -1,0 +1,20 @@
+{
+    "steps": [
+    {
+        "name": "gcr.io/cloud-builders/go",
+        "env":[
+            "GOOS=linux", 
+            "GOARCH=amd64"
+        ],
+        "args": [ "build", "-o", "apictl", "-ldflags=\"-s -w\"", "./api"]
+    }, {
+        "name": "zip",
+        "args": ["apictl.zip", "apictl"]
+    }, {
+        "name": "gcr.io/cloud-builders/gsutil",
+        "args": ["cp", "apictl.zip", "datacol-dev/binaries/${_DATACOL_VERSION}/apictl.zip"]
+    }, {
+        "name": "gcr.io/cloud-builders/gsutil",
+        "args": ["acl", "ch", "-u", "allUsers:R", "gs://datacol-dev/binaries/${_DATACOL_VERSION}/apictl.zip"]
+    }]
+}

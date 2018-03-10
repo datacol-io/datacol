@@ -13,12 +13,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	term "github.com/appscode/go/term"
+	"github.com/urfave/cli"
+
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/provider/aws"
 	"github.com/datacol-io/datacol/cmd/provider/gcp"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/datacol-io/datacol/go/env"
-	"github.com/urfave/cli"
 )
 
 var (
@@ -150,14 +151,14 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		Region:          c.String("region"),
 		Bucket:          c.String("bucket"),
 		Version:         stdcli.Version,
-		ApiKey:          c.String("ApiKey"),
+		APIKey:          c.String("ApiKey"),
 		KeyName:         c.String("key"),
 		UseSpotInstance: c.Bool("preemptible"),
 		CreateCluster:   len(c.String("cluster")) == 0,
 	}
 
-	if len(options.ApiKey) == 0 {
-		options.ApiKey = rand.GeneratePassword()
+	if len(options.APIKey) == 0 {
+		options.APIKey = rand.GeneratePassword()
 	}
 
 	ec := env.FromHost()

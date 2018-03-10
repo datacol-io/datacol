@@ -36,7 +36,7 @@ var (
 
 type InitOptions struct {
 	Name, Region, Zone, Bucket         string
-	ApiKey, Version, ArtifactBucket    string
+	APIKey, Version, ArtifactBucket    string
 	MachineType, KeyName               string
 	DiskSize, NumNodes, ControllerPort int
 	UseSpotInstance, CreateCluster     bool
@@ -83,7 +83,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("Zone1"), ParameterValue: aws.String(zone1)},
 			{ParameterKey: aws.String("KeyName"), ParameterValue: resp.KeyName},
 			{ParameterKey: aws.String("KeyMaterial"), ParameterValue: resp.KeyMaterial},
-			{ParameterKey: aws.String("ApiKey"), ParameterValue: aws.String(opts.ApiKey)},
+			{ParameterKey: aws.String("ApiKey"), ParameterValue: aws.String(opts.APIKey)},
 			{ParameterKey: aws.String("DiskSizeGb"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.DiskSize))},
 			{ParameterKey: aws.String("BastionInstanceType"), ParameterValue: aws.String(bastionType)},
 			{ParameterKey: aws.String("AdminIngressLocation"), ParameterValue: aws.String(adminIngressLoc)},
@@ -118,7 +118,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 		return nil, err
 	}
 
-	return &initResponse{Host: host, Password: opts.ApiKey, KeyPairData: *resp.KeyMaterial}, nil
+	return &initResponse{Host: host, Password: opts.APIKey, KeyPairData: *resp.KeyMaterial}, nil
 }
 
 func TeardownStack(stack, bucket, region string, creds *AwsCredentials) error {
@@ -211,7 +211,7 @@ func destroyRack(rackName string, cf *cloudformation.CloudFormation) error {
 
 		time.Sleep(5 * time.Second)
 	}
-	return nil
+
 }
 
 func deleteStack(stack string, cf *cloudformation.CloudFormation) error {
