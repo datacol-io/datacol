@@ -1,7 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"net"
+	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/datacol-io/datacol/api/controller"
@@ -11,6 +15,39 @@ import (
 	"golang.org/x/net/websocket"
 	"google.golang.org/grpc/metadata"
 )
+
+func (s *Server) ResourceProxy(ws *websocket.Conn) error {
+	headers := ws.Request().Header
+	host := headers.Get("host")
+	port := headers.Get("port")
+
+	if host == "" {
+		return errors.New("Missing required header: host")
+	}
+
+	if port == "" {
+		return errors.New("Missing required header: port")
+	}
+
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), 3*time.Second)
+
+	if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
+		return errors.New("connection timeout out")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go copyAsync(ws, conn, &wg)
+	go copyAsync(conn, ws, &wg)
+	wg.Wait()
+
+	return nil
+}
 
 func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
 	headers := ws.Request().Header

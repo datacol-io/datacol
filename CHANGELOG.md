@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - AWS elasticsearch support
 - Websocket connection for streaming logs and Running one-off commands
 - Added `--ref` flag into deploy cmd
+- Proxy support through bastion Host 
 ### Fixed
 - Embedding Provider for `datacol login`
 - Procfile support for Codecommit based app
