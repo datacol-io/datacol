@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [UNRELEASED] - 0000-00-00
 ### Added
 - AWS elasticsearch support
+- Websocket connection for streaming logs and Running one-off commands
 
 ## [1.0.0-alpha.11] - 2018-03-02
 ### Added

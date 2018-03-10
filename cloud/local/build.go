@@ -75,7 +75,7 @@ func (g *LocalCloud) BuildImport(id, filename string) error {
 	repo := fmt.Sprintf("%s/%s", g.RegistryAddress, app)
 	tag := id
 
-	log.Debugf("Tagging image %s to %s", app, repo, tag)
+	log.Debugf("Tagging image %s to %s:%s", app, repo, tag)
 
 	if err := dkr.TagImage(app, docker.TagImageOptions{Repo: repo, Tag: tag}); err != nil {
 		return fmt.Errorf("failed to tag image with %v: %v", tag, err)

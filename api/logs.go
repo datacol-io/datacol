@@ -1,22 +1,48 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/appscode/go/log"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/golang/protobuf/ptypes"
+	"golang.org/x/net/websocket"
 )
 
 func (s *Server) LogStream(req *pbs.LogStreamReq, stream pbs.ProviderService_LogStreamServer) error {
-	since, err := ptypes.Duration(req.Since)
-	if err != nil {
-		return err
+	return fmt.Errorf("Logging over GRPC has been deprecated. Please use use websocket based Path")
+}
+
+func (s *Server) LogStreamWs(ws *websocket.Conn) error {
+	headers := ws.Request().Header
+	app := headers.Get("app")
+
+	if app == "" {
+		return fmt.Errorf("Missing require param: app")
 	}
 
-	return s.Provider.LogStream(req.Name, logStreamW{stream}, pb.LogStreamOptions{
-		Follow:   req.Follow,
+	var (
+		since  time.Duration
+		follow bool
+	)
+
+	if raw := headers.Get("since"); raw != "" {
+		duration, err := time.ParseDuration(raw)
+		if err != nil {
+			return err
+		}
+		since = duration
+	}
+
+	if raw := headers.Get("follow"); raw != "" {
+		follow = raw == "true"
+	}
+
+	return s.Provider.LogStream(app, ws, pb.LogStreamOptions{
 		Since:    since,
-		Proctype: req.Proctype,
+		Follow:   follow,
+		Proctype: headers.Get("process"),
 	})
 }
 

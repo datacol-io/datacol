@@ -1,13 +1,27 @@
 package main
 
 import (
+	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 	"google.golang.org/grpc/metadata"
 )
+
+func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
+	headers := ws.Request().Header
+	app := headers.Get("app")
+
+	if app == "" {
+		return fmt.Errorf("Missing require param: app")
+	}
+
+	return s.Provider.ProcessRun(app, ws, headers.Get("command"))
+}
 
 func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	md, _ := metadata.FromIncomingContext(srv.Context())
