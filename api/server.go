@@ -71,6 +71,13 @@ func newServer() *Server {
 		}
 
 	case "local":
+		// Local provider uses registry inside minikube VM to store images. Execute following commands to the registry running
+		// inside minikube vm
+		//
+		// minikube start --insecure-registry localhost:5000 && \
+		// 	eval $(minikube docker-env) && \
+		// 	docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
 		provider = &local.LocalCloud{
 			Name:            name,
 			RegistryAddress: "localhost:5000",

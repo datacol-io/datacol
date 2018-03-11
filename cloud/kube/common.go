@@ -207,6 +207,11 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 
 func LogStreamReq(c *kubernetes.Clientset, w io.Writer, ns, app string, opts pb.LogStreamOptions) error {
 	pods, err := GetAllPods(c, ns, app)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Got %d pods for app=%s", len(pods), app)
 
 	//TODO: consider using https://github.com/djherbis/stream for reading multiple streams
 	var sources []multiplexio.Source

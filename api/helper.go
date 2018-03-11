@@ -10,6 +10,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -80,4 +81,18 @@ func writeToFd(fd io.Writer, data []byte) error {
 			return nil
 		}
 	}
+}
+
+type websocketFunc func(*websocket.Conn) error
+
+func ws(at string, handler websocketFunc) websocket.Handler {
+	return websocket.Handler(func(ws *websocket.Conn) {
+		err := handler(ws)
+
+		if err != nil {
+			log.Error(err)
+			ws.Write([]byte(fmt.Sprintf("ERROR: %v\n", err)))
+			return
+		}
+	})
 }
