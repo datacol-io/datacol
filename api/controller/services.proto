@@ -37,6 +37,7 @@ message AuthResponse {
   string name = 2;
   string project = 3;
   string region = 4;
+  string provider = 5;
 }
 
 message CreateBuildRequest {

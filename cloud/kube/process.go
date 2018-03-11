@@ -110,6 +110,8 @@ func (p *ExecOptions) Run() error {
 	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, true)
 }
 
+// ProcessList will fetch the list of processes running based on deployments Labels
+// TODO: fetch the status as well
 func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error) {
 	deployments, err := getAllDeployments(c, ns, app)
 	if err != nil {

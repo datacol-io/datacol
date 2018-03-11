@@ -94,9 +94,9 @@ func GetJobID(name, process_type string) string {
 
 func GetDefaultProctype(b *pb.Build) string {
 	proctype := CmdProcessKind
-	fmt.Printf("build %+v\n", b)
 
 	if len(b.Procfile) > 0 {
+		log.Debugf("build %s have non-empty procfile", b.Id)
 		proctype = WebProcessKind
 	}
 

@@ -29,6 +29,10 @@ func init() {
 				Name:  "build, b",
 				Usage: "Build id to use",
 			},
+			&cli.StringFlag{
+				Name:  "ref",
+				Usage: "The commit SHA1 of branch or tag to use",
+			},
 			&cli.BoolTFlag{
 				Name:  "wait, w",
 				Usage: "Wait for the app become available",
@@ -59,10 +63,16 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	var build *pb.Build
-	buildID := c.String("build")
+	commitID, buildID := c.String("ref"), c.String("build")
 
 	if len(buildID) == 0 {
-		build, err = executeBuildDir(client, app, dir)
+		var err error
+		if commitID == "" {
+			build, err = executeBuildDir(client, app, dir)
+		} else {
+			build, err = executeBuildGitSource(client, app, commitID)
+		}
+
 		stdcli.ExitOnError(err)
 	} else {
 		b, err := client.GetBuild(name, buildID)

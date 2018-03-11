@@ -150,8 +150,6 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		return endpoint, err
 	}
 
-	log.Debugf("service %s", toJson(svc))
-
 	// If a service is deployed without domainName. We use ServceType = LoadBalancer and cloud load balancer will expose the service
 	if svc.Spec.Type == core_v1.ServiceTypeLoadBalancer && len(svc.Status.LoadBalancer.Ingress) > 0 {
 		ing := svc.Status.LoadBalancer.Ingress[0]
@@ -177,8 +175,6 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 			}
 			return endpoint, err
 		}
-
-		log.Debugf("ingress %s", toJson(ing))
 
 		if lBIngresses := ing.Status.LoadBalancer.Ingress; len(lBIngresses) > 0 {
 			return lBIngresses[0].IP, nil

@@ -883,6 +883,9 @@
         },
         "region": {
           "type": "string"
+        },
+        "provider": {
+          "type": "string"
         }
       }
     },
