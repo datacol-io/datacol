@@ -28,7 +28,7 @@ var (
 
 	defaultGcpZone         = "asia-east1-a"    //Taiwan
 	defaultAWSZone         = "ap-southeast-1a" //Singapur
-	defaultAWSInstanceType = "t2.medium"
+	defaultAWSInstanceType = "m4.large"
 	defaultGCPInstanceType = "n1-standard-1"
 )
 
@@ -146,7 +146,7 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		Name:            stackName,
 		DiskSize:        c.Int("disk-size"),
 		NumNodes:        c.Int("nodes"),
-		MachineType:     c.String("machine-type"),
+		InstanceType:    c.String("machine-type"),
 		Zone:            c.String("zone"),
 		Region:          c.String("region"),
 		Bucket:          c.String("bucket"),
@@ -266,8 +266,8 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 		opts.Region = getAwsRegionFromZone(opts.Zone)
 	}
 
-	if opts.MachineType == "" {
-		opts.MachineType = defaultAWSInstanceType
+	if opts.InstanceType == "" {
+		opts.InstanceType = defaultAWSInstanceType
 	}
 
 	if len(opts.Bucket) == 0 {

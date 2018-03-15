@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	gce_metadata "cloud.google.com/go/compute/metadata"
+	gcp_metadata "cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
@@ -121,25 +121,33 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
+	provider := cloud.CloudProvider(os.Getenv("DATACOL_PROVIDER"))
 	if authorize(ctx, s.Password) {
 		var ip, project string
-		if gce_metadata.OnGCE() {
-			_ip, err := gce_metadata.ExternalIP()
-			if err != nil {
-				return nil, internalError(err, "couldn't resolve external ip for instance.")
+		switch provider {
+		case cloud.GCPProvider:
+			if gcp_metadata.OnGCE() {
+				_pid, err := gcp_metadata.ProjectID()
+				if err != nil {
+					return nil, internalError(err, "couldn't get projectId from metadata server.")
+				}
+				project = _pid
 			}
-			ip = _ip
-			_pid, err := gce_metadata.ProjectID()
-			if err != nil {
-				return nil, internalError(err, "couldn't get projectId from metadata server.")
-			}
-			project = _pid
-		} else {
+		case cloud.AwsProvider:
+			project = ""
+		case cloud.LocalProvider:
 			ip = "localhost"
 			project = "gcs-local"
+		default:
+			return nil, fmt.Errorf("Invalid cloud provider: %s", provider)
 		}
 
-		return &pbs.AuthResponse{Name: s.StackName, Host: ip, Project: project}, nil
+		return &pbs.AuthResponse{
+			Provider: string(provider),
+			Name:     s.StackName,
+			Host:     ip,
+			Project:  project,
+		}, nil
 	} else {
 		return nil, internalError(fmt.Errorf("Invalid login trial with %s", req.Password), "invalid password")
 	}

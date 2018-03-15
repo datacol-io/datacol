@@ -22,6 +22,7 @@ var (
 	kcpath        = filepath.Join(rootPath, "kubeconfig")
 	pemPathRE     = filepath.Join(rootPath, "%s.pem")
 	privateIpAttr = "MasterPrivateIp"
+	bastionIpAttr = "BastionHostPublicIp"
 	scpCmd        = "scp -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@%s:~/kubeconfig %s"
 )
 
@@ -65,19 +66,27 @@ func (p *AwsCloud) K8sConfigPath() (string, error) {
 	return kcpath, nil
 }
 
-func (p *AwsCloud) masterPrivateIp() (string, error) {
+func (p *AwsCloud) bastionHostIp() (string, error) {
+	return p.stackOutputValue(bastionIpAttr)
+}
+
+func (p *AwsCloud) stackOutputValue(attr string) (string, error) {
 	s, err := p.describeStack("")
 	if err != nil {
 		return "", err
 	}
 
 	for _, o := range s.Outputs {
-		if o.OutputKey != nil && privateIpAttr == *o.OutputKey {
+		if o.OutputKey != nil && attr == *o.OutputKey {
 			return *o.OutputValue, nil
 		}
 	}
 
-	return "", fmt.Errorf("unable to find MasterPrivateIp from stack output")
+	return "", fmt.Errorf("unable to find %s from stack output", attr)
+}
+
+func (p *AwsCloud) masterPrivateIp() (string, error) {
+	return p.stackOutputValue(privateIpAttr)
 }
 
 func getKubeClientSet(name string) (*kubernetes.Clientset, error) {

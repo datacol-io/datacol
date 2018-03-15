@@ -37,7 +37,7 @@ var (
 type InitOptions struct {
 	Name, Region, Zone, Bucket         string
 	APIKey, Version, ArtifactBucket    string
-	MachineType, KeyName               string
+	InstanceType, KeyName              string
 	DiskSize, NumNodes, ControllerPort int
 	UseSpotInstance, CreateCluster     bool
 }
@@ -89,7 +89,7 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("AdminIngressLocation"), ParameterValue: aws.String(adminIngressLoc)},
 			{ParameterKey: aws.String("NetworkingProvider"), ParameterValue: aws.String(networkProvider)},
 			{ParameterKey: aws.String("K8sNodeCapacity"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.NumNodes-1))},
-			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.MachineType)},
+			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.InstanceType)},
 			{ParameterKey: aws.String("DatacolVersion"), ParameterValue: aws.String(opts.Version)},
 			{ParameterKey: aws.String("ArtifactBucket"), ParameterValue: aws.String(opts.ArtifactBucket)},
 			{ParameterKey: aws.String("SettingBucket"), ParameterValue: aws.String(opts.Bucket)},
