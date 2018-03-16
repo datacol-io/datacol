@@ -77,9 +77,12 @@ func init() {
 				Value: 10,
 			},
 			&cli.StringFlag{
-				Name:  "machine-type",
+				Name:  "cluster-instance-type",
 				Usage: "type of instance to use for cluster nodes",
-				Value: "",
+			},
+			&cli.StringFlag{
+				Name:  "controller-instance-type",
+				Usage: "type of instance to use for bastion or controller node",
 			},
 			&cli.BoolFlag{
 				Name:  "preemptible",
@@ -143,18 +146,19 @@ func cmdAWSStackCreate(c *cli.Context) error {
 
 	stackName := c.String("name")
 	options := &aws.InitOptions{
-		Name:            stackName,
-		DiskSize:        c.Int("disk-size"),
-		NumNodes:        c.Int("nodes"),
-		InstanceType:    c.String("machine-type"),
-		Zone:            c.String("zone"),
-		Region:          c.String("region"),
-		Bucket:          c.String("bucket"),
-		Version:         stdcli.Version,
-		APIKey:          c.String("ApiKey"),
-		KeyName:         c.String("key"),
-		UseSpotInstance: c.Bool("preemptible"),
-		CreateCluster:   len(c.String("cluster")) == 0,
+		Name:                   stackName,
+		DiskSize:               c.Int("disk-size"),
+		NumNodes:               c.Int("nodes"),
+		Zone:                   c.String("zone"),
+		Region:                 c.String("region"),
+		Bucket:                 c.String("bucket"),
+		Version:                stdcli.Version,
+		APIKey:                 c.String("ApiKey"),
+		KeyName:                c.String("key"),
+		UseSpotInstance:        c.Bool("preemptible"),
+		CreateCluster:          len(c.String("cluster")) == 0,
+		ClusterInstanceType:    c.String("cluster-instance-type"),
+		ControllerInstanceType: c.String("controller-instance-type"),
 	}
 
 	if len(options.APIKey) == 0 {
@@ -195,7 +199,9 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	password := c.String("password")
 
 	cluster := c.String("cluster")
-	machineType := c.String("machine-type")
+	machineType := c.String("cluster-instance-type")
+	apiMachineType := c.String("controller-instance-type")
+
 	preemptible := c.Bool("preemptible")
 	diskSize := c.Int("disk-size")
 
@@ -212,6 +218,9 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		ApiKey:         password,
 		SAKeyPath:      c.String("key"),
 		ClusterVersion: c.String("cluster-version"),
+
+		//FIXME: doesn't get applied into deployment spec yet
+		ControllerMachineType: apiMachineType,
 	}
 
 	ec := env.FromHost()
@@ -266,8 +275,8 @@ func initializeAWS(opts *aws.InitOptions, credentialsFile string) error {
 		opts.Region = getAwsRegionFromZone(opts.Zone)
 	}
 
-	if opts.InstanceType == "" {
-		opts.InstanceType = defaultAWSInstanceType
+	if opts.ClusterInstanceType == "" {
+		opts.ClusterInstanceType = defaultAWSInstanceType
 	}
 
 	if len(opts.Bucket) == 0 {

@@ -18,15 +18,15 @@ import (
 
 func (s *Server) ResourceProxy(ws *websocket.Conn) error {
 	headers := ws.Request().Header
-	host := headers.Get("host")
-	port := headers.Get("port")
+	host := headers.Get("remotehost")
+	port := headers.Get("remoteport")
 
 	if host == "" {
-		return errors.New("Missing required header: host")
+		return errors.New("Missing required header: remotehost")
 	}
 
 	if port == "" {
-		return errors.New("Missing required header: port")
+		return errors.New("Missing required header: remoteport")
 	}
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), 3*time.Second)

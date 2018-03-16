@@ -66,8 +66,8 @@ func (c *Client) SetEnvironment(name string, data string) error {
 }
 
 func (c *Client) ProxyRemote(host string, port int, conn io.ReadWriteCloser) error {
-	return c.Stream("/ws/proxy", map[string]string{
-		"host": host,
-		"port": fmt.Sprintf("%d", port),
+	return c.Stream("/ws/v1/proxy", map[string]string{
+		"remotehost": host,
+		"remoteport": fmt.Sprintf("%d", port),
 	}, conn, conn)
 }

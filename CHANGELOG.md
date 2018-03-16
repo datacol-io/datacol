@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Added
+- Adding cluster-instance-type and controller-instance-type in `datacol init`
 - AWS elasticsearch support
 - Websocket connection for streaming logs and Running one-off commands
 - Added `--ref` flag into deploy cmd

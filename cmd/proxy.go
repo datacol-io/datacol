@@ -23,7 +23,7 @@ func init() {
 
 func cmdStackProxy(c *cli.Context) error {
 	for _, arg := range c.Args() {
-		parts := strings.SplitN(arg, ":", 2)
+		parts := strings.SplitN(arg, ":", 3)
 
 		var (
 			host           string
@@ -36,8 +36,8 @@ func cmdStackProxy(c *cli.Context) error {
 			port = parseInt(parts[1])
 			hostport = port
 		case 3:
-			host = parts[0]
-			port = parseInt(parts[1])
+			port = parseInt(parts[0])
+			host = parts[1]
 			hostport = parseInt(parts[2])
 		default:
 			stdcli.ExitOnError(fmt.Errorf("invalid argument: %s", arg))
