@@ -16,6 +16,7 @@ func init() {
 		Name:        "proxy",
 		Description: "proxy local ports into a stack",
 		Action:      cmdStackProxy,
+		ArgsUsage:   "<[port:]host:hostport>",
 		Flags:       []cli.Flag{stackFlag},
 	})
 }
@@ -24,16 +25,20 @@ func cmdStackProxy(c *cli.Context) error {
 	for _, arg := range c.Args() {
 		parts := strings.SplitN(arg, ":", 2)
 
-		host := "localhost" // hardcoding it since we only have 1 bastion host
+		var (
+			host           string
+			port, hostport int
+		)
 
-		var port, hostport int
 		switch len(parts) {
-		case 1:
-			port = parseInt(parts[0])
-			hostport = port
 		case 2:
-			port = parseInt(parts[0])
-			hostport = parseInt(parts[1])
+			host = parts[0]
+			port = parseInt(parts[1])
+			hostport = port
+		case 3:
+			host = parts[0]
+			port = parseInt(parts[1])
+			hostport = parseInt(parts[2])
 		default:
 			stdcli.ExitOnError(fmt.Errorf("invalid argument: %s", arg))
 		}
