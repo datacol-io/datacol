@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -19,6 +21,7 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 )
 
 func init() {
@@ -239,7 +242,13 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 	return bytes, nil
 }
 
-func finishBuild(api *client.Client, b *pb.Build) error {
+func finishBuild(api *client.Client, b *pb.Build) (err error) {
+	// try to sync local state
+	b, err = api.GetBuild(b.App, b.Id)
+	if err != nil {
+		return err
+	}
+
 	if api.IsGCP() {
 		return finishBuildGCP(api, b)
 	}
@@ -248,9 +257,30 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 }
 
 func finishBuildAwsWs(api *client.Client, b *pb.Build) error {
-	return api.Stream("/ws/v1/builds/logs", map[string]string{
-		"id": b.RemoteId,
-	}, os.Stdin, os.Stdout)
+	ws, err := api.StreamClient("/ws/v1/builds/logs", map[string]string{"id": b.Id})
+	if err != nil {
+		return err
+	}
+
+	defer ws.Close()
+
+	var (
+		wg  sync.WaitGroup
+		out = os.Stdout
+	)
+
+	if out != nil {
+		wg.Add(1)
+		go copyAsync(out, ws, &wg)
+	}
+
+	// We need to pool the build status to short-circuit the streaming logs
+	// FIXME: waitForAwsBuild might get into zombie goroutine if copyAsync returns quick
+	go waitforAwsBuild(api, b, &wg, ws, 5*time.Second)
+
+	wg.Wait()
+
+	return nil
 }
 
 func finishBuildGCP(api *client.Client, b *pb.Build) (err error) {
@@ -322,3 +352,25 @@ RUN /bin/herokuish buildpack build
 ENV PORT 8080
 EXPOSE 8080
 CMD ["/start", "web"]`
+
+func copyAsync(dst io.Writer, src io.Reader, wg *sync.WaitGroup) {
+	defer wg.Done()
+	io.Copy(dst, src)
+}
+
+func waitforAwsBuild(api *client.Client, b *pb.Build, wg *sync.WaitGroup, ws *websocket.Conn, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		newb, _ := api.GetBuild(b.App, b.Id)
+		if newb.Status != "IN_PROGRESS" {
+			fmt.Println("Build Id:", newb.Id)
+			fmt.Println("Build status:", newb.Status)
+			break
+		}
+	}
+
+	ws.Close()
+	wg.Done()
+}

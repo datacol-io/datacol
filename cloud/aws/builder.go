@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -94,6 +95,10 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 		builds[i] = a.buildFromItem(item)
 	}
 
+	sort.Slice(builds, func(i, j int) bool {
+		return builds[i].CreatedAt < builds[j].CreatedAt
+	})
+
 	return builds, nil
 }
 
@@ -103,6 +108,9 @@ func (a *AwsCloud) BuildImport(id, gzipPath string) error {
 		return err
 	}
 	app := build.App
+
+	// We need to convert gzip to zip format since AWS codebuild only
+	// supports zip file for s3 based source
 	log.Debugf("converting gzip to zip of %s", gzipPath)
 	zipPath, err := convertGzipToZip(app, gzipPath)
 	if err != nil {
@@ -144,11 +152,14 @@ func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		CreatedAt: timestampNow(),
 	}
 
-	if err := a.buildSave(build); err != nil {
-		return nil, fmt.Errorf("saving to dynamodb err: %v", err)
+	//FIXME: If version is not blank, we can trigger the build. this is a hack as of now and
+	// should be replaced with better build API
+	// Version os GIT COMMIT hash
+	if req.Version != "" {
+		return build, a.startBuild(build, req)
 	}
 
-	return build, a.startBuild(build, req)
+	return build, a.buildSave(build)
 }
 
 func (a *AwsCloud) BuildLogs(app, id string, index int) (int, []string, error) {
@@ -164,8 +175,17 @@ func (a *AwsCloud) BuildLogsStream(id string) (io.Reader, error) {
 	fmt.Print("waiting for cloudwatch logstream (1s)")
 	var rb *codebuild.Build
 
+	bb, err := a.BuildGet("", id)
+	if err != nil {
+		return nil, err
+	}
+
+	if bb.RemoteId == "" {
+		return nil, fmt.Errorf("No build process found for Id=%s", bb.Id)
+	}
+
 	for {
-		b, err := a.fetchRemoteBuild(id)
+		b, err := a.fetchRemoteBuild(bb.RemoteId)
 		if err != nil {
 			return nil, fmt.Errorf("fetching build err: %v", err)
 		}
