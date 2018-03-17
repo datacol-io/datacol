@@ -38,6 +38,9 @@ type InitOptions struct {
 	// SA stands for Service Account
 	SAKeyPath, SAEmail, ClusterVersion string
 
+	// Default machine type for controller/api
+	ControllerMachineType string
+
 	DiskSize, NumNodes, ControllerPort int
 	ClusterNotExists, Preemptible      bool
 }

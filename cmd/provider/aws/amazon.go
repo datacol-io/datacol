@@ -35,9 +35,11 @@ var (
 )
 
 type InitOptions struct {
-	Name, Region, Zone, Bucket         string
-	APIKey, Version, ArtifactBucket    string
-	InstanceType, KeyName              string
+	Name, Region, Zone, Bucket      string
+	APIKey, Version, ArtifactBucket string
+	ClusterInstanceType, KeyName    string
+	ControllerInstanceType          string
+
 	DiskSize, NumNodes, ControllerPort int
 	UseSpotInstance, CreateCluster     bool
 }
@@ -76,6 +78,10 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 		mkCluster = "false"
 	}
 
+	if opts.ControllerInstanceType == "" {
+		opts.ControllerInstanceType = bastionType
+	}
+
 	req := &cloudformation.CreateStackInput{
 		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
 		Parameters: []*cloudformation.Parameter{
@@ -85,11 +91,11 @@ func InitializeStack(opts *InitOptions, creds *AwsCredentials) (*initResponse, e
 			{ParameterKey: aws.String("KeyMaterial"), ParameterValue: resp.KeyMaterial},
 			{ParameterKey: aws.String("ApiKey"), ParameterValue: aws.String(opts.APIKey)},
 			{ParameterKey: aws.String("DiskSizeGb"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.DiskSize))},
-			{ParameterKey: aws.String("BastionInstanceType"), ParameterValue: aws.String(bastionType)},
+			{ParameterKey: aws.String("BastionInstanceType"), ParameterValue: aws.String(opts.ControllerInstanceType)},
 			{ParameterKey: aws.String("AdminIngressLocation"), ParameterValue: aws.String(adminIngressLoc)},
 			{ParameterKey: aws.String("NetworkingProvider"), ParameterValue: aws.String(networkProvider)},
 			{ParameterKey: aws.String("K8sNodeCapacity"), ParameterValue: aws.String(fmt.Sprintf("%d", opts.NumNodes-1))},
-			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.InstanceType)},
+			{ParameterKey: aws.String("InstanceType"), ParameterValue: aws.String(opts.ClusterInstanceType)},
 			{ParameterKey: aws.String("DatacolVersion"), ParameterValue: aws.String(opts.Version)},
 			{ParameterKey: aws.String("ArtifactBucket"), ParameterValue: aws.String(opts.ArtifactBucket)},
 			{ParameterKey: aws.String("SettingBucket"), ParameterValue: aws.String(opts.Bucket)},
