@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -245,51 +244,13 @@ func finishBuild(api *client.Client, b *pb.Build) error {
 		return finishBuildGCP(api, b)
 	}
 
-	return finishBuildAws(api, b)
+	return finishBuildAwsWs(api, b)
 }
 
-func finishBuildAws(api *client.Client, b *pb.Build) error {
-	stream, err := api.ProviderServiceClient.BuildLogsStream(context.TODO(), &pbs.BuildLogStreamReq{Id: b.RemoteId})
-	if err != nil {
-		return err
-	}
-	defer stream.CloseSend()
-	out := os.Stdout
-
-	ticker := time.NewTicker(time.Second * 3)
-	defer ticker.Stop()
-
-	buildStatus := b.Status
-
-	go func() {
-		for range ticker.C {
-			newb, _ := api.GetBuild(b.App, b.Id)
-			if newb.Status != buildStatus {
-				buildStatus = newb.Status
-				break
-			}
-		}
-	}()
-
-	for {
-		if buildStatus != "IN_PROGRESS" {
-			fmt.Println("Build Id:", b.Id)
-			fmt.Println("Build status:", buildStatus)
-			break
-		}
-
-		ret, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if _, err := out.Write(ret.Data); err != nil {
-			return err
-		}
-	}
-	return nil
+func finishBuildAwsWs(api *client.Client, b *pb.Build) error {
+	return api.Stream("/ws/v1/builds/logs", map[string]string{
+		"id": b.RemoteId,
+	}, os.Stdin, os.Stdout)
 }
 
 func finishBuildGCP(api *client.Client, b *pb.Build) (err error) {

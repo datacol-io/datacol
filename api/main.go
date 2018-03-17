@@ -51,10 +51,11 @@ func runHttpServer(server *Server) error {
 	mux := http.NewServeMux()
 
 	// Implementing bidi-streaming using GRPC is a lot of headache,
-	// it's better to use websockets protocols for streaming and interactive one-off commands
+	// it's better to use websockets protocols for streaming logs and interactive one-off commands
 	mux.Handle("/ws/v1/logs", ws("appLogs", server.LogStreamWs))
 	mux.Handle("/ws/v1/exec", ws("processExec", server.ProcessRunWs))
 	mux.Handle("/ws/v1/proxy", ws("appProxy", server.ResourceProxy))
+	mux.Handle("/ws/v1/builds/logs", ws("buildLogs", server.BuildLogStreamReq))
 	mux.Handle("/", gwmux)
 
 	fmt.Printf("Starting server on http=%d and grpc=%d ports\n", port, rpcPort)
