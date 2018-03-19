@@ -26,6 +26,7 @@ message Build {
   string status         = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
   int32 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
   bytes procfile  = 6 [(gogoproto.moretags) = "datastore:\"procfile,noindex\""];
+  string version  = 7  [(gogoproto.moretags) = "datastore:\"version,noindex\""];
 }
 
 message Release {

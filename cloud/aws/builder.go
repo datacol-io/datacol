@@ -144,15 +144,12 @@ func (a *AwsCloud) BuildImport(id, gzipPath string) error {
 }
 
 func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
-	version := req.Version // better to make Id as commit hash
-
-	if version == "" {
-		version = generateId("B", 5)
-	}
+	Id := generateId("B", 5)
 
 	build := &pb.Build{
 		App:       app,
-		Id:        version,
+		Id:        Id,
+		Version:   req.Version,
 		Procfile:  req.Procfile,
 		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
@@ -215,6 +212,7 @@ func (a *AwsCloud) buildFromItem(item map[string]*dynamodb.AttributeValue) *pb.B
 		Id:        coalesce(item["id"], ""),
 		App:       coalesce(item["app"], ""),
 		Status:    coalesce(item["status"], ""),
+		Version:   coalesce(item["version"], ""),
 		RemoteId:  coalesce(item["remote_id"], ""),
 		Procfile:  coalesceBytes(item["procfile"]),
 		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
@@ -232,6 +230,10 @@ func (a *AwsCloud) buildSave(b *pb.Build) error {
 
 	if b.Status != "" {
 		req.Item["status"] = &dynamodb.AttributeValue{S: aws.String(b.Status)}
+	}
+
+	if b.Version != "" {
+		req.Item["version"] = &dynamodb.AttributeValue{S: aws.String(b.Version)}
 	}
 
 	if b.RemoteId != "" {

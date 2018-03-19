@@ -87,6 +87,7 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		App:       app,
 		Id:        id,
 		Status:    "CREATED",
+		Version:   req.Version,
 		Procfile:  req.Procfile,
 		CreatedAt: timestampNow(),
 	}

@@ -982,6 +982,9 @@
         "procfile": {
           "type": "string",
           "format": "byte"
+        },
+        "version": {
+          "type": "string"
         }
       }
     },

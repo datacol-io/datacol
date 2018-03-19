@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Added
+- commit sha in build struct for git based app
 - Docker build logs with websocket on AWS
 - Adding cluster-instance-type and controller-instance-type in `datacol init`
 - AWS elasticsearch support
