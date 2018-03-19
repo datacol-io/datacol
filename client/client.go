@@ -116,35 +116,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 }
 
 func (c *Client) Stream(path string, headers map[string]string, in io.Reader, out io.Writer) error {
-	origin := fmt.Sprintf("https://%s:%d", c.ApiServer, apiHttpPort)
-	endpoint := fmt.Sprintf("ws://%s:%d%s", c.ApiServer, apiHttpPort, path)
-
-	config, err := websocket.NewConfig(endpoint, origin)
-
-	if err != nil {
-		return err
-	}
-
-	config.TlsConfig = &tls.Config{
-		InsecureSkipVerify: true,
-	}
-
-	config.Header.Set("Version", c.Version)
-
-	userpass := fmt.Sprintf(":%s", c.ApiKey)
-	userpass_encoded := base64.StdEncoding.EncodeToString([]byte(userpass))
-
-	config.Header.Add("Authorization", fmt.Sprintf("Basic %s", userpass_encoded))
-
-	for k, v := range headers {
-		config.Header.Add(k, v)
-	}
-
-	config.TlsConfig = &tls.Config{
-		InsecureSkipVerify: true,
-	}
-
-	ws, err := websocket.DialConfig(config)
+	ws, err := c.StreamClient(path, headers)
 	if err != nil {
 		return err
 	}
@@ -164,6 +136,42 @@ func (c *Client) Stream(path string, headers map[string]string, in io.Reader, ou
 	wg.Wait()
 
 	return nil
+}
+
+func (c *Client) StreamClient(path string, headers map[string]string) (*websocket.Conn, error) {
+	return wsConn(path, c.ApiServer, c.Version, c.ApiKey, headers)
+}
+
+func wsConn(path, server, version, apiKey string, headers map[string]string) (*websocket.Conn, error) {
+	origin := fmt.Sprintf("https://%s:%d", server, apiHttpPort)
+	endpoint := fmt.Sprintf("ws://%s:%d%s", server, apiHttpPort, path)
+
+	config, err := websocket.NewConfig(endpoint, origin)
+
+	if err != nil {
+		return nil, err
+	}
+
+	config.TlsConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	config.Header.Set("Version", version)
+
+	userpass := fmt.Sprintf(":%s", apiKey)
+	userpass_encoded := base64.StdEncoding.EncodeToString([]byte(userpass))
+
+	config.Header.Add("Authorization", fmt.Sprintf("Basic %s", userpass_encoded))
+
+	for k, v := range headers {
+		config.Header.Add(k, v)
+	}
+
+	config.TlsConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	return websocket.DialConfig(config)
 }
 
 func copyAsync(dst io.Writer, src io.Reader, wg *sync.WaitGroup) {

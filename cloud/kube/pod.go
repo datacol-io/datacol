@@ -96,8 +96,8 @@ func podEvents(c *kubernetes.Clientset, pod *v1.Pod) (*v1.EventList, error) {
 	}
 
 	res, err := c.Core().Events(pod.Namespace).List(metav1.ListOptions{
-		FieldSelector:   klabels.Set(fields).AsSelector().String(),
-		ResourceVersion: pod.ObjectMeta.ResourceVersion,
+		FieldSelector: klabels.Set(fields).AsSelector().String(),
+		// ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	})
 	if err != nil {
 		return res, err
@@ -227,10 +227,11 @@ func podPendingStatus(c *kubernetes.Clientset, pod *v1.Pod) (reason string, mess
 
 				if reason == "ContainerCreating" {
 					if events, err := podEvents(c, pod); err == nil {
-						ev := events.Items
-						reason = ev[len(ev)-1].Reason
-						message = ev[len(ev)-1].Message
-						return
+						if ev := events.Items; len(ev) > 0 {
+							reason = ev[len(ev)-1].Reason
+							message = ev[len(ev)-1].Message
+							return
+						}
 					}
 				}
 			}

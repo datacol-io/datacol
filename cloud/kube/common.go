@@ -177,7 +177,13 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 		}
 
 		if lBIngresses := ing.Status.LoadBalancer.Ingress; len(lBIngresses) > 0 {
-			return lBIngresses[0].IP, nil
+			ingRecord := lBIngresses[0]
+			endpoint = ingRecord.IP
+			if endpoint == "" {
+				endpoint = ingRecord.Hostname
+			}
+
+			return endpoint, nil
 		}
 
 		if _, ok := ing.Annotations[ingressAnnotationName]; ok {

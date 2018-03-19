@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +19,7 @@ import (
 	"github.com/datacol-io/datacol/cloud/local"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -283,29 +285,20 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
 }
 
-func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
-	reader, err := s.Provider.BuildLogsStream(req.Id)
+// Streaming build logs with websocket
+func (s *Server) BuildLogStreamReq(ws *websocket.Conn) error {
+	buildId := ws.Request().Header.Get("id")
+	if buildId == "" {
+		return errors.New("Missing required header: id")
+	}
 
-	if err != nil || reader == nil {
+	r, err := s.Provider.BuildLogsStream(buildId)
+	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, 4*1024)
-
-	for {
-		n, err := reader.Read(buf[:cap(buf)])
-		if err != nil {
-			if n == 0 || err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		buf = buf[:n]
-
-		if err := stream.Send(&pbs.StreamMsg{Data: buf}); err != nil {
-			return err
-		}
-	}
+	_, err = io.Copy(ws, r)
+	return err
 }
 
 // Releases endpoints
