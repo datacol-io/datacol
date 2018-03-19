@@ -144,9 +144,15 @@ func (a *AwsCloud) BuildImport(id, gzipPath string) error {
 }
 
 func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
+	version := req.Version // better to make Id as commit hash
+
+	if version == "" {
+		version = generateId("B", 5)
+	}
+
 	build := &pb.Build{
 		App:       app,
-		Id:        generateId("B", 5),
+		Id:        version,
 		Procfile:  req.Procfile,
 		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),

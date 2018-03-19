@@ -62,10 +62,11 @@ func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Bui
 	return b, err
 }
 
-func (c *Client) CreateBuildGit(app *pb.App, version string) (*pb.Build, error) {
+func (c *Client) CreateBuildGit(app *pb.App, version string, procfile []byte) (*pb.Build, error) {
 	return c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
-		App:     app.Name,
-		Version: version,
+		App:      app.Name,
+		Version:  version,
+		Procfile: procfile,
 	})
 }
 

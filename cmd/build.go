@@ -109,7 +109,14 @@ func cmdBuild(c *cli.Context) error {
 }
 
 func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb.Build, error) {
-	b, err := api.CreateBuildGit(app, version)
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	b, err := api.CreateBuildGit(app, version, procfile)
 	if err != nil {
 		return nil, err
 	}
