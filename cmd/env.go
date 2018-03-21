@@ -13,6 +13,7 @@ func init() {
 		Name:   "env",
 		Usage:  "manage environment variables for an app",
 		Action: cmdConfigList,
+		Flags:  []cli.Flag{appFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:      "set",
@@ -29,7 +30,7 @@ func init() {
 }
 
 func cmdConfigList(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	ct, close := getApiClient(c)
@@ -53,7 +54,7 @@ func cmdConfigList(c *cli.Context) error {
 }
 
 func cmdConfigSet(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	ct, close := getApiClient(c)
