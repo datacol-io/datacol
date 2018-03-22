@@ -33,7 +33,7 @@ func init() {
 }
 
 func cmdAppLogStream(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
