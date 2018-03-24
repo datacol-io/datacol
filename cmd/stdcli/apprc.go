@@ -29,10 +29,13 @@ type Apprc struct {
 	Auths   []*Auth `json:"auths,omitempty"`
 }
 
-func (rc *Apprc) GetAuth() *Auth {
-	if rc.Context != "" {
+func (rc *Apprc) GetAuth(stack string) *Auth {
+	if stack == "" {
+		stack = rc.Context
+	}
+	if stack != "" {
 		for _, a := range rc.Auths {
-			if a.Name == rc.Context {
+			if a.Name == stack {
 				return a
 			}
 		}
@@ -94,7 +97,8 @@ func GetAuthOrDie() (*Auth, *Apprc) {
 	if err != nil {
 		term.Fatalln("Command requires authentication, please run `datacol login`")
 	}
-	a := rc.GetAuth()
+
+	a := rc.GetAuth(GetAppSetting("stack"))
 	if a == nil {
 		term.Fatalln("Command requires authentication, please run `datacol login`")
 	}
@@ -107,7 +111,8 @@ func GetAuthOrAnon() (*Auth, bool) {
 	if err != nil {
 		return NewAnonAUth(), false
 	}
-	a := rc.GetAuth()
+	a := rc.GetAuth("")
+
 	if a == nil {
 		return NewAnonAUth(), false
 	}

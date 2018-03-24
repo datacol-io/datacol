@@ -45,6 +45,11 @@ func init() {
 				Name:  "domain, d",
 				Usage: "domain(s) to use with this app",
 			},
+			&cli.BoolTFlag{
+				//TODO: support expose in API
+				Name:  "expose",
+				Usage: "expose the service to the public",
+			},
 		},
 	})
 }
@@ -95,6 +100,7 @@ func cmdDeploy(c *cli.Context) error {
 	_, err = client.ReleaseBuild(build, pb.ReleaseOptions{
 		Domain: c.String("domain"),
 		Wait:   c.Bool("wait"),
+		Expose: c.BoolT("expose"),
 	})
 	stdcli.ExitOnError(err)
 

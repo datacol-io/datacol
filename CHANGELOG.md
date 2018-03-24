@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Added
+- [CLI] `ps` to support container status
 - -a flag for logs, ps, env and run command
 - commit sha in build struct for git based app
 - Docker build logs with websocket on AWS
@@ -13,6 +14,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `--ref` flag into deploy cmd
 - Proxy support through bastion Host 
 ### Fixed
+- [CLI] Bump default version of GCP cluster to `1.7.14-gke.1`
+- [API] Merging app's domain individually 
+- [CLI] Respect `STACK` env variable to ditermine stack
+- [GCP] Ingress should have Path: '/*' to match sub-resources
 - Embedding Provider for `datacol login`
 - Procfile support for Codecommit based app
 

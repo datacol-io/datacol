@@ -13,7 +13,7 @@ func init() {
 		Name:   "run",
 		Usage:  "execute a command in an app",
 		Action: cmdAppRun,
-		Flags:  []cli.Flag{appFlag},
+		Flags:  []cli.Flag{&appFlag},
 	})
 }
 

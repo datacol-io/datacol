@@ -120,10 +120,22 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	var items []*pb.Process
 
 	for _, dp := range deployments {
+		pods, err := getPodsForDeployment(c, &dp)
+		if err != nil {
+			return nil, err
+		}
+
+		var status string
+		if len(pods) > 0 {
+			//FIXME: ideally should report status of all pods
+			status = getPodStatusStr(c, &pods[len(pods)-1])
+		}
+
 		items = append(items, &pb.Process{
 			Proctype: dp.ObjectMeta.Labels[typeLabel],
 			Workers:  *dp.Spec.Replicas,
 			Name:     dp.Name,
+			Status:   status,
 		})
 	}
 

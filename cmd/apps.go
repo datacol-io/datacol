@@ -21,9 +21,8 @@ func init() {
 				Name:   "create",
 				Action: cmdAppCreate,
 				Flags: []cli.Flag{
-					appFlag,
 					cli.StringFlag{
-						Name:  "app",
+						Name:  "name",
 						Usage: "Appliction name (alphanumeric)",
 					},
 					cli.StringFlag{
@@ -82,7 +81,7 @@ func cmdAppsList(c *cli.Context) error {
 }
 
 func cmdAppCreate(c *cli.Context) error {
-	name := c.String("app")
+	name := c.String("name")
 
 	if len(name) == 0 {
 		_, n, err := getDirApp(".")

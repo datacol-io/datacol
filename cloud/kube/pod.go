@@ -75,6 +75,16 @@ func getAllDeployments(c *kubernetes.Clientset, ns, app string) ([]v1beta1.Deplo
 	return res.Items, nil
 }
 
+func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
+	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
+	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Items, nil
+}
+
 func getPodByName(c *kubernetes.Clientset, ns, app string) (*v1.Pod, error) {
 	pods, err := GetAllPods(c, ns, app)
 	if err != nil {
@@ -123,11 +133,7 @@ func handleNotReadyPods(c *kubernetes.Clientset, ns string, labels map[string]st
 			continue
 		}
 
-		name, ok := labels["name"]
-		if !ok {
-			return fmt.Errorf("name not found in %+v", labels)
-		}
-
+		name := fmt.Sprintf("%s-%s", labels["app"], labels["type"])
 		cstatus := v1.ContainerStatus{}
 		for _, cs := range pod.Status.ContainerStatuses {
 			if cs.Name == name {
@@ -373,18 +379,29 @@ const (
 	podDestroyed
 )
 
-func getPodStatus(c *kubernetes.Clientset, pod *v1.Pod) podStatus {
-	statesMap := map[string]podStatus{
-		"Pending":           podInitializing,
-		"ContainerCreating": podCreating,
-		"Starting":          podStarting,
-		"Running":           podUp,
-		"Terminating":       podTerminating,
-		"Succeeded":         podDown,
-		"Failed":            podCrashed,
-		"Unknown":           podError,
+var podStatesMap = map[string]podStatus{
+	"Pending":           podInitializing,
+	"ContainerCreating": podCreating,
+	"Starting":          podStarting,
+	"Running":           podUp,
+	"Terminating":       podTerminating,
+	"Succeeded":         podDown,
+	"Failed":            podCrashed,
+	"Unknown":           podError,
+}
+
+func getPodStatusStr(c *kubernetes.Clientset, pod *v1.Pod) string {
+	status := getPodStatus(c, pod)
+	for key, val := range podStatesMap {
+		if val == status {
+			return key
+		}
 	}
 
+	return ""
+}
+
+func getPodStatus(c *kubernetes.Clientset, pod *v1.Pod) podStatus {
 	if pod == nil {
 		return podDestroyed
 	}
@@ -395,15 +412,15 @@ func getPodStatus(c *kubernetes.Clientset, pod *v1.Pod) podStatus {
 	} else if pod.Status.Phase == v1.PodRunning {
 		status = podReadinessStatus(pod)
 		if status == "Starting" || status == "Terminating" {
-			return statesMap[status]
+			return podStatesMap[status]
 		} else if status == "Running" && podLivenessStatus(pod) {
-			return statesMap[status]
+			return podStatesMap[status]
 		}
 	} else {
 		status = string(pod.Status.Phase)
 	}
 
-	if v, ok := statesMap[status]; ok {
+	if v, ok := podStatesMap[status]; ok {
 		return v
 	} else {
 		return podError

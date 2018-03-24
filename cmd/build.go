@@ -303,7 +303,8 @@ OUTER:
 		case "WORKING":
 		default:
 			if b.Status != "" {
-				return fmt.Errorf("Build status: %s", b.Status)
+				gcrBuildURL := fmt.Sprintf("https://console.cloud.google.com/gcr/builds/%s?project=%s", b.RemoteId, api.Project)
+				return fmt.Errorf("Build status: %s\n. Please go to %s to see complete build logs.", b.Status, gcrBuildURL)
 			}
 		}
 	}
