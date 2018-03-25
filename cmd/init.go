@@ -13,8 +13,8 @@ import (
 
 var (
 	verbose   = false
-	stackFlag *cli.StringFlag
-	appFlag   *cli.StringFlag
+	stackFlag cli.StringFlag
+	appFlag   cli.StringFlag
 	ev        env.Environment
 )
 
@@ -22,13 +22,13 @@ func init() {
 	ev = env.FromHost()
 	verbose = ev.DebugEnabled()
 
-	stackFlag = &cli.StringFlag{
+	stackFlag = cli.StringFlag{
 		Name:   "stack",
 		Usage:  "stack name",
 		EnvVar: "STACK",
 	}
 
-	appFlag = &cli.StringFlag{
+	appFlag = cli.StringFlag{
 		Name:  "app, a",
 		Usage: "app name inferred from current directory if not specified",
 	}

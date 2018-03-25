@@ -30,6 +30,9 @@ var (
 	defaultAWSZone         = "ap-southeast-1a" //Singapur
 	defaultAWSInstanceType = "m4.large"
 	defaultGCPInstanceType = "n1-standard-1"
+
+	//Default GKE cluster version if not specified
+	defaultGKEVersion = "1.7.14-gke.1"
 )
 
 const (
@@ -74,7 +77,7 @@ func init() {
 			&cli.IntFlag{
 				Name:  "disk-size",
 				Usage: "SSD disk size for cluster in GB",
-				Value: 10,
+				Value: 50,
 			},
 			&cli.StringFlag{
 				Name:  "cluster-instance-type",
@@ -98,8 +101,8 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "cluster-version",
-				Usage: "The Kubernetes version to use for the master and nodes",
-				Value: "1.7.11-gke.1",
+				Usage: "The Kubernetes version to use for the master and nodes (only for GCP)",
+				Value: defaultGKEVersion,
 			},
 			&cli.StringFlag{
 				Name:  "key",

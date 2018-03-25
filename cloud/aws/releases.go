@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -74,7 +75,11 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return r, err
 	}
 
-	domains := kube.MergeAppDomains(app.Domains, options.Domain)
+	domains := app.Domains
+	for _, domain := range strings.Split(options.Domain, ",") {
+		domains = kube.MergeAppDomains(domains, domain)
+	}
+
 	if len(app.Domains) != len(domains) {
 		app.Domains = domains
 	}

@@ -14,7 +14,7 @@ func init() {
 		Name:   "ps",
 		Usage:  "manage process in an app",
 		Action: cmdAppPS,
-		Flags:  []cli.Flag{appFlag},
+		Flags:  []cli.Flag{&appFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:   "scale",

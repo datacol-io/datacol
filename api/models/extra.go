@@ -42,6 +42,7 @@ type ReleaseOptions struct {
 	Env    string
 	Wait   bool
 	Domain string
+	Expose bool // should be expose the service to the public
 }
 
 type LogStreamOptions struct {

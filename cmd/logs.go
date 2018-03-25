@@ -14,7 +14,7 @@ func init() {
 		Usage:  "streams logs for an app",
 		Action: cmdAppLogStream,
 		Flags: []cli.Flag{
-			appFlag,
+			&appFlag,
 			&cli.BoolFlag{
 				Name:  "follow, f",
 				Usage: "keep streaming new log output (default)",
