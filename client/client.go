@@ -14,6 +14,7 @@ import (
 	pb "github.com/datacol-io/datacol/api/controller"
 	"github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 	"google.golang.org/grpc"
@@ -50,14 +51,13 @@ func (c *Client) IsLocal() bool {
 	return c.Provider == "local"
 }
 
-func NewClient(version string) (*Client, func() error) {
-	auth, _ := stdcli.GetAuthOrDie()
+func NewClient(c *cli.Context) (*Client, func() error) {
+	auth, _ := stdcli.GetAuthOrDie(c)
 
 	psc, close := GrpcClient(auth.ApiServer, auth.ApiKey)
 	conn := &Client{
-		Version: version,
-
-		Auth: *auth,
+		Version: c.App.Version,
+		Auth:    *auth,
 		ProviderServiceClient: psc,
 	}
 

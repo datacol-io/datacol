@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go/term"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	"github.com/datacol-io/datacol/client"
 	"github.com/datacol-io/datacol/cmd/stdcli"
@@ -16,20 +17,19 @@ import (
 
 func init() {
 	stdcli.AddCommand(cli.Command{
-		Name:   "login",
-		Usage:  "login in to datacol",
-		Action: cmdLogin,
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "ip",
-				Usage: "datacol stack hostname or IP address",
-			},
-		},
+		Name:      "login",
+		ArgsUsage: "[host]",
+		Usage:     "login in to datacol",
+		Action:    cmdLogin,
 	})
 }
 
 func cmdLogin(c *cli.Context) error {
-	stdcli.CheckFlagsPresence(c, "ip")
+	host := c.Args().First()
+	if host == "" {
+		term.Warningln("Missing required argument: host")
+		stdcli.Usage(c)
+	}
 
 	r := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter your password: ")
@@ -38,8 +38,6 @@ func cmdLogin(c *cli.Context) error {
 	stdcli.ExitOnError(err)
 
 	passwd := strings.TrimSpace(p)
-	host := c.String("ip")
-
 	api, close := client.GrpcClient(host, passwd)
 	defer close()
 

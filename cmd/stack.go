@@ -42,7 +42,7 @@ const (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:        "init",
-		Usage:       "[cloud-provider] [credentials.csv]",
+		Usage:       "[cloud-provider] [aws-credentials.csv OR gcp-service-account.json]",
 		Description: "create new datacol stack",
 		Action:      cmdStackCreate,
 		Flags: []cli.Flag{
@@ -106,21 +106,23 @@ func init() {
 			},
 			&cli.StringFlag{
 				Name:  "key",
-				Usage: "[Name of ssh-keypair to create for AWS] OR [/path/to/service-account key for GCP]",
+				Usage: "[Name of ssh-keypair to create for AWS]",
 			},
 		},
 	})
 
 	stdcli.AddCommand(cli.Command{
-		Name:   "destroy",
-		Usage:  "destroy the datacol stack from your cloud account",
-		Action: cmdStackDestroy,
+		Name:      "destroy",
+		ArgsUsage: "[name]",
+		Usage:     "destroy the datacol stack from your cloud account",
+		Action:    cmdStackDestroy,
 	})
 }
 
 func cmdStackCreate(c *cli.Context) (err error) {
 	if c.NArg() < 1 {
-		err = fmt.Errorf("Please provide a cloud provider (aws, gcp, local)")
+		term.Warningln("Please provide a cloud provider (aws, gcp, local)")
+		stdcli.Usage(c)
 	}
 
 	stdcli.ExitOnError(err)
@@ -208,6 +210,11 @@ func cmdGCPStackCreate(c *cli.Context) error {
 	preemptible := c.Bool("preemptible")
 	diskSize := c.Int("disk-size")
 
+	var svaKey string
+	if c.NArg() > 1 {
+		svaKey = c.Args().Get(1)
+	}
+
 	options := &gcp.InitOptions{
 		Name:           stackName,
 		ClusterName:    cluster,
@@ -219,7 +226,7 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		Preemptible:    preemptible,
 		Version:        stdcli.Version,
 		ApiKey:         password,
-		SAKeyPath:      c.String("key"),
+		SAKeyPath:      svaKey,
 		ClusterVersion: c.String("cluster-version"),
 
 		//FIXME: doesn't get applied into deployment spec yet
@@ -398,7 +405,13 @@ func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 }
 
 func cmdStackDestroy(c *cli.Context) (err error) {
-	auth, _ := stdcli.GetAuthOrDie()
+	stack := c.Args().First()
+	if stack == "" {
+		term.Warningln("Missing required argument: name")
+		stdcli.Usage(c)
+	}
+
+	auth, _ := stdcli.GetAuthContextOrDie(stack)
 	provider := auth.Provider
 
 	prompt := fmt.Sprintf("This is destructive action. Do you want to delete %s stack on %s ?", auth.Name, provider)
@@ -408,9 +421,9 @@ func cmdStackDestroy(c *cli.Context) (err error) {
 
 	switch strings.ToLower(provider) {
 	case "gcp":
-		err = gcpTeardown()
+		err = gcpTeardown(c)
 	case "aws":
-		err = awsTeardown()
+		err = awsTeardown(c)
 	default:
 		err = fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
 	}
@@ -420,8 +433,8 @@ func cmdStackDestroy(c *cli.Context) (err error) {
 	return nil
 }
 
-func awsTeardown() error {
-	auth, rc := stdcli.GetAuthOrDie()
+func awsTeardown(c *cli.Context) error {
+	auth, rc := stdcli.GetAuthOrDie(c)
 	var credentialsFile string
 
 	credentialsFile = filepath.Join(pb.ConfigPath, auth.Name, pb.AwsCredentialFile)
@@ -446,8 +459,8 @@ func awsTeardown() error {
 	return os.RemoveAll(filepath.Join(pb.ConfigPath, auth.Name))
 }
 
-func gcpTeardown() error {
-	auth, rc := stdcli.GetAuthOrDie()
+func gcpTeardown(c *cli.Context) error {
+	auth, rc := stdcli.GetAuthOrDie(c)
 	if err := gcp.TeardownStack(auth.Name, auth.Project, auth.Bucket); err != nil {
 		return err
 	}

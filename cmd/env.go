@@ -75,7 +75,8 @@ func cmdConfigSet(c *cli.Context) error {
 		data += fmt.Sprintf("%s\n", value)
 	}
 
-	return ct.SetEnvironment(name, data)
+	stdcli.ExitOnError(ct.SetEnvironment(name, data))
+	return nil
 }
 
 func cmdConfigUnset(c *cli.Context) error {
@@ -96,5 +97,6 @@ func cmdConfigUnset(c *cli.Context) error {
 		}
 	}
 
-	return client.SetEnvironment(name, data)
+	stdcli.ExitOnError(client.SetEnvironment(name, data))
+	return nil
 }

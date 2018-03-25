@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `--ref` flag into deploy cmd
 - Proxy support through bastion Host 
 ### Fixed
+- CLI improvements
 - [CLI] Bump default version of GCP cluster to `1.7.14-gke.1`
 - [API] Merging app's domain individually 
 - [CLI] Respect `STACK` env variable to ditermine stack

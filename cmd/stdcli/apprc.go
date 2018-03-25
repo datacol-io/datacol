@@ -6,6 +6,7 @@ import (
 	"github.com/appscode/go/io"
 	term "github.com/appscode/go/term"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/urfave/cli"
 )
 
 var apprcPath string
@@ -92,13 +93,33 @@ func LoadApprc() (*Apprc, error) {
 }
 
 /* Exits if there is any error.*/
-func GetAuthOrDie() (*Auth, *Apprc) {
+func GetAuthContextOrDie(stack string) (*Auth, *Apprc) {
 	rc, err := LoadApprc()
 	if err != nil {
 		term.Fatalln("Command requires authentication, please run `datacol login`")
 	}
 
-	a := rc.GetAuth(GetAppSetting("stack"))
+	a := rc.GetAuth(stack)
+
+	if a == nil {
+		term.Fatalln("Command requires authentication, please run `datacol login`")
+	}
+	return a, rc
+}
+
+/* Exits if there is any error.*/
+func GetAuthOrDie(c *cli.Context) (*Auth, *Apprc) {
+	rc, err := LoadApprc()
+	if err != nil {
+		term.Fatalln("Command requires authentication, please run `datacol login`")
+	}
+
+	stack := c.String("stack")
+	if stack == "" {
+		stack = GetAppSetting("stack")
+	}
+	a := rc.GetAuth(stack)
+
 	if a == nil {
 		term.Fatalln("Command requires authentication, please run `datacol login`")
 	}

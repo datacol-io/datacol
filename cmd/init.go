@@ -51,7 +51,7 @@ func Initialize() {
 }
 
 func getApiClient(c *cli.Context) (*client.Client, func() error) {
-	return client.NewClient(c.App.Version)
+	return client.NewClient(c)
 }
 
 func getDirApp(path string) (string, string, error) {
