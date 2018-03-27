@@ -87,6 +87,7 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		App:       app,
 		Id:        id,
 		Status:    "CREATED",
+		Version:   req.Version,
 		Procfile:  req.Procfile,
 		CreatedAt: timestampNow(),
 	}
@@ -145,7 +146,7 @@ func (g *GCPCloud) BuildImport(id, filename string) error {
 		},
 		Steps: []*cloudbuild.BuildStep{
 			{
-				Name: "gcr.io/cloud-builders/docker:17.06.1",
+				Name: "gcr.io/cloud-builders/docker:17.12.0",
 				Args: append(stepBuildArgs, "."),
 			},
 		},
@@ -208,7 +209,10 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return nil, err
 	}
 
-	domains := sched.MergeAppDomains(app.Domains, options.Domain)
+	domains := app.Domains
+	for _, domain := range strings.Split(options.Domain, ",") {
+		domains = sched.MergeAppDomains(domains, domain)
+	}
 
 	if err := common.UpdateApp(g.kubeClient(), b, g.DeploymentName, image, g.appLinkedDB(app), domains, envVars, cloud.GCPProvider); err != nil {
 		return nil, err

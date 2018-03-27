@@ -302,53 +302,6 @@
         ]
       }
     },
-    "/v1/builds/{id}/logs/stream": {
-      "get": {
-        "operationId": "BuildLogsStream",
-        "responses": {
-          "200": {
-            "description": "(streaming responses)",
-            "schema": {
-              "$ref": "#/definitions/controllerStreamMsg"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "follow",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
-            "name": "since.seconds",
-            "description": "Signed seconds of the span of time. Must be from -315,576,000,000\nto +315,576,000,000 inclusive.",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "int64"
-          },
-          {
-            "name": "since.nanos",
-            "description": "Signed fractions of a second at nanosecond resolution of the span\nof time. Durations less than one second are represented with a 0\n`seconds` field and a positive or negative `nanos` field. For durations\nof one second or more, a non-zero value for the `nanos` field must be\nof the same sign as the `seconds` field. Must be from -999,999,999\nto +999,999,999 inclusive.",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
     "/v1/builds/{name}": {
       "get": {
         "operationId": "BuildList",
@@ -883,6 +836,9 @@
         },
         "region": {
           "type": "string"
+        },
+        "provider": {
+          "type": "string"
         }
       }
     },
@@ -1026,6 +982,9 @@
         "procfile": {
           "type": "string",
           "format": "byte"
+        },
+        "version": {
+          "type": "string"
         }
       }
     },

@@ -1,4 +1,4 @@
-version=1.0.0-alpha.10
+version=1.0.0-alpha.12
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
@@ -29,6 +29,10 @@ proto:
 	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 	go install -v ./vendor/github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 	go install -v ./vendor/github.com/go-swagger/go-swagger/cmd/swagger
+
+templates:
+	gsutil cp cmd/provider/aws/kubernetes-cluster.template gs://datacol-dev/
+	gsutil acl ch -u AllUsers:R gs://datacol-dev/kubernetes-cluster.template
 
 gentest:
 	protoc -I $(SERVICE_PROTO_DIR) $(PROTOC_INCLUDE_DIR) \

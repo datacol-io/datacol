@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 )
 
 func init() {
@@ -107,7 +108,14 @@ func cmdBuild(c *cli.Context) error {
 }
 
 func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb.Build, error) {
-	b, err := api.CreateBuildGit(app, version)
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	b, err := api.CreateBuildGit(app, version, procfile)
 	if err != nil {
 		return nil, err
 	}
@@ -159,34 +167,9 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 	}
 
 	dockerfileName := "Dockerfile"
-	dkrexists := true
 
 	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
-		filename := "Dockerfile"
-		dkrexists = false
-
-		if _, err = os.Stat("app.yaml"); err == nil {
-			fmt.Printf("Trying to generate %s from app.yaml ...", filename)
-			if err = gnDockerFromGAE(filename); err != nil {
-				fmt.Println(" FAILED")
-				log.Warn(err)
-			} else {
-				fmt.Println(" DONE")
-				dockerfileName = filename
-			}
-		}
-
-		if err = mkBuildPackDockerfile(sym, env); err != nil {
-			return nil, fmt.Errorf("generating Dockerfile err: %v", err)
-		}
-	}
-
-	if !dkrexists {
-		defer func() {
-			if err := os.Remove(filepath.Join(sym, dockerfileName)); err != nil {
-				log.Errorf("removing Dockerfile err: %v", err)
-			}
-		}()
+		stdcli.ExitOnError(fmt.Errorf("Dockerfile not found."))
 	}
 
 	fmt.Print("Creating tarball ...")
@@ -240,55 +223,43 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 	return bytes, nil
 }
 
-func finishBuild(api *client.Client, b *pb.Build) error {
+func finishBuild(api *client.Client, b *pb.Build) (err error) {
+	// try to sync local state
+	b, err = api.GetBuild(b.App, b.Id)
+	if err != nil {
+		return err
+	}
+
 	if api.IsGCP() {
 		return finishBuildGCP(api, b)
 	}
 
-	return finishBuildAws(api, b)
+	return finishBuildAwsWs(api, b)
 }
 
-func finishBuildAws(api *client.Client, b *pb.Build) error {
-	stream, err := api.ProviderServiceClient.BuildLogsStream(context.TODO(), &pbs.BuildLogStreamReq{Id: b.RemoteId})
+func finishBuildAwsWs(api *client.Client, b *pb.Build) error {
+	ws, err := api.StreamClient("/ws/v1/builds/logs", map[string]string{"id": b.Id})
 	if err != nil {
 		return err
 	}
-	defer stream.CloseSend()
-	out := os.Stdout
 
-	ticker := time.NewTicker(time.Second * 3)
-	defer ticker.Stop()
+	defer ws.Close()
 
-	buildStatus := b.Status
+	var (
+		done = make(chan bool, 2)
+		out  = os.Stdout
+	)
 
-	go func() {
-		for range ticker.C {
-			newb, _ := api.GetBuild(b.App, b.Id)
-			if newb.Status != buildStatus {
-				buildStatus = newb.Status
-				break
-			}
-		}
-	}()
-
-	for {
-		if buildStatus != "IN_PROGRESS" {
-			fmt.Println("Build Id:", b.Id)
-			fmt.Println("Build status:", buildStatus)
-			break
-		}
-
-		ret, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if _, err := out.Write(ret.Data); err != nil {
-			return err
-		}
+	if out != nil {
+		go copyAsync(out, ws)
 	}
+
+	// We need to pool the build status to short-circuit the streaming logs
+	// FIXME: waitForAwsBuild might get into zombie goroutine if copyAsync returns quick
+	go waitforAwsBuild(api, b, done, ws, 5*time.Second)
+
+	<-done
+
 	return nil
 }
 
@@ -332,7 +303,8 @@ OUTER:
 		case "WORKING":
 		default:
 			if b.Status != "" {
-				return fmt.Errorf("Build status: %s", b.Status)
+				gcrBuildURL := fmt.Sprintf("https://console.cloud.google.com/gcr/builds/%s?project=%s", b.RemoteId, api.Project)
+				return fmt.Errorf("Build status: %s\n. Please go to %s to see complete build logs.", b.Status, gcrBuildURL)
 			}
 		}
 	}
@@ -340,24 +312,23 @@ OUTER:
 	return nil
 }
 
-type herokuishOpts struct {
-	Env map[string]string
+func copyAsync(dst io.Writer, src io.Reader) {
+	io.Copy(dst, src)
 }
 
-func mkBuildPackDockerfile(dir string, env map[string]string) error {
-	dockerfile := filepath.Join(dir, "Dockerfile")
-	content := compileTmpl(herokuishTmpl, herokuishOpts{env})
-	log.Debugf("--- generated Dockerfile ------\n %s --------", content)
+func waitforAwsBuild(api *client.Client, b *pb.Build, done chan bool, ws *websocket.Conn, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-	return ioutil.WriteFile(dockerfile, []byte(content), 0644)
+	for range ticker.C {
+		newb, _ := api.GetBuild(b.App, b.Id)
+		if newb.Status != "IN_PROGRESS" {
+			fmt.Println("Build Id:", newb.Id)
+			fmt.Println("Build status:", newb.Status)
+			break
+		}
+	}
+
+	ws.Close()
+	done <- true
 }
-
-var herokuishTmpl = `FROM gliderlabs/herokuish:v0.3.29
-ADD . /app
-{{- $burl := index .Env "BUILDPACK_URL" }} {{ if gt (len $burl) 0 }}
-ENV BUILDPACK_URL {{ $burl }}
-{{- end }}
-RUN /bin/herokuish buildpack build
-ENV PORT 8080
-EXPOSE 8080
-CMD ["/start", "web"]`

@@ -13,12 +13,13 @@ func init() {
 		Name:   "run",
 		Usage:  "execute a command in an app",
 		Action: cmdAppRun,
+		Flags:  []cli.Flag{&appFlag},
 	})
 }
 
 // follow https://github.com/openshift/origin/search?utf8=%E2%9C%93&q=exec+arrow&type=Issues
 func cmdAppRun(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)

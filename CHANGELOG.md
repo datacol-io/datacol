@@ -3,8 +3,26 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
+
+## [1.0.0-alpha.12] - 2018-03-27
 ### Added
+- [CLI] `ps` to support container status
+- -a flag for logs, ps, env and run command
+- commit sha in build struct for git based app
+- Docker build logs with websocket on AWS
+- Adding cluster-instance-type and controller-instance-type in `datacol init`
 - AWS elasticsearch support
+- Websocket connection for streaming logs and Running one-off commands
+- Added `--ref` flag into deploy cmd
+- Proxy support through bastion Host 
+### Fixed
+- CLI improvements
+- [CLI] Bump default version of GCP cluster to `1.7.14-gke.1`
+- [API] Merging app's domain individually 
+- [CLI] Respect `STACK` env variable to ditermine stack
+- [GCP] Ingress should have Path: '/*' to match sub-resources
+- Embedding Provider for `datacol login`
+- Procfile support for Codecommit based app
 
 ## [1.0.0-alpha.11] - 2018-03-02
 ### Added

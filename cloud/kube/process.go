@@ -110,6 +110,8 @@ func (p *ExecOptions) Run() error {
 	return p.Executor.Execute("POST", req.URL(), p.Config, stdin, p.Out, p.Err, true)
 }
 
+// ProcessList will fetch the list of processes running based on deployments Labels
+// TODO: fetch the status as well
 func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error) {
 	deployments, err := getAllDeployments(c, ns, app)
 	if err != nil {
@@ -118,10 +120,22 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	var items []*pb.Process
 
 	for _, dp := range deployments {
+		pods, err := getPodsForDeployment(c, &dp)
+		if err != nil {
+			return nil, err
+		}
+
+		var status string
+		if len(pods) > 0 {
+			//FIXME: ideally should report status of all pods
+			status = getPodStatusStr(c, &pods[len(pods)-1])
+		}
+
 		items = append(items, &pb.Process{
 			Proctype: dp.ObjectMeta.Labels[typeLabel],
 			Workers:  *dp.Spec.Replicas,
 			Name:     dp.Name,
+			Status:   status,
 		})
 	}
 

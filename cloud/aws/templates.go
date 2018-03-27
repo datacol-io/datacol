@@ -107,7 +107,7 @@ func cloudAwsTemplatesElasticsearchTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/elasticsearch.tmpl", size: 4023, mode: os.FileMode(436), modTime: time.Unix(1520679139, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/elasticsearch.tmpl", size: 4023, mode: os.FileMode(436), modTime: time.Unix(1520679773, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func cloudAwsTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4389, mode: os.FileMode(436), modTime: time.Unix(1520273305, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4389, mode: os.FileMode(436), modTime: time.Unix(1520679773, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

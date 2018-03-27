@@ -14,6 +14,7 @@ func init() {
 		Name:   "ps",
 		Usage:  "manage process in an app",
 		Action: cmdAppPS,
+		Flags:  []cli.Flag{&appFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:   "scale",
@@ -47,7 +48,11 @@ func cmdAppPS(c *cli.Context) error {
 	items, err := client.ListProcess(name)
 	stdcli.ExitOnError(err)
 
-	term.Println(toJson(items))
+	if len(items) > 0 {
+		term.Println(toJson(items))
+	} else {
+		term.Println("No process running")
+	}
 	return nil
 }
 

@@ -37,6 +37,7 @@ message AuthResponse {
   string name = 2;
   string project = 3;
   string region = 4;
+  string provider = 5;
 }
 
 message CreateBuildRequest {
@@ -98,12 +99,6 @@ message CmdResponse {
   string err       = 2;
   string stdOut    = 3;
   string stdErr    = 4;
-}
-
-message BuildLogStreamReq {
-  string id = 1;
-  bool follow = 2;
-  google.protobuf.Duration since = 3;
 }
 
 message LogStreamReq {
@@ -211,12 +206,6 @@ service ProviderService {
   rpc BuildLogs(BuildLogRequest) returns (BuildLogResponse) {
     option (google.api.http) = {
       get: "/v1/builds/{id}/logs"
-    };
-  }
-
-  rpc BuildLogsStream(BuildLogStreamReq) returns (stream StreamMsg) {
-    option (google.api.http) = {
-      get: "/v1/builds/{id}/logs/stream"
     };
   }
 

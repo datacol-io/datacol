@@ -28,17 +28,15 @@ func init() {
 	flag.IntVar(&timeout, "timeout", 2, "wait timeout for rpc proxy")
 }
 
-func runRpcServer() error {
+func runRpcServer(server *Server) {
 	go func() {
-		if err := newServer().Run(); err != nil {
+		if err := server.Run(); err != nil {
 			log.Fatalf("serveGRPC err: %v", err)
 		}
 	}()
-
-	return nil
 }
 
-func run() error {
+func runHttpServer(server *Server) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -51,7 +49,15 @@ func run() error {
 	}
 
 	mux := http.NewServeMux()
+
+	// Implementing bidi-streaming using GRPC is a lot of headache,
+	// it's better to use websockets protocols for streaming logs and interactive one-off commands
+	mux.Handle("/ws/v1/logs", ws("appLogs", server.LogStreamWs))
+	mux.Handle("/ws/v1/exec", ws("processExec", server.ProcessRunWs))
+	mux.Handle("/ws/v1/proxy", ws("appProxy", server.ResourceProxy))
+	mux.Handle("/ws/v1/builds/logs", ws("buildLogs", server.BuildLogStreamReq))
 	mux.Handle("/", gwmux)
+
 	fmt.Printf("Starting server on http=%d and grpc=%d ports\n", port, rpcPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
@@ -78,14 +84,12 @@ func setupLogging() {
 
 func main() {
 	setupLogging()
-
-	if err := runRpcServer(); err != nil {
-		log.Fatal(err)
-	}
+	server := newServer()
+	runRpcServer(server)
 
 	time.Sleep(time.Duration(timeout) * time.Second)
 
-	if err := run(); err != nil {
+	if err := runHttpServer(server); err != nil {
 		log.Fatal(err)
 	}
 }

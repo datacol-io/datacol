@@ -6,10 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"os"
 	"strings"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -67,6 +71,36 @@ func checkHttpAuthorization(value, expected string) bool {
 	return pair[1] == expected
 }
 
+func checkAPIKey(r *http.Request) bool {
+	if os.Getenv("DATACOL_API_KEY") == "" {
+		return true
+	}
+
+	auth := r.Header.Get("Authorization")
+
+	if auth == "" {
+		return false
+	}
+
+	if !strings.HasPrefix(auth, "Basic ") {
+		return false
+	}
+
+	c, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(auth, "Basic "))
+
+	if err != nil {
+		return false
+	}
+
+	parts := strings.SplitN(string(c), ":", 2)
+
+	if len(parts) != 2 || parts[1] != os.Getenv("DATACOL_API_KEY") {
+		return false
+	}
+
+	return true
+}
+
 func writeToFd(fd io.Writer, data []byte) error {
 	w := 0
 	n := len(data)
@@ -80,4 +114,28 @@ func writeToFd(fd io.Writer, data []byte) error {
 			return nil
 		}
 	}
+}
+
+type websocketFunc func(*websocket.Conn) error
+
+func ws(at string, handler websocketFunc) websocket.Handler {
+	return websocket.Handler(func(ws *websocket.Conn) {
+		if !checkAPIKey(ws.Request()) {
+			ws.Write([]byte("Unable to authenticate. Invalid ApiKey."))
+			return
+		}
+
+		err := handler(ws)
+
+		if err != nil {
+			log.Error(err)
+			ws.Write([]byte(fmt.Sprintf("ERROR: %v\n", err)))
+			return
+		}
+	})
+}
+
+func copyAsync(dst io.Writer, src io.Reader, wg *sync.WaitGroup) {
+	defer wg.Done()
+	io.Copy(dst, src)
 }

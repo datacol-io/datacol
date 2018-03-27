@@ -1,16 +1,13 @@
 package client
 
 import (
-	"io"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/appscode/go/term"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
-	"google.golang.org/grpc/metadata"
 )
 
 func (c *Client) ListProcess(name string) ([]*pb.Process, error) {
@@ -45,65 +42,8 @@ func (c *Client) SaveProcess(name string, options map[string]string) error {
 }
 
 func (c *Client) RunProcess(name string, args []string) error {
-	newctx := metadata.NewOutgoingContext(ctx, metadata.New(map[string]string{
+	return c.Stream("/ws/v1/exec", map[string]string{
 		"app":     name,
 		"command": strings.Join(args, " "),
-	}))
-
-	stream, err := c.ProviderServiceClient.ProcessRun(newctx)
-	if err != nil {
-		return err //FIXME: not able to make it work for now. Not sure why.
-	}
-
-	defer stream.CloseSend()
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-
-	r, w := os.Stdin, os.Stdout
-
-	go func(out io.Writer) {
-		defer wg.Done()
-
-		for {
-			ret, rerr := stream.Recv()
-			if rerr == io.EOF {
-				break
-			}
-
-			if rerr != nil {
-				err = rerr
-				break
-			}
-
-			if _, err = out.Write(ret.Data); err != nil {
-				break
-			}
-		}
-	}(w)
-
-	go func(r io.Reader) {
-		defer wg.Done()
-		buf := make([]byte, 1024)
-
-		for {
-			n, serr := r.Read(buf)
-			if serr == io.EOF {
-				break
-			}
-			if serr != nil {
-				err = serr
-				break
-			}
-
-			if serr := stream.Send(&pbs.StreamMsg{Data: buf[:n]}); serr != nil {
-				err = serr
-				break
-			}
-		}
-	}(r)
-
-	wg.Wait()
-
-	return err
+	}, os.Stdin, os.Stdout)
 }

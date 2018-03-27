@@ -1,12 +1,14 @@
 package client
 
 import (
+	"fmt"
 	"io"
+	"os"
+	"strconv"
 	"time"
 
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -40,30 +42,14 @@ func (c *Client) RestartApp(name string) error {
 	return err
 }
 
-func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, proctype string, out io.Writer) error {
-	stream, err := c.ProviderServiceClient.LogStream(ctx, &pbs.LogStreamReq{
-		Name:     name,
-		Since:    ptypes.DurationProto(since),
-		Follow:   follow,
-		Proctype: proctype,
-	})
-	if err != nil {
-		return err
-	}
-	defer stream.CloseSend()
-
-	for {
-		ret, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if _, err := out.Write(ret.Data); err != nil {
-			return err
-		}
-	}
+func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, process string, out io.Writer) error {
+	in, out := os.Stdin, os.Stdout
+	return c.Stream("/ws/v1/logs", map[string]string{
+		"app":     name,
+		"since":   since.String(),
+		"follow":  strconv.FormatBool(follow),
+		"Process": process,
+	}, in, out)
 }
 
 func (c *Client) GetEnvironment(name string) (pb.Environment, error) {
@@ -77,4 +63,11 @@ func (c *Client) GetEnvironment(name string) (pb.Environment, error) {
 func (c *Client) SetEnvironment(name string, data string) error {
 	_, err := c.ProviderServiceClient.EnvironmentSet(ctx, &pbs.EnvSetRequest{Name: name, Data: data})
 	return err
+}
+
+func (c *Client) ProxyRemote(host string, port int, conn io.ReadWriteCloser) error {
+	return c.Stream("/ws/v1/proxy", map[string]string{
+		"remotehost": host,
+		"remoteport": fmt.Sprintf("%d", port),
+	}, conn, conn)
 }

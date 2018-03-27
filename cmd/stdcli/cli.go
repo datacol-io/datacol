@@ -25,8 +25,8 @@ var (
 )
 
 func init() {
-	Version = "1.0.0-alpha.11"
-	LocalAppDir = ".dtcol"
+	Version = "1.0.0-alpha.12"
+	LocalAppDir = ".datacol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []cli.Command{}
 	Stack404 = errors.New("stack not found. To create a new stack run `datacol init` or set `STACK` environment variable.")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -8,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	gce_metadata "cloud.google.com/go/compute/metadata"
+	gcp_metadata "cloud.google.com/go/compute/metadata"
 	log "github.com/Sirupsen/logrus"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
@@ -18,6 +19,7 @@ import (
 	"github.com/datacol-io/datacol/cloud/local"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -71,6 +73,13 @@ func newServer() *Server {
 		}
 
 	case "local":
+		// Local provider uses registry inside minikube VM to store images. Execute following commands to the registry running
+		// inside minikube vm
+		//
+		// minikube start --insecure-registry localhost:5000 && \
+		// 	eval $(minikube docker-env) && \
+		// 	docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
 		provider = &local.LocalCloud{
 			Name:            name,
 			RegistryAddress: "localhost:5000",
@@ -114,25 +123,33 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) Auth(ctx context.Context, req *pbs.AuthRequest) (*pbs.AuthResponse, error) {
+	provider := cloud.CloudProvider(os.Getenv("DATACOL_PROVIDER"))
 	if authorize(ctx, s.Password) {
 		var ip, project string
-		if gce_metadata.OnGCE() {
-			_ip, err := gce_metadata.ExternalIP()
-			if err != nil {
-				return nil, internalError(err, "couldn't resolve external ip for instance.")
+		switch provider {
+		case cloud.GCPProvider:
+			if gcp_metadata.OnGCE() {
+				_pid, err := gcp_metadata.ProjectID()
+				if err != nil {
+					return nil, internalError(err, "couldn't get projectId from metadata server.")
+				}
+				project = _pid
 			}
-			ip = _ip
-			_pid, err := gce_metadata.ProjectID()
-			if err != nil {
-				return nil, internalError(err, "couldn't get projectId from metadata server.")
-			}
-			project = _pid
-		} else {
+		case cloud.AwsProvider:
+			project = ""
+		case cloud.LocalProvider:
 			ip = "localhost"
 			project = "gcs-local"
+		default:
+			return nil, fmt.Errorf("Invalid cloud provider: %s", provider)
 		}
 
-		return &pbs.AuthResponse{Name: s.StackName, Host: ip, Project: project}, nil
+		return &pbs.AuthResponse{
+			Provider: string(provider),
+			Name:     s.StackName,
+			Host:     ip,
+			Project:  project,
+		}, nil
 	} else {
 		return nil, internalError(fmt.Errorf("Invalid login trial with %s", req.Password), "invalid password")
 	}
@@ -268,29 +285,20 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
 }
 
-func (s *Server) BuildLogsStream(req *pbs.BuildLogStreamReq, stream pbs.ProviderService_BuildLogsStreamServer) error {
-	reader, err := s.Provider.BuildLogsStream(req.Id)
+// Streaming build logs with websocket
+func (s *Server) BuildLogStreamReq(ws *websocket.Conn) error {
+	buildId := ws.Request().Header.Get("id")
+	if buildId == "" {
+		return errors.New("Missing required header: id")
+	}
 
-	if err != nil || reader == nil {
+	r, err := s.Provider.BuildLogsStream(buildId)
+	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, 4*1024)
-
-	for {
-		n, err := reader.Read(buf[:cap(buf)])
-		if err != nil {
-			if n == 0 || err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		buf = buf[:n]
-
-		if err := stream.Send(&pbs.StreamMsg{Data: buf}); err != nil {
-			return err
-		}
-	}
+	_, err = io.Copy(ws, r)
+	return err
 }
 
 // Releases endpoints

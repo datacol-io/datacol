@@ -3,6 +3,7 @@ package common
 import (
 	"strconv"
 
+	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
 	"github.com/datacol-io/datacol/cloud/kube"
@@ -28,17 +29,31 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 		port = p
 	}
 
-	procesess, err := kube.ProcessList(c, ns, build.App)
+	var procesess []*pb.Process
+
+	defaultProctype := GetDefaultProctype(build)
+	procesess = append(procesess, &pb.Process{
+		Proctype: defaultProctype,
+		Workers:  1,
+	})
+
+	runningProcesses, err := kube.ProcessList(c, ns, build.App)
 	if err != nil {
 		return err
 	}
 
-	if len(procesess) == 0 {
-		procesess = append(procesess, &pb.Process{
-			Proctype: GetDefaultProctype(build),
-			Workers:  1,
-		})
+	for _, rp := range runningProcesses {
+		if rp.Proctype == defaultProctype {
+			procesess[0].Workers = rp.Workers // set the current worker similar to whatever running currently
+		}
+
+		// Only append non-default proceses
+		if rp.Proctype != WebProcessKind && rp.Proctype != CmdProcessKind {
+			procesess = append(procesess, rp)
+		}
 	}
+
+	log.Debugf("defaultProctype:%s updating processes: %+v", defaultProctype, procesess)
 
 	for _, proc := range procesess {
 		proctype := proc.Proctype

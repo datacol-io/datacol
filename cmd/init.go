@@ -51,7 +51,7 @@ func Initialize() {
 }
 
 func getApiClient(c *cli.Context) (*client.Client, func() error) {
-	return client.NewClient(c.App.Version)
+	return client.NewClient(c)
 }
 
 func getDirApp(path string) (string, string, error) {
@@ -65,4 +65,14 @@ func getDirApp(path string) (string, string, error) {
 		app = filepath.Base(abs)
 	}
 	return abs, app, nil
+}
+
+// getCurrentApp support -a/--app flag for various subcommand for an APP
+func getCurrentApp(c *cli.Context) (string, error) {
+	if app := c.String("app"); app != "" {
+		return app, nil
+	}
+
+	_, app, err := getDirApp(".")
+	return app, err
 }
