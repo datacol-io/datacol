@@ -128,7 +128,7 @@ func ws(at string, handler websocketFunc) websocket.Handler {
 		err := handler(ws)
 
 		if err != nil {
-			log.Error(err)
+			log.Errorf("ws %s: %v", at, err)
 			ws.Write([]byte(fmt.Sprintf("ERROR: %v\n", err)))
 			return
 		}

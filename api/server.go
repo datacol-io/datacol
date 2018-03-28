@@ -297,7 +297,11 @@ func (s *Server) BuildLogStreamReq(ws *websocket.Conn) error {
 		return err
 	}
 
-	_, err = io.Copy(ws, r)
+	//FIXME: r can be nil for minikube-based environment. Should return io.Reader from docker daemon
+	if r != nil {
+		_, err = io.Copy(ws, r)
+	}
+
 	return err
 }
 
