@@ -137,12 +137,18 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 
 	rules := make([]v1beta1.IngressRule, len(domains))
 	for i, domain := range domains {
+		ingressPath := "/"
+
+		if payload.Request.Provider == cloud.GCPProvider {
+			// It's important to have * after / since GCP GLBC load balancer doesn't support subresources automatically.
+			ingressPath = "/*"
+		}
+
 		rules[i] = v1beta1.IngressRule{
 			Host: domain,
 			IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
 				Paths: []v1beta1.HTTPIngressPath{{
-					// It's important to have * after / since GCP GLBC load balancer doesn't support subresources automatically.
-					Path: "/*",
+					Path: ingressPath,
 					Backend: v1beta1.IngressBackend{
 						ServiceName: r.ServiceID,
 						ServicePort: r.ContainerPort,

@@ -46,9 +46,10 @@ type ReleaseOptions struct {
 }
 
 type LogStreamOptions struct {
-	Follow   bool
-	Proctype string
-	Since    time.Duration
+	Follow    bool
+	Proctype  string
+	Since     time.Duration
+	TailLines string // number of recent lines to show for streaming (string format)
 }
 
 type AppCreateOptions struct {
