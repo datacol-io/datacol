@@ -89,10 +89,7 @@ func (p *ExecOptions) Run() error {
 		Name(pod.Name).
 		Namespace(pod.Namespace).
 		SubResource("exec").
-		Param("container", containerName).
-		Param("command", "/bin/sh").
-		Param("command", "-c").
-		Param("tty", "true")
+		Param("container", containerName)
 
 	req.VersionedParams(&corev1.PodExecOptions{
 		Container: containerName,
@@ -142,10 +139,11 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	return items, nil
 }
 
-func ProcessExec(
+func ProcessRun(
 	c *kubernetes.Clientset,
 	cfg *rest.Config,
-	ns, name, image, command string,
+	ns, name, image string,
+	command []string,
 	envVars map[string]string,
 	sqlproxy bool,
 	stream io.ReadWriter,
@@ -153,11 +151,11 @@ func ProcessExec(
 ) error {
 	proctype := rand.Characters(6)
 	podName := fmt.Sprintf("%s-%s", name, proctype)
+
 	req := &DeployRequest{
 		ServiceID:           podName,
 		Image:               image,
-		Entrypoint:          []string{"/bin/bash", "-c"},
-		Args:                []string{"trap : TERM INT; sleep infinity & wait"}, //FIXME: To let the pod stay around until being told to exit
+		Args:                []string{"sleep", "infinity"}, //FIXME: To let the pod stay around until being told to exit
 		EnvVars:             envVars,
 		App:                 name,
 		Proctype:            proctype,
@@ -168,19 +166,18 @@ func ProcessExec(
 	// Delete the pod sunce it's ephemeral
 	defer deletePodByName(c, ns, podName)
 
-	return processExec(c, cfg, ns, command, req, stream)
+	return processRun(c, cfg, ns, command, req, stream)
 }
 
 func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 	return c.Core().Pods(ns).Delete(name, &metav1.DeleteOptions{})
 }
 
-func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns, command string, req *DeployRequest, stream io.ReadWriter) error {
+func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []string, req *DeployRequest, stream io.ReadWriter) error {
 	spec := newPodSpec(req)
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
-
 	pod, err := c.Core().Pods(ns).Create(spec)
 	if err != nil {
 		return err
@@ -195,7 +192,7 @@ func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns, command string, 
 	executer := &ExecOptions{
 		Namespace: ns,
 		PodName:   req.ServiceID,
-		Command:   []string{command},
+		Command:   command,
 		Stdin:     true,
 		In:        stream,
 		Out:       stream,
