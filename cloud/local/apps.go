@@ -79,7 +79,7 @@ func (g *LocalCloud) AppDelete(name string) error {
 }
 
 func (g *LocalCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	return g.EnvMap[name], nil
+	return common.SortEnvironment(g.EnvMap[name]), nil
 }
 
 func (g *LocalCloud) EnvironmentSet(name string, body io.Reader) error {

@@ -4,10 +4,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixes
+- Sort environment variables in API response
 - AWS nginx ingress controller to respect `Path: /`
 - Async support for streaming logs from mutiple processes.
 - Making `datacol run` independent of shell
 ### Added
+- [CLI] `STACK` env var for `datacol env`, `datacol infra`
 - [CLI] Number of logs lines for process logs (`--lines 10`)
 
 ## [1.0.0-alpha.12] - 2018-03-27

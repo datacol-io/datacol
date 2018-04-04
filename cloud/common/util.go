@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -29,7 +30,7 @@ func LoadEnvironment(data []byte) pb.Environment {
 		}
 	}
 
-	return e
+	return SortEnvironment(e)
 }
 
 func GenerateId(prefix string, size int) string {
@@ -118,4 +119,22 @@ func GetProcessCommand(proctype string, b *pb.Build) (command []string, err erro
 	}
 
 	return
+}
+
+func SortEnvironment(current pb.Environment) pb.Environment {
+	sorted := make(pb.Environment)
+	keys := make([]string, 0, len(current))
+	for key := range current {
+		keys = append(keys, key)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for _, k := range keys {
+		sorted[k] = current[k]
+	}
+
+	return sorted
 }
