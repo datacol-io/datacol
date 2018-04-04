@@ -44,6 +44,6 @@ func (c *Client) SaveProcess(name string, options map[string]string) error {
 func (c *Client) RunProcess(name string, args []string) error {
 	return c.Stream("/ws/v1/exec", map[string]string{
 		"app":     name,
-		"command": strings.Join(args, " "),
+		"command": strings.Join(args, "#"),
 	}, os.Stdin, os.Stdout)
 }

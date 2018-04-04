@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,7 +58,8 @@ func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
 		return fmt.Errorf("Missing require param: app")
 	}
 
-	return s.Provider.ProcessRun(app, ws, headers.Get("command"))
+	command := strings.Split(headers.Get("command"), "#")
+	return s.Provider.ProcessRun(app, ws, command)
 }
 
 func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
@@ -65,7 +67,8 @@ func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	app, command := md["app"][0], md["command"][0]
 	stream := &runStreamRW{srv}
 
-	if err := s.Provider.ProcessRun(app, stream, command); err != nil {
+	commandParts := strings.Split(command, "#")
+	if err := s.Provider.ProcessRun(app, stream, commandParts); err != nil {
 		log.Errorf("failed to run the process: %v", err)
 		return err
 	}

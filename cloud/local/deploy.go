@@ -19,7 +19,7 @@ func (g *LocalCloud) LogStream(app string, w io.Writer, opts pb.LogStreamOptions
 	return sched.LogStreamReq(g.kubeClient(), w, g.Name, app, opts)
 }
 
-func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command string) error {
+func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command []string) error {
 	ns := g.Name
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
@@ -29,7 +29,7 @@ func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, command strin
 	app, _ := g.AppGet(name)
 	envVars, _ := g.EnvironmentGet(name)
 
-	return sched.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, false, stream, cloud.LocalProvider)
+	return sched.ProcessRun(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, false, stream, cloud.LocalProvider)
 }
 
 func (g *LocalCloud) ProcessList(app string) ([]*pb.Process, error) {

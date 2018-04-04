@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixes
 - AWS nginx ingress controller to respect `Path: /`
 - Async support for streaming logs from mutiple processes.
+- Making `datacol run` independent of shell
 ### Added
 - [CLI] Number of logs lines for process logs (`--lines 10`)
 
@@ -19,7 +20,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - AWS elasticsearch support
 - Websocket connection for streaming logs and Running one-off commands
 - Added `--ref` flag into deploy cmd
-- Proxy support through bastion Host 
+- Proxy support through bastion Host
 ### Fixed
 - CLI improvements
 - [CLI] Bump default version of GCP cluster to `1.7.14-gke.1`
