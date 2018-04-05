@@ -3,6 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/olekukonko/tablewriter"
 
 	log "github.com/Sirupsen/logrus"
 	term "github.com/appscode/go/term"
@@ -75,7 +78,15 @@ func cmdAppsList(c *cli.Context) error {
 	if len(apps) == 0 {
 		fmt.Println("No apps found.")
 	} else {
-		fmt.Println(toJson(apps))
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"NAME", "BUILD", "RELEASE", "DOMAINS", "LOAD BALANCER"})
+		for _, a := range apps {
+			table.Append([]string{a.Name, a.BuildId, a.ReleaseId,
+				strings.Join(a.Domains, "\n"),
+				a.Endpoint,
+			})
+		}
+		table.Render()
 	}
 	return nil
 }

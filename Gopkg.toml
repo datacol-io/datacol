@@ -75,3 +75,6 @@ required = [
   
 [[constraint]]
   name =  "github.com/mholt/archiver"
+
+[[constraint]]
+  name = "github.com/ararog/timeago"

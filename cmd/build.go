@@ -15,9 +15,11 @@ import (
 	"github.com/datacol-io/datacol/client"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 
+	timeago "github.com/ararog/timeago"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
@@ -60,7 +62,14 @@ func cmdBuildList(c *cli.Context) error {
 	builds, err := api.GetBuilds(name)
 	stdcli.ExitOnError(err)
 
-	fmt.Println(toJson(builds))
+	start, table := time.Now(), tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "COMMIT", "STATUS", "CREATED"})
+	for _, b := range builds {
+		delta, _ := timeago.TimeAgoWithTime(start, time.Unix(int64(b.CreatedAt), 0))
+		table.Append([]string{b.Id, b.Version, b.Status, delta})
+	}
+
+	table.Render()
 	return nil
 }
 
