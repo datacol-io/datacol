@@ -19,6 +19,7 @@ func init() {
 		Name:   "apps",
 		Usage:  "Manage your apps in a stack",
 		Action: cmdAppsList,
+		Flags:  []cli.Flag{&stackFlag},
 		Subcommands: []cli.Command{
 			cli.Command{
 				Name:   "create",
@@ -79,11 +80,10 @@ func cmdAppsList(c *cli.Context) error {
 		fmt.Println("No apps found.")
 	} else {
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"NAME", "BUILD", "RELEASE", "DOMAINS", "LOAD BALANCER"})
+		table.SetHeader([]string{"NAME", "BUILD", "RELEASE", "DOMAINS"})
 		for _, a := range apps {
 			table.Append([]string{a.Name, a.BuildId, a.ReleaseId,
 				strings.Join(a.Domains, "\n"),
-				a.Endpoint,
 			})
 		}
 		table.Render()

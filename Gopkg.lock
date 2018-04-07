@@ -31,12 +31,6 @@
   revision = "0042f7fe164fd03992cfa5ea70a98615516be99b"
 
 [[projects]]
-  name = "github.com/ararog/timeago"
-  packages = ["."]
-  revision = "518814407569bf983ea81e1bf8b550dd4e7b34f3"
-  version = "0.0.1"
-
-[[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   revision = "521b25f4b05fd26bec69d9dedeb8f9c9a83939a8"
@@ -580,6 +574,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c97831aeb0d594a9f4347792339fcc7afdc24bd921d53359837e6895825b6232"
+  inputs-digest = "d19ecfd1dcb05bb021b32d5e90162154643244b212751b86e9657be4c803a0e6"
   solver-name = "gps-cdcl"
   solver-version = 1

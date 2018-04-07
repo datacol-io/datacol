@@ -327,7 +327,7 @@ var (
 )
 
 func request_ProviderService_BuildList_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AppRequest
+	var protoReq BuildListRequest
 	var metadata runtime.ServerMetadata
 
 	var (

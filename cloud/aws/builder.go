@@ -99,7 +99,7 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 		return builds[i].CreatedAt > builds[j].CreatedAt
 	})
 
-	return builds, nil
+	return builds[0:limit], nil
 }
 
 func (a *AwsCloud) BuildImport(id, gzipPath string) error {

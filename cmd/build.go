@@ -15,7 +15,6 @@ import (
 	"github.com/datacol-io/datacol/client"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 
-	timeago "github.com/ararog/timeago"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
@@ -41,6 +40,13 @@ func init() {
 				Name:   "list",
 				Usage:  "get builds for an app",
 				Action: cmdBuildList,
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:  "limit, n",
+						Usage: "Limit the number of recent builds to fetch",
+						Value: 5,
+					},
+				},
 			},
 			{
 				Name:   "delete",
@@ -59,13 +65,13 @@ func cmdBuildList(c *cli.Context) error {
 	api, close := getApiClient(c)
 	defer close()
 
-	builds, err := api.GetBuilds(name)
+	builds, err := api.GetBuilds(name, c.Int("limit"))
 	stdcli.ExitOnError(err)
 
-	start, table := time.Now(), tablewriter.NewWriter(os.Stdout)
+	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "COMMIT", "STATUS", "CREATED"})
 	for _, b := range builds {
-		delta, _ := timeago.TimeAgoWithTime(start, time.Unix(int64(b.CreatedAt), 0))
+		delta := elaspedDuration(time.Unix(int64(b.CreatedAt), 0))
 		table.Append([]string{b.Id, b.Version, b.Status, delta})
 	}
 

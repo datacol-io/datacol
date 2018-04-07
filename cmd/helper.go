@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/rand"
 	"os"
 	"regexp"
@@ -109,81 +110,6 @@ type appYAMLConfig struct {
 	RuntimeSteps []string
 }
 
-func parseAppYAML() (*appYAMLConfig, error) {
-	data, err := ioutil.ReadFile("app.yaml")
-	if err != nil {
-		return nil, err
-	}
-
-	var appyaml appYAMLConfig
-	if err := yaml.Unmarshal(data, &appyaml); err != nil {
-		return nil, err
-	}
-
-	if !(appyaml.Env == "flex" || appyaml.Env == "custom") {
-		fmt.Printf("\nignoring %s env", appyaml.Env)
-		return &appyaml, nil
-	}
-
-	return nil, fmt.Errorf("invalid app.yaml file.")
-}
-
-func gnDockerFromGAE(filename string) error {
-	appyaml, err := parseAppYAML()
-	if err != nil {
-		return err
-	}
-
-	if len(appyaml.Entrypoint) > 0 {
-		appyaml.Entrypoint = entrypoint(appyaml.Entrypoint)
-	} else {
-		appyaml.Entrypoint = "/bin/sh -c"
-	}
-
-	appyaml.RuntimeSteps = getruntimeSteps(appyaml)
-
-	log.Debugf(toJson(appyaml))
-	tmpl, err := template.New("ct").Parse(dkrYAML)
-	if err != nil {
-		return err
-	}
-
-	var doc bytes.Buffer
-	if err := tmpl.Execute(&doc, appyaml); err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(filename, doc.Bytes(), 0700)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func entrypoint(cmd string) string {
-	parts := strings.Split(cmd, " ")
-	return `["` + strings.Join(parts, `", "`) + `"]`
-}
-
-func getruntimeSteps(spec *appYAMLConfig) []string {
-	steps := []string{}
-	switch spec.Runtime {
-	case "python":
-		steps = append(steps, []string{
-			"RUN virtualenv /env",
-			"ENV VIRTUAL_ENV /env",
-			"ENV PATH /env/bin:$PATH",
-			"ADD requirements.txt /app/requirements.txt",
-			"RUN pip install -r /app/requirements.txt",
-		}...)
-	default:
-		log.Fatal(fmt.Errorf("unsupported runtime %s", spec.Runtime))
-	}
-
-	return steps
-}
-
 func toJson(object interface{}) string {
 	dump, err := json.MarshalIndent(object, " ", "  ")
 	if err != nil {
@@ -214,4 +140,33 @@ func parseProcfile() (data []byte, err error) {
 func unmarshalProcfile(procfile []byte) (map[string]string, error) {
 	procfileMap := make(map[string]string)
 	return procfileMap, yaml.Unmarshal(procfile, &procfileMap)
+}
+
+func elaspedDuration(t time.Time) string {
+	duration := time.Since(t)
+	days := int64(duration.Hours() / 24)
+	hours := int64(math.Mod(duration.Hours(), 24))
+	minutes := int64(math.Mod(duration.Minutes(), 60))
+
+	chunks := []struct {
+		singularName string
+		amount       int64
+	}{
+		{"d", days},
+		{"h", hours},
+		{"m", minutes},
+	}
+
+	parts := []string{}
+
+	for _, chunk := range chunks {
+		switch chunk.amount {
+		case 0:
+			continue
+		default:
+			parts = append(parts, fmt.Sprintf("%d%s", chunk.amount, chunk.singularName))
+		}
+	}
+
+	return strings.Join(parts, " ")
 }
