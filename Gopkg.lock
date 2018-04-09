@@ -344,6 +344,12 @@
   revision = "57fdcb988a5c543893cc61bce354a6e24ab70022"
 
 [[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
+  version = "v0.0.2"
+
+[[projects]]
   name = "github.com/mholt/archiver"
   packages = ["."]
   revision = "cdc68dd1f170b8dfc1a0d2231b5bb0967ed67006"
@@ -366,6 +372,12 @@
   name = "github.com/nwaples/rardecode"
   packages = ["."]
   revision = "f22b7ef81a0afac9ce1447d37e5ab8e99fbd2f73"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  revision = "b8a9be070da40449e501c3c4730a889e42d87a9e"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -562,6 +574,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "46839c89b027427ff758080f2a6d231f96ae66876d4d84c45f630b36ef9275f2"
+  inputs-digest = "d19ecfd1dcb05bb021b32d5e90162154643244b212751b86e9657be4c803a0e6"
   solver-name = "gps-cdcl"
   solver-version = 1

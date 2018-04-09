@@ -71,6 +71,12 @@ message ResourceListResponse {
   repeated models.Resource resources = 1;
 }
 
+
+message BuildListRequest {
+  string name = 1;
+  int32 limit = 2;
+}
+
 message BuildListResponse {
   repeated models.Build builds = 1;
 }
@@ -197,7 +203,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildList(AppRequest) returns (BuildListResponse) {
+  rpc BuildList(BuildListRequest) returns (BuildListResponse) {
     option (google.api.http) = {
       get: "/v1/builds/{name}"
     };

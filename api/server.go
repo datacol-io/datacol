@@ -242,8 +242,8 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	return stream.SendAndClose(emptyMsg)
 }
 
-func (s *Server) BuildList(ctx context.Context, req *pbs.AppRequest) (*pbs.BuildListResponse, error) {
-	items, err := s.Provider.BuildList(req.Name, 100)
+func (s *Server) BuildList(ctx context.Context, req *pbs.BuildListRequest) (*pbs.BuildListResponse, error) {
+	items, err := s.Provider.BuildList(req.Name, int(req.Limit))
 	if err != nil {
 		return nil, err
 	}

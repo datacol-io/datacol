@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Async support for streaming logs from mutiple processes.
 - Making `datacol run` independent of shell
 ### Added
+- Paging for `GET /v1/builds` API 
+- [CLI] Tabular output for listing apps and builds
 - [CLI] `STACK` env var for `datacol env`, `datacol infra`
 - [CLI] Number of logs lines for process logs (`--lines 10`)
 

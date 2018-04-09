@@ -111,7 +111,6 @@ func generateClusterConfig(rackName, baseDir string, c *container.Cluster) error
 		User:    rackName,
 		Context: rackName,
 		Cluster: rackName,
-		// TokenFile: getTokenFile(rackName),
 	}
 
 	var kubeconfig bytes.Buffer
