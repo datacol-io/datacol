@@ -85,6 +85,19 @@ func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1
 	return res.Items, nil
 }
 
+func getLatestPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
+	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
+	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{
+		LabelSelector:   selector.String(),
+		ResourceVersion: dp.ResourceVersion,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Items, nil
+}
+
 func getPodByName(c *kubernetes.Clientset, ns, app string) (*v1.Pod, error) {
 	pods, err := GetAllPods(c, ns, app)
 	if err != nil {

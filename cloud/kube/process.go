@@ -117,7 +117,7 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	var items []*pb.Process
 
 	for _, dp := range deployments {
-		pods, err := getPodsForDeployment(c, &dp)
+		pods, err := getLatestPodsForDeployment(c, &dp)
 		if err != nil {
 			return nil, err
 		}

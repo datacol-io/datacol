@@ -101,6 +101,12 @@ func GetAuthContextOrDie(stack string) (*Auth, *Apprc) {
 /* Exits if there is any error.*/
 func GetAuthOrDie(c *cli.Context) (*Auth, *Apprc) {
 	stack := c.String("stack")
+
+	if stack == "" {
+		// Some commands might not parse arguments
+		stack = os.Getenv("STACK")
+	}
+
 	if stack == "" {
 		stack = GetAppSetting("stack")
 	}
