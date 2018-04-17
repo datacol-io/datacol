@@ -21,6 +21,7 @@ const (
 	heritage          string = "datacol"
 	appLabel          string = "app"
 	typeLabel         string = "type"
+	runProcessKind    string = "run"
 )
 
 type Deployer struct {

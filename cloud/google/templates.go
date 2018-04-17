@@ -84,7 +84,7 @@ func cloudGoogleTemplatesMysqlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 1392, mode: os.FileMode(420), modTime: time.Unix(1506691380, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/mysql.tmpl", size: 1392, mode: os.FileMode(436), modTime: time.Unix(1521875529, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -104,7 +104,7 @@ func cloudGoogleTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 1134, mode: os.FileMode(420), modTime: time.Unix(1502614896, 0)}
+	info := bindataFileInfo{name: "cloud/google/templates/postgres.tmpl", size: 1134, mode: os.FileMode(436), modTime: time.Unix(1520015640, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

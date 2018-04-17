@@ -47,7 +47,33 @@ func GetAllPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
 		return nil, err
 	}
 
+	sort.Slice(res.Items, func(i, j int) bool {
+		return res.Items[i].Status.StartTime.Before(res.Items[j].Status.StartTime)
+	})
+
 	return res.Items, nil
+}
+
+// Return the pods which seems to be up and running.
+func GetAllRunningPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
+	labels := map[string]string{appLabel: app, managedBy: heritage}
+	selector := klabels.Set(labels).AsSelector()
+	res, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]v1.Pod, 0, len(res.Items))
+
+	for _, item := range res.Items {
+		status := getPodStatus(c, &item)
+		if status == podDown || status == podCrashed {
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
 }
 
 func GetAllPodNames(c *kubernetes.Clientset, ns, app string) ([]string, error) {
@@ -85,15 +111,22 @@ func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1
 	return res.Items, nil
 }
 
+// Will return the pods in ordered by status.StartTime, Ideally we should filter the pods by the app's
+// release version
 func getLatestPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
 	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
 	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{
 		LabelSelector:   selector.String(),
 		ResourceVersion: dp.ResourceVersion,
 	})
+
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(res.Items, func(i, j int) bool {
+		return res.Items[i].Status.StartTime.Before(res.Items[j].Status.StartTime)
+	})
 
 	return res.Items, nil
 }

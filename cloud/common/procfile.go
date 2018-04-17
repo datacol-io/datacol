@@ -12,6 +12,7 @@ const (
 
 	WebProcessKind = "web"
 	CmdProcessKind = "cmd"
+	RunProcessKind = "run"
 
 	defaultShell = "sh"
 )

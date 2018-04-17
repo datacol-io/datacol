@@ -34,7 +34,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 	defaultProctype := GetDefaultProctype(build)
 	procesess = append(procesess, &pb.Process{
 		Proctype: defaultProctype,
-		Workers:  1,
+		Count:    1,
 	})
 
 	runningProcesses, err := kube.ProcessList(c, ns, build.App)
@@ -44,7 +44,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 
 	for _, rp := range runningProcesses {
 		if rp.Proctype == defaultProctype {
-			procesess[0].Workers = rp.Workers // set the current worker similar to whatever running currently
+			procesess[0].Count = rp.Count // set the current worker similar to whatever running currently
 		}
 
 		// Only append non-default proceses

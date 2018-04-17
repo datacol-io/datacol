@@ -16,8 +16,8 @@ import (
 )
 
 func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
-	maxunavailable := intstr.FromString("25%")
-	maxsurge := intstr.FromString("25%")
+	maxunavailable := intstr.FromInt(0)
+	maxsurge := intstr.FromInt(1)
 
 	labels := map[string]string{
 		appLabel:  payload.App,

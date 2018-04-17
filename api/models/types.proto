@@ -61,10 +61,12 @@ message EnvConfig {
 }
 
 message Process {
-  string name = 1;
-  string proctype = 2;
-  int32 workers = 3;
-  string status = 4;
+  string proctype = 1;
+  int32 count = 2;
+  string status = 3;
+  string cpu = 4;
+  string memory = 5;
+  repeated string command = 6;
 }
 
 message Formation {
