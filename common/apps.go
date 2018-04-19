@@ -2,6 +2,7 @@ package common
 
 import (
 	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
@@ -89,4 +90,34 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 
 	// TODO: cleanup old resource based on req.Version
 	return nil
+}
+
+func MergeAppDomains(domains []string, item string) []string {
+	if item == "" {
+		return domains
+	}
+
+	itemIndex := -1
+	dotted := strings.HasPrefix(item, ":")
+
+	if dotted {
+		item = item[1:]
+	}
+
+	for i, d := range domains {
+		if d == item {
+			itemIndex = i
+			break
+		}
+	}
+
+	if dotted && itemIndex >= 0 {
+		return append(domains[0:itemIndex], domains[itemIndex+1:]...)
+	}
+
+	if !dotted && itemIndex == -1 {
+		return append(domains, item)
+	}
+
+	return domains
 }

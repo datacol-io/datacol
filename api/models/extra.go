@@ -36,6 +36,7 @@ type Apps []*App
 type Builds []*Build
 type Releases []*Release
 type Resources []*Resource
+type AppDomains []string
 
 type ReleaseOptions struct {
 	Port   int

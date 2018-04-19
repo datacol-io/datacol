@@ -1,27 +1,57 @@
-package kube_test
+package kube
 
 import (
 	"testing"
 
-	"github.com/datacol-io/datacol/cloud/kube"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestMergeAppDomains(t *testing.T) {
-	testcases := []struct {
-		domains  []string
-		item     string
-		expected []string
-	}{
-		{[]string{"a.com"}, "a.com", []string{"a.com"}},
-		{[]string{"a.com"}, "b.com", []string{"a.com", "b.com"}},
-		{[]string{}, ":b.com", []string{}},
-		{[]string{"a.com", "b.com"}, ":a.com", []string{"b.com"}},
+func TestMergeIngressRules(t *testing.T) {
+	{
+		ing1 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app1", "", intstr.FromInt(80), []string{"a1.com"}),
+		}}
+
+		ing2 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app2", "", intstr.FromInt(80), []string{"a2.com"}),
+		}}
+
+		ing := mergeIngressRules(&ing1, &ing2)
+		assert.Len(t, ing.Spec.Rules, 2)
+
+		ing3 := mergeIngressRules(ing, &ing2)
+		assert.Len(t, ing3.Spec.Rules, 2)
+
+		ing2.Spec.Rules[0].Host = "b1.com"
+		ing4 := mergeIngressRules(ing3, &ing2)
+		assert.Len(t, ing4.Spec.Rules, 2)
 	}
 
-	for _, tc := range testcases {
-		t.Run(tc.item, func(t *testing.T) {
-			assert.Equal(t, kube.MergeAppDomains(tc.domains, tc.item), tc.expected, "Should get correct domains")
-		})
+	{
+		ing1 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app1", "", intstr.FromInt(80), []string{"a1.com", "a2.com"}),
+		}}
+
+		ing2 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app1", "", intstr.FromInt(80), []string{"a1.com", "a2.com", "b1.com"}),
+		}}
+
+		ing := mergeIngressRules(&ing1, &ing2)
+		assert.Len(t, ing.Spec.Rules, 3)
+	}
+
+	{
+		ing1 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app1", "", intstr.FromInt(80), []string{"a1.com", "a2.com"}),
+		}}
+
+		ing2 := v1beta1.Ingress{Spec: v1beta1.IngressSpec{
+			Rules: ingressRulesManifest("app1", "", intstr.FromInt(80), []string{"a1.com"}),
+		}}
+
+		ing := mergeIngressRules(&ing1, &ing2)
+		assert.Len(t, ing.Spec.Rules, 1)
 	}
 }

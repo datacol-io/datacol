@@ -31,11 +31,11 @@ func (c *Client) DeleteResource(name string) error {
 }
 
 func (c *Client) CreateResourceLink(app, name string) error {
-	_, err := c.ProviderServiceClient.ResourceLink(ctx, &pbs.AppResourceReq{App: app, Name: name})
+	_, err := c.ProviderServiceClient.ResourceLink(ctx, &pbs.AppResourceReq{App: app, Resource: name})
 	return err
 }
 
 func (c *Client) DeleteResourceLink(app, name string) error {
-	_, err := c.ProviderServiceClient.ResourceUnlink(ctx, &pbs.AppResourceReq{App: app, Name: name})
+	_, err := c.ProviderServiceClient.ResourceUnlink(ctx, &pbs.AppResourceReq{App: app, Resource: name})
 	return err
 }
