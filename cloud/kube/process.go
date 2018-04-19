@@ -117,22 +117,24 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	var items []*pb.Process
 
 	for _, dp := range deployments {
-		pods, err := getPodsForDeployment(c, &dp)
+		pods, err := getLatestPodsForDeployment(c, &dp)
 		if err != nil {
 			return nil, err
 		}
 
-		var status string
-		if len(pods) > 0 {
-			//FIXME: ideally should report status of all pods
-			status = getPodStatusStr(c, &pods[len(pods)-1])
+		if len(pods) == 0 {
+			continue
 		}
+
+		//FIXME: ideally should report status of all pods for latest release/version
+		targetPod := pods[len(pods)-1]
+		status := getPodStatusStr(c, &targetPod)
 
 		items = append(items, &pb.Process{
 			Proctype: dp.ObjectMeta.Labels[typeLabel],
-			Workers:  *dp.Spec.Replicas,
-			Name:     dp.Name,
+			Count:    *dp.Spec.Replicas,
 			Status:   status,
+			Command:  targetPod.Spec.Containers[0].Args,
 		})
 	}
 
@@ -149,8 +151,8 @@ func ProcessRun(
 	stream io.ReadWriter,
 	provider cloud.CloudProvider,
 ) error {
-	proctype := rand.Characters(6)
-	podName := fmt.Sprintf("%s-%s", name, proctype)
+	proctype := runProcessKind
+	podName := fmt.Sprintf("%s-%s-%s", name, proctype, rand.Characters(6))
 
 	req := &DeployRequest{
 		ServiceID:           podName,

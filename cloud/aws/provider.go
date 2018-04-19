@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -17,6 +18,8 @@ type AwsCloud struct {
 	DeploymentName        string
 	Region, SettingBucket string
 	Access, Secret, Token string
+
+	lock sync.Mutex
 }
 
 func (p *AwsCloud) config() *aws.Config {

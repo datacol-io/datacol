@@ -1003,18 +1003,27 @@
     "modelsProcess": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "proctype": {
           "type": "string"
         },
-        "workers": {
+        "count": {
           "type": "integer",
           "format": "int32"
         },
         "status": {
           "type": "string"
+        },
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1036,6 +1045,10 @@
         "created_at": {
           "type": "integer",
           "format": "int32"
+        },
+        "version": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

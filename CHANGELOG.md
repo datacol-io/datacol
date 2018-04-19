@@ -4,11 +4,17 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixes
+- [API] Skipping ephemeral pods while log streaming
+- [CLI] `ps` should list recent pods with tabular format (Added cpu, memory fields)
+- [API] Don't stream logs from crashed/failed pods
 - Sort environment variables in API response
 - AWS nginx ingress controller to respect `Path: /`
 - Async support for streaming logs from mutiple processes.
 - Making `datacol run` independent of shell
 ### Added
+- [CLI] Renaming command `ps scale` to `scale`
+- [CLI] Renaming command `build list` to `builds`
+- [API] version label into k8s deployments
 - Paging for `GET /v1/builds` API 
 - [CLI] Tabular output for listing apps and builds
 - [CLI] `STACK` env var for `datacol env`, `datacol infra`

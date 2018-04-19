@@ -47,6 +47,29 @@ func (a *AwsCloud) ReleaseDelete(app, id string) error {
 	return nil
 }
 
+func (a *AwsCloud) releaseCount(app string) (version int64) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	queryInput := &dynamodb.ScanInput{
+		TableName: aws.String(a.dynamoReleases()),
+		Select:    aws.String("COUNT"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":app": {S: aws.String(app)},
+		},
+		FilterExpression: aws.String("app=:app"),
+	}
+
+	res, err := a.dynamodb().Scan(queryInput)
+	if err != nil {
+		log.Warnf("Fetching release count: %v", err)
+	} else {
+		version = *res.ScannedCount
+	}
+
+	return version
+}
+
 func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
 	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
 		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(b.App), b.Id,
@@ -69,6 +92,7 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		BuildId:   b.Id,
 		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
+		Version:   a.releaseCount(b.App) + 1,
 	}
 
 	if err = a.releaseSave(r); err != nil {
@@ -86,10 +110,12 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 
 	app.BuildId = b.Id
 	app.ReleaseId = r.Id
+	rversion := fmt.Sprintf("%d", r.Version)
 
 	log.Debugf("Saving app state: %s err:%v", toJson(app), a.saveApp(app)) // note the mutate function
 
-	if err := common.UpdateApp(a.kubeClient(), b, a.DeploymentName, image, false, domains, envVars, cloud.AwsProvider); err != nil {
+	if err := common.UpdateApp(a.kubeClient(), b, a.DeploymentName,
+		image, false, domains, envVars, cloud.AwsProvider, rversion); err != nil {
 		return nil, err
 	}
 

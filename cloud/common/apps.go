@@ -13,7 +13,9 @@ import (
 
 func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 	ns, image string, sqlProxy bool,
-	domains []string, envVars map[string]string, provider cloud.CloudProvider) error {
+	domains []string, envVars map[string]string,
+	provider cloud.CloudProvider,
+	version string) error {
 
 	deployer, err := kube.NewDeployer(c)
 	if err != nil {
@@ -34,7 +36,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 	defaultProctype := GetDefaultProctype(build)
 	procesess = append(procesess, &pb.Process{
 		Proctype: defaultProctype,
-		Workers:  1,
+		Count:    1,
 	})
 
 	runningProcesses, err := kube.ProcessList(c, ns, build.App)
@@ -44,7 +46,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 
 	for _, rp := range runningProcesses {
 		if rp.Proctype == defaultProctype {
-			procesess[0].Workers = rp.Workers // set the current worker similar to whatever running currently
+			procesess[0].Count = rp.Count // set the current worker similar to whatever running currently
 		}
 
 		// Only append non-default proceses
@@ -73,6 +75,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 			Provider:            provider,
 			ServiceID:           GetJobID(build.App, proctype),
 			EnableCloudSqlProxy: sqlProxy,
+			Version:             version,
 		}
 
 		if proctype == WebProcessKind || proctype == CmdProcessKind {
@@ -84,5 +87,6 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 		}
 	}
 
+	// TODO: cleanup old resource based on req.Version
 	return nil
 }

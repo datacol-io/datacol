@@ -16,8 +16,8 @@ import (
 )
 
 func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
-	maxunavailable := intstr.FromString("25%")
-	maxsurge := intstr.FromString("25%")
+	maxunavailable := intstr.FromInt(0)
+	maxsurge := intstr.FromInt(1)
 
 	labels := map[string]string{
 		appLabel:  payload.App,
@@ -55,9 +55,8 @@ func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Annotations: req.Tags,
 		Labels: map[string]string{
-			"app":     req.App,
-			"version": req.Version,
-			"type":    req.Proctype,
+			appLabel:  req.App,
+			typeLabel: req.Proctype,
 			managedBy: heritage,
 		},
 		Name:      req.ServiceID,

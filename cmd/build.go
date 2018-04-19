@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	term "github.com/appscode/go/term"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/client"
@@ -27,7 +28,7 @@ import (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:   "build",
-		Usage:  "build an app from Dockerfile or app.yaml (App-Engine)",
+		Usage:  "build an app from Dockerfile",
 		Action: cmdBuild,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -35,23 +36,25 @@ func init() {
 				Usage: "branch or commit Id of git repository",
 			},
 		},
+	})
+
+	stdcli.AddCommand(cli.Command{
+		Name:   "builds",
+		Usage:  "manage the builds for an app",
+		Action: cmdBuildList,
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "limit, n",
+				Usage: "Limit the number of recent builds to fetch",
+				Value: 5,
+			},
+		},
 		Subcommands: []cli.Command{
 			{
-				Name:   "list",
-				Usage:  "get builds for an app",
-				Action: cmdBuildList,
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:  "limit, n",
-						Usage: "Limit the number of recent builds to fetch",
-						Value: 5,
-					},
-				},
-			},
-			{
-				Name:   "delete",
-				Usage:  "delete a build",
-				Action: cmdBuildDelete,
+				Name:      "delete",
+				Usage:     "delete a build",
+				ArgsUsage: "<Id>",
+				Action:    cmdBuildDelete,
 			},
 		},
 	})
@@ -87,12 +90,11 @@ func cmdBuildDelete(c *cli.Context) error {
 	defer close()
 
 	if c.NArg() == 0 {
-		stdcli.ExitOnError(fmt.Errorf("Please provide id of the build"))
+		term.Warningln("No build Id provided")
+		stdcli.Usage(c)
 	}
 
-	bid := c.Args().First()
-
-	stdcli.ExitOnError(api.DeleteBuild(name, bid))
+	stdcli.ExitOnError(api.DeleteBuild(name, c.Args().First()))
 
 	fmt.Println("DONE")
 	return nil
