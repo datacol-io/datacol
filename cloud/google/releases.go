@@ -94,6 +94,5 @@ func (g *GCPCloud) releaseCount(app string) (version int64) {
 	}
 
 	version = int64(total)
-
 	return
 }

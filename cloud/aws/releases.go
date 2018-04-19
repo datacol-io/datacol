@@ -3,7 +3,6 @@ package aws
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -41,33 +40,6 @@ func (a *AwsCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
 	}
 
 	return releases, nil
-}
-
-func (a *AwsCloud) ReleaseDelete(app, id string) error {
-	return nil
-}
-
-func (a *AwsCloud) releaseCount(app string) (version int64) {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	queryInput := &dynamodb.ScanInput{
-		TableName: aws.String(a.dynamoReleases()),
-		Select:    aws.String("COUNT"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":app": {S: aws.String(app)},
-		},
-		FilterExpression: aws.String("app=:app"),
-	}
-
-	res, err := a.dynamodb().Scan(queryInput)
-	if err != nil {
-		log.Warnf("Fetching release count: %v", err)
-	} else {
-		version = *res.ScannedCount
-	}
-
-	return version
 }
 
 func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
@@ -158,18 +130,29 @@ func (a *AwsCloud) releaseFromItem(item map[string]*dynamodb.AttributeValue) *pb
 	}
 }
 
-func (a *AwsCloud) latestRelease(app string) *pb.Release {
-	allReleases, err := a.ReleaseList(app, 100)
-	if err != nil {
-		return nil
+func (a *AwsCloud) ReleaseDelete(app, id string) error {
+	return notImplemented
+}
+
+func (a *AwsCloud) releaseCount(app string) (version int64) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	queryInput := &dynamodb.ScanInput{
+		TableName: aws.String(a.dynamoReleases()),
+		Select:    aws.String("COUNT"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":app": {S: aws.String(app)},
+		},
+		FilterExpression: aws.String("app=:app"),
 	}
 
-	if len(allReleases) > 0 {
-		sort.Slice(allReleases, func(i, j int) bool {
-			return allReleases[i].CreatedAt > allReleases[j].CreatedAt
-		})
-		return allReleases[0]
+	res, err := a.dynamodb().Scan(queryInput)
+	if err != nil {
+		log.Warnf("Fetching release count: %v", err)
 	} else {
-		return nil
+		version = *res.ScannedCount
 	}
+
+	return version
 }

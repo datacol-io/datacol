@@ -18,7 +18,6 @@ func (p *AwsCloud) ProcessList(app string) ([]*pb.Process, error) {
 func (p *AwsCloud) ProcessRun(name string, r io.ReadWriter, command []string) error {
 	ns := p.DeploymentName
 	cfg, _ := getKubeClientConfig(ns)
-
 	envVars, _ := p.EnvironmentGet(name)
 	app, _ := p.AppGet(name)
 
