@@ -21,6 +21,7 @@ const (
 	heritage          string = "datacol"
 	appLabel          string = "app"
 	typeLabel         string = "type"
+	versionLabel      string = "version"
 	runProcessKind    string = "run"
 )
 
@@ -230,8 +231,7 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 
 	if err == nil {
 		found = true
-		i, _ := findContainer(d, payload.ServiceID)
-		if i >= 0 {
+		if i, _ := findContainer(d, payload.ServiceID); i >= 0 {
 			d.Spec.Template.Spec.Containers[i] = newContainer(payload)
 			//TODO: we are only updating containers schema for existing deployment. Add support for updating any any schema change
 			//Below is one workaround of it.

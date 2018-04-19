@@ -1045,6 +1045,10 @@
         "created_at": {
           "type": "integer",
           "format": "int32"
+        },
+        "version": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

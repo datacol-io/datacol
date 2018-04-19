@@ -20,11 +20,6 @@ func init() {
 		Flags:  []cli.Flag{&appFlag},
 		Subcommands: []cli.Command{
 			{
-				Name:   "scale",
-				Usage:  "scale the process",
-				Action: cmdAppScale,
-			},
-			{
 				Name:   "start",
 				Usage:  "start a process",
 				Action: cmdAppStart,
@@ -35,6 +30,14 @@ func init() {
 				Action: cmdAppStop,
 			},
 		},
+	})
+
+	stdcli.AddCommand(cli.Command{
+		Name:      "scale",
+		Usage:     "scale processes in an app",
+		Action:    cmdAppScale,
+		ArgsUsage: "<proctype>:<int> ...",
+		Flags:     []cli.Flag{&appFlag},
 	})
 }
 

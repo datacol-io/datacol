@@ -13,7 +13,9 @@ import (
 
 func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 	ns, image string, sqlProxy bool,
-	domains []string, envVars map[string]string, provider cloud.CloudProvider) error {
+	domains []string, envVars map[string]string,
+	provider cloud.CloudProvider,
+	version string) error {
 
 	deployer, err := kube.NewDeployer(c)
 	if err != nil {
@@ -73,6 +75,7 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 			Provider:            provider,
 			ServiceID:           GetJobID(build.App, proctype),
 			EnableCloudSqlProxy: sqlProxy,
+			Version:             version,
 		}
 
 		if proctype == WebProcessKind || proctype == CmdProcessKind {
@@ -84,5 +87,6 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 		}
 	}
 
+	// TODO: cleanup old resource based on req.Version
 	return nil
 }

@@ -55,9 +55,8 @@ func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Annotations: req.Tags,
 		Labels: map[string]string{
-			"app":     req.App,
-			"version": req.Version,
-			"type":    req.Proctype,
+			appLabel:  req.App,
+			typeLabel: req.Proctype,
 			managedBy: heritage,
 		},
 		Name:      req.ServiceID,

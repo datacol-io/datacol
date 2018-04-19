@@ -12,6 +12,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Async support for streaming logs from mutiple processes.
 - Making `datacol run` independent of shell
 ### Added
+- [CLI] Renaming command `ps scale` to `scale`
+- [CLI] Renaming command `build list` to `builds`
+- [API] version label into k8s deployments
 - Paging for `GET /v1/builds` API 
 - [CLI] Tabular output for listing apps and builds
 - [CLI] `STACK` env var for `datacol env`, `datacol infra`

@@ -116,8 +116,7 @@ func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1
 func getLatestPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
 	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
 	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{
-		LabelSelector:   selector.String(),
-		ResourceVersion: dp.ResourceVersion,
+		LabelSelector: selector.String(),
 	})
 
 	if err != nil {
@@ -153,7 +152,6 @@ func podEvents(c *kubernetes.Clientset, pod *v1.Pod) (*v1.EventList, error) {
 
 	res, err := c.Core().Events(pod.Namespace).List(metav1.ListOptions{
 		FieldSelector: klabels.Set(fields).AsSelector().String(),
-		// ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	})
 	if err != nil {
 		return res, err
