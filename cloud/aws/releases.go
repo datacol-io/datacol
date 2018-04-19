@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	"github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	kube "github.com/datacol-io/datacol/k8s"
 )
 
 func (a *AwsCloud) dynamoReleases() string {
@@ -139,6 +139,10 @@ func (a *AwsCloud) releaseSave(r *pb.Release) error {
 		req.Item["status"] = &dynamodb.AttributeValue{S: aws.String(r.Status)}
 	}
 
+	if r.Version > 0 {
+		req.Item["version"] = &dynamodb.AttributeValue{N: aws.String(fmt.Sprintf("%d", r.Version))}
+	}
+
 	_, err := a.dynamodb().PutItem(req)
 	return err
 }
@@ -150,6 +154,7 @@ func (a *AwsCloud) releaseFromItem(item map[string]*dynamodb.AttributeValue) *pb
 		BuildId:   coalesce(item["build_id"], ""),
 		Status:    coalesce(item["status"], ""),
 		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
+		Version:   int64(coalesceInt(item["version"], 0)),
 	}
 }
 

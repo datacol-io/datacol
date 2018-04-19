@@ -10,7 +10,7 @@ import (
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
+	"github.com/datacol-io/datacol/common"
 	docker "github.com/fsouza/go-dockerclient"
 )
 

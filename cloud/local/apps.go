@@ -9,8 +9,8 @@ import (
 	"github.com/appscode/go/log"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	sched "github.com/datacol-io/datacol/k8s"
 )
 
 func (l *LocalCloud) AppList() (pb.Apps, error) {

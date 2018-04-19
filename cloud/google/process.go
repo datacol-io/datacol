@@ -6,8 +6,8 @@ import (
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	"github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	kube "github.com/datacol-io/datacol/k8s"
 )
 
 func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command []string) error {

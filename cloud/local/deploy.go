@@ -7,8 +7,8 @@ import (
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	sched "github.com/datacol-io/datacol/k8s"
 )
 
 func (g *LocalCloud) K8sConfigPath() (string, error) {

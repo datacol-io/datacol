@@ -6,7 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/kube"
+	kube "github.com/datacol-io/datacol/k8s"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )

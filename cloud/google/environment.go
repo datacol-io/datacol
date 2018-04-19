@@ -5,7 +5,7 @@ import (
 	"io"
 
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud/common"
+	"github.com/datacol-io/datacol/common"
 	"google.golang.org/api/googleapi"
 )
 

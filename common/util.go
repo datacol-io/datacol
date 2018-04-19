@@ -12,7 +12,7 @@ import (
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	sched "github.com/datacol-io/datacol/k8s"
 	"k8s.io/client-go/kubernetes"
 )
 
