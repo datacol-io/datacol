@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	Version = "1.0.0-alpha.12"
+	Version = "1.0.0-alpha.13"
 	LocalAppDir = ".datacol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []cli.Command{}
