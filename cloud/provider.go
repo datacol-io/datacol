@@ -12,6 +12,7 @@ type Provider interface {
 	AppDelete(string) error
 	AppRestart(string) error
 	AppList() (pb.Apps, error)
+	AppUpdateDomain(string, string) error
 
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error

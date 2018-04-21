@@ -126,6 +126,19 @@ func (a *AwsCloud) AppDelete(name string) error {
 	return nil
 }
 
+// DomainUpdate updates list of Domains for an app
+// domain can be example.com if you want to add or :example.com if you want to delete
+func (p *AwsCloud) AppUpdateDomain(name, domain string) error {
+	app, err := p.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	app.Domains = common.MergeAppDomains(app.Domains, domain)
+
+	return p.saveApp(app)
+}
+
 func (p *AwsCloud) deleteAppResources(name string) error {
 	svc := p.ecr()
 

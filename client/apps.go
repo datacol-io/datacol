@@ -37,6 +37,11 @@ func (c *Client) DeleteApp(name string) error {
 	return err
 }
 
+func (c *Client) AppDomainUpdate(name, domain string) error {
+	_, err := c.ProviderServiceClient.AppUpdateDomain(ctx, &pbs.AppResourceReq{App: name, Resource: domain})
+	return err
+}
+
 func (c *Client) RestartApp(name string) error {
 	_, err := c.ProviderServiceClient.AppRestart(ctx, &pbs.AppRequest{Name: name})
 	return err

@@ -333,6 +333,31 @@
         ]
       }
     },
+    "/v1/domains/{app}": {
+      "put": {
+        "summary": "Update Domain API",
+        "operationId": "AppUpdateDomain",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/env/{name}": {
       "get": {
         "operationId": "EnvironmentGet",
@@ -467,31 +492,7 @@
         ]
       }
     },
-    "/v1/process/formation": {
-      "get": {
-        "operationId": "ProcessSave",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/protobufEmpty"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "app",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/process/list": {
+    "/v1/process": {
       "get": {
         "operationId": "ProcessList",
         "responses": {
@@ -511,6 +512,30 @@
           },
           {
             "name": "repo_url",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/process/formation": {
+      "get": {
+        "operationId": "ProcessSave",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
             "in": "query",
             "required": false,
             "type": "string"
@@ -671,6 +696,66 @@
         ]
       }
     },
+    "/v1/resources/{app}/link/{resource}": {
+      "put": {
+        "operationId": "ResourceLink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources/{app}/unlink/{resource}": {
+      "put": {
+        "operationId": "ResourceUnlink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/resources/{name}": {
       "get": {
         "operationId": "ResourceGet",
@@ -713,66 +798,6 @@
         "parameters": [
           {
             "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/resources/{name}/link/{app}": {
-      "put": {
-        "operationId": "ResourceLink",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/modelsResource"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "app",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/resources/{name}/unlink/{app}": {
-      "put": {
-        "operationId": "ResourceUnlink",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/modelsResource"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "app",
             "in": "path",
             "required": true,
             "type": "string"

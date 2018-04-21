@@ -242,7 +242,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 	return stream.SendAndClose(emptyMsg)
 }
 
-func (s *Server) BuildList(ctx context.Context, req *pbs.BuildListRequest) (*pbs.BuildListResponse, error) {
+func (s *Server) BuildList(ctx context.Context, req *pbs.AppListRequest) (*pbs.BuildListResponse, error) {
 	items, err := s.Provider.BuildList(req.Name, int(req.Limit))
 	if err != nil {
 		return nil, err
@@ -362,17 +362,17 @@ func (s *Server) ResourceDelete(ctx context.Context, req *pbs.AppRequest) (*empt
 }
 
 func (s *Server) ResourceLink(ctx context.Context, req *pbs.AppResourceReq) (*pb.Resource, error) {
-	ret, err := s.Provider.ResourceLink(req.App, req.Name)
+	ret, err := s.Provider.ResourceLink(req.App, req.Resource)
 	if err != nil {
-		return nil, internalError(err, fmt.Sprintf("failed to link resource %s", req.Name))
+		return nil, internalError(err, fmt.Sprintf("failed to link resource %s", req.Resource))
 	}
 	return ret, nil
 }
 
 func (s *Server) ResourceUnlink(ctx context.Context, req *pbs.AppResourceReq) (*pb.Resource, error) {
-	ret, err := s.Provider.ResourceUnlink(req.App, req.Name)
+	ret, err := s.Provider.ResourceUnlink(req.App, req.Resource)
 	if err != nil {
-		return nil, internalError(err, fmt.Sprintf("failed to unlink resource %s", req.Name))
+		return nil, internalError(err, fmt.Sprintf("failed to unlink resource %s", req.Resource))
 	}
 	return ret, nil
 }

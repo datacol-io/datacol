@@ -71,7 +71,7 @@ func (c *Client) CreateBuildGit(app *pb.App, version string, procfile []byte) (*
 }
 
 func (c *Client) GetBuilds(app string, limit int) (pb.Builds, error) {
-	ret, err := c.ProviderServiceClient.BuildList(ctx, &pbs.BuildListRequest{
+	ret, err := c.ProviderServiceClient.BuildList(ctx, &pbs.AppListRequest{
 		Name:  app,
 		Limit: int32(limit),
 	})

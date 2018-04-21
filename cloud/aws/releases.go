@@ -3,7 +3,6 @@ package aws
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,7 +10,6 @@ import (
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
 	"github.com/datacol-io/datacol/common"
-	kube "github.com/datacol-io/datacol/k8s"
 )
 
 func (a *AwsCloud) dynamoReleases() string {
@@ -71,15 +69,6 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return r, err
 	}
 
-	domains := app.Domains
-	for _, domain := range strings.Split(options.Domain, ",") {
-		domains = kube.MergeAppDomains(domains, domain)
-	}
-
-	if len(app.Domains) != len(domains) {
-		app.Domains = domains
-	}
-
 	app.BuildId = b.Id
 	app.ReleaseId = r.Id
 	rversion := fmt.Sprintf("%d", r.Version)
@@ -87,7 +76,7 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 	log.Debugf("Saving app state: %s err:%v", toJson(app), a.saveApp(app)) // note the mutate function
 
 	if err := common.UpdateApp(a.kubeClient(), b, a.DeploymentName,
-		image, false, domains, envVars, cloud.AwsProvider, rversion); err != nil {
+		image, false, app.Domains, envVars, cloud.AwsProvider, rversion); err != nil {
 		return nil, err
 	}
 

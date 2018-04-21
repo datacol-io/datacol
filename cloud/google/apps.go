@@ -81,6 +81,19 @@ func (g *GCPCloud) AppDelete(name string) error {
 	return g.deleteAppFromDatastore(name)
 }
 
+// DomainUpdate updates list of Domains for an app
+// domain can be example.com if you want to add or :example.com if you want to delete
+func (g *GCPCloud) AppUpdateDomain(name, domain string) error {
+	app, err := g.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	app.Domains = common.MergeAppDomains(app.Domains, domain)
+
+	return g.saveApp(app)
+}
+
 func (g *GCPCloud) saveApp(app *pb.App) error {
 	ctx, key := g.nestedKey(appKind, app.Name)
 	_, err := g.datastore().Put(ctx, key, app)

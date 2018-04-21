@@ -127,6 +127,26 @@ func newContainer(payload *DeployRequest) v1.Container {
 	return container
 }
 
+func ingressRulesManifest(service, path string, port intstr.IntOrString, domains []string) []v1beta1.IngressRule {
+	rules := make([]v1beta1.IngressRule, len(domains))
+	for i, domain := range domains {
+		rules[i] = v1beta1.IngressRule{
+			Host: domain,
+			IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
+				Paths: []v1beta1.HTTPIngressPath{{
+					Path: path,
+					Backend: v1beta1.IngressBackend{
+						ServiceName: service,
+						ServicePort: port,
+					},
+				}},
+			}},
+		}
+	}
+
+	return rules
+}
+
 func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	r := payload.Request
 
@@ -134,28 +154,13 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 		domains = []string{fmt.Sprintf("%s.%s", r.ServiceID, defaultIngressDomain)}
 	}
 
-	rules := make([]v1beta1.IngressRule, len(domains))
-	for i, domain := range domains {
-		ingressPath := "/"
-
-		if payload.Request.Provider == cloud.GCPProvider {
-			// It's important to have * after / since GCP GLBC load balancer doesn't support subresources automatically.
-			ingressPath = "/*"
-		}
-
-		rules[i] = v1beta1.IngressRule{
-			Host: domain,
-			IngressRuleValue: v1beta1.IngressRuleValue{HTTP: &v1beta1.HTTPIngressRuleValue{
-				Paths: []v1beta1.HTTPIngressPath{{
-					Path: ingressPath,
-					Backend: v1beta1.IngressBackend{
-						ServiceName: r.ServiceID,
-						ServicePort: r.ContainerPort,
-					},
-				}},
-			}},
-		}
+	ingressPath := "/"
+	if payload.Request.Provider == cloud.GCPProvider {
+		// It's important to have * after / since GCP GLBC load balancer doesn't support subresources automatically.
+		ingressPath = "/*"
 	}
+
+	rules := ingressRulesManifest(r.ServiceID, ingressPath, r.ContainerPort, domains)
 
 	//Note: making name dependent on namespace i.e. stackName will only provision one load-balancer per stack
 	// change this if you want to allocate individual load balanacer for each app and use Name = payload.Request.ServiceID

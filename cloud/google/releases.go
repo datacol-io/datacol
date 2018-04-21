@@ -3,14 +3,12 @@ package google
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
 	"github.com/datacol-io/datacol/common"
-	sched "github.com/datacol-io/datacol/k8s"
 )
 
 func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
@@ -41,11 +39,6 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return nil, err
 	}
 
-	domains := app.Domains
-	for _, domain := range strings.Split(options.Domain, ",") {
-		domains = sched.MergeAppDomains(domains, domain)
-	}
-
 	r := &pb.Release{
 		Id:        generateId("R", 5),
 		App:       b.App,
@@ -58,16 +51,8 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 	rversion := fmt.Sprintf("%d", r.Version)
 
 	if err := common.UpdateApp(g.kubeClient(), b, g.DeploymentName, image, g.appLinkedDB(app),
-		domains, envVars, cloud.GCPProvider, rversion); err != nil {
+		app.Domains, envVars, cloud.GCPProvider, rversion); err != nil {
 		return nil, err
-	}
-
-	if len(app.Domains) != len(domains) {
-		app.Domains = domains
-
-		if err = g.saveApp(app); err != nil {
-			log.Warnf("datastore put failed: %v", err)
-		}
 	}
 
 	ctx, key := g.nestedKey(releaseKind, r.Id)
