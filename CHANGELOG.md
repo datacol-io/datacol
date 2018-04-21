@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixes
+- [CLI] Remove code and description from GRCP errors
 - [API] Skipping ephemeral pods while log streaming
 - [CLI] `ps` should list recent pods with tabular format (Added cpu, memory fields)
 - [API] Don't stream logs from crashed/failed pods

@@ -122,6 +122,8 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 			return nil, err
 		}
 
+		log.Debugf("got %d pods for %s", len(pods), app)
+
 		if len(pods) == 0 {
 			continue
 		}
