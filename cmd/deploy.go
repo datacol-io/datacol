@@ -87,6 +87,9 @@ func cmdDeploy(c *cli.Context) error {
 		build = b
 	}
 
+	build, err = client.GetBuild(name, build.Id)
+	stdcli.ExitOnError(err)
+
 	if build.Status == "FAILED" {
 		term.Fatalln(fmt.Sprintf("BUILD=%s is having FAILED status.", buildID))
 	}

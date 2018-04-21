@@ -3,9 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
+### Fixed
+- [CLI] Check build status before deploying an app
+### Added
+- [CLI] `datacol env unset` supports multiple parameters
 
 ## [1.0.0-alpha.13] - 2018-04-21
-### Fixes
+### Fixed
 - [CLI] Remove code and description from GRCP errors
 - [API] Skipping ephemeral pods while log streaming
 - [CLI] `ps` should list recent pods with tabular format (Added cpu, memory fields)

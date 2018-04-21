@@ -89,12 +89,13 @@ func cmdConfigUnset(c *cli.Context) error {
 	env, err := client.GetEnvironment(name)
 	stdcli.ExitOnError(err)
 
-	keyvar := c.Args().First()
+	for _, key := range c.Args() {
+		delete(env, key)
+	}
+
 	data := ""
 	for key, value := range env {
-		if key != keyvar {
-			data += fmt.Sprintf("%s=%s\n", key, value)
-		}
+		data += fmt.Sprintf("%s=%s\n", key, value)
 	}
 
 	stdcli.ExitOnError(client.SetEnvironment(name, data))
