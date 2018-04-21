@@ -1,4 +1,4 @@
-version=1.0.0-alpha.12
+version=1.0.0-alpha.13
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
