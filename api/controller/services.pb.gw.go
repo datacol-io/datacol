@@ -178,6 +178,41 @@ func request_ProviderService_AppDelete_0(ctx context.Context, marshaler runtime.
 }
 
 var (
+	filter_ProviderService_AppUpdateDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"app": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
+func request_ProviderService_AppUpdateDomain_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AppResourceReq
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["app"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "app")
+	}
+
+	protoReq.App, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "app", err)
+	}
+
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_ProviderService_AppUpdateDomain_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.AppUpdateDomain(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+var (
 	filter_ProviderService_BuildCreate_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
@@ -327,7 +362,7 @@ var (
 )
 
 func request_ProviderService_BuildList_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AppRequest
+	var protoReq AppListRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -650,17 +685,6 @@ func request_ProviderService_ResourceLink_0(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "name")
-	}
-
-	protoReq.Name, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "name", err)
-	}
-
 	val, ok = pathParams["app"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "app")
@@ -670,6 +694,17 @@ func request_ProviderService_ResourceLink_0(ctx context.Context, marshaler runti
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "app", err)
+	}
+
+	val, ok = pathParams["resource"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "resource")
+	}
+
+	protoReq.Resource, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "resource", err)
 	}
 
 	msg, err := client.ResourceLink(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -688,17 +723,6 @@ func request_ProviderService_ResourceUnlink_0(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "name")
-	}
-
-	protoReq.Name, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "name", err)
-	}
-
 	val, ok = pathParams["app"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "app")
@@ -708,6 +732,17 @@ func request_ProviderService_ResourceUnlink_0(ctx context.Context, marshaler run
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "app", err)
+	}
+
+	val, ok = pathParams["resource"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "resource")
+	}
+
+	protoReq.Resource, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "resource", err)
 	}
 
 	msg, err := client.ResourceUnlink(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1070,6 +1105,35 @@ func RegisterProviderServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		}
 
 		forward_ProviderService_AppDelete_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("PUT", pattern_ProviderService_AppUpdateDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		if cn, ok := w.(http.CloseNotifier); ok {
+			go func(done <-chan struct{}, closed <-chan bool) {
+				select {
+				case <-done:
+				case <-closed:
+					cancel()
+				}
+			}(ctx.Done(), cn.CloseNotify())
+		}
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ProviderService_AppUpdateDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_ProviderService_AppUpdateDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1727,6 +1791,8 @@ var (
 
 	pattern_ProviderService_AppDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "apps", "name"}, ""))
 
+	pattern_ProviderService_AppUpdateDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "app"}, ""))
+
 	pattern_ProviderService_BuildCreate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "builds"}, ""))
 
 	pattern_ProviderService_BuildImport_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "builds", "import"}, ""))
@@ -1757,15 +1823,15 @@ var (
 
 	pattern_ProviderService_ResourceDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "resources", "name"}, ""))
 
-	pattern_ProviderService_ResourceLink_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "resources", "name", "link", "app"}, ""))
+	pattern_ProviderService_ResourceLink_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "resources", "app", "link", "resource"}, ""))
 
-	pattern_ProviderService_ResourceUnlink_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "resources", "name", "unlink", "app"}, ""))
+	pattern_ProviderService_ResourceUnlink_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "resources", "app", "unlink", "resource"}, ""))
 
 	pattern_ProviderService_Kubectl_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "kubectl"}, ""))
 
 	pattern_ProviderService_ProcessRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "process", "run"}, ""))
 
-	pattern_ProviderService_ProcessList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "process", "list"}, ""))
+	pattern_ProviderService_ProcessList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "process"}, ""))
 
 	pattern_ProviderService_ProcessSave_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "process", "formation"}, ""))
 
@@ -1784,6 +1850,8 @@ var (
 	forward_ProviderService_AppRestart_0 = runtime.ForwardResponseMessage
 
 	forward_ProviderService_AppDelete_0 = runtime.ForwardResponseMessage
+
+	forward_ProviderService_AppUpdateDomain_0 = runtime.ForwardResponseMessage
 
 	forward_ProviderService_BuildCreate_0 = runtime.ForwardResponseMessage
 

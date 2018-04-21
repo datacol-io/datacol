@@ -89,10 +89,7 @@ func (p *ExecOptions) Run() error {
 		Name(pod.Name).
 		Namespace(pod.Namespace).
 		SubResource("exec").
-		Param("container", containerName).
-		Param("command", "/bin/sh").
-		Param("command", "-c").
-		Param("tty", "true")
+		Param("container", containerName)
 
 	req.VersionedParams(&corev1.PodExecOptions{
 		Container: containerName,
@@ -120,44 +117,49 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 	var items []*pb.Process
 
 	for _, dp := range deployments {
-		pods, err := getPodsForDeployment(c, &dp)
+		pods, err := getLatestPodsForDeployment(c, &dp)
 		if err != nil {
 			return nil, err
 		}
 
-		var status string
-		if len(pods) > 0 {
-			//FIXME: ideally should report status of all pods
-			status = getPodStatusStr(c, &pods[len(pods)-1])
+		log.Debugf("got %d pods for %s", len(pods), app)
+
+		if len(pods) == 0 {
+			continue
 		}
+
+		//FIXME: ideally should report status of all pods for latest release/version
+		targetPod := pods[len(pods)-1]
+		status := getPodStatusStr(c, &targetPod)
 
 		items = append(items, &pb.Process{
 			Proctype: dp.ObjectMeta.Labels[typeLabel],
-			Workers:  *dp.Spec.Replicas,
-			Name:     dp.Name,
+			Count:    *dp.Spec.Replicas,
 			Status:   status,
+			Command:  targetPod.Spec.Containers[0].Args,
 		})
 	}
 
 	return items, nil
 }
 
-func ProcessExec(
+func ProcessRun(
 	c *kubernetes.Clientset,
 	cfg *rest.Config,
-	ns, name, image, command string,
+	ns, name, image string,
+	command []string,
 	envVars map[string]string,
 	sqlproxy bool,
 	stream io.ReadWriter,
 	provider cloud.CloudProvider,
 ) error {
-	proctype := rand.Characters(6)
-	podName := fmt.Sprintf("%s-%s", name, proctype)
+	proctype := runProcessKind
+	podName := fmt.Sprintf("%s-%s-%s", name, proctype, rand.Characters(6))
+
 	req := &DeployRequest{
 		ServiceID:           podName,
 		Image:               image,
-		Entrypoint:          []string{"/bin/bash", "-c"},
-		Args:                []string{"trap : TERM INT; sleep infinity & wait"}, //FIXME: To let the pod stay around until being told to exit
+		Args:                []string{"sleep", "infinity"}, //FIXME: To let the pod stay around until being told to exit
 		EnvVars:             envVars,
 		App:                 name,
 		Proctype:            proctype,
@@ -168,19 +170,18 @@ func ProcessExec(
 	// Delete the pod sunce it's ephemeral
 	defer deletePodByName(c, ns, podName)
 
-	return processExec(c, cfg, ns, command, req, stream)
+	return processRun(c, cfg, ns, command, req, stream)
 }
 
 func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 	return c.Core().Pods(ns).Delete(name, &metav1.DeleteOptions{})
 }
 
-func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns, command string, req *DeployRequest, stream io.ReadWriter) error {
+func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []string, req *DeployRequest, stream io.ReadWriter) error {
 	spec := newPodSpec(req)
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
-
 	pod, err := c.Core().Pods(ns).Create(spec)
 	if err != nil {
 		return err
@@ -195,7 +196,7 @@ func processExec(c *kubernetes.Clientset, cfg *rest.Config, ns, command string, 
 	executer := &ExecOptions{
 		Namespace: ns,
 		PodName:   req.ServiceID,
-		Command:   []string{command},
+		Command:   command,
 		Stdin:     true,
 		In:        stream,
 		Out:       stream,

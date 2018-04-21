@@ -40,9 +40,10 @@ func (s *Server) LogStreamWs(ws *websocket.Conn) error {
 	}
 
 	return s.Provider.LogStream(app, ws, pb.LogStreamOptions{
-		Since:    since,
-		Follow:   follow,
-		Proctype: headers.Get("process"),
+		Since:     since,
+		Follow:    follow,
+		Proctype:  headers.Get("process"),
+		TailLines: headers.Get("lines"),
 	})
 }
 

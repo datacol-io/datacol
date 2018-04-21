@@ -12,6 +12,7 @@ type Provider interface {
 	AppDelete(string) error
 	AppRestart(string) error
 	AppList() (pb.Apps, error)
+	AppUpdateDomain(string, string) error
 
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error
@@ -31,7 +32,7 @@ type Provider interface {
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
 
 	ProcessList(app string) ([]*pb.Process, error)
-	ProcessRun(app string, r io.ReadWriter, command string) error
+	ProcessRun(app string, r io.ReadWriter, command []string) error
 	ProcessSave(app string, formation map[string]int32) error
 
 	ResourceList() (pb.Resources, error)

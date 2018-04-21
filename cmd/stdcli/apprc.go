@@ -1,6 +1,7 @@
 package stdcli
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/appscode/go/io"
@@ -94,36 +95,23 @@ func LoadApprc() (*Apprc, error) {
 
 /* Exits if there is any error.*/
 func GetAuthContextOrDie(stack string) (*Auth, *Apprc) {
-	rc, err := LoadApprc()
-	if err != nil {
-		term.Fatalln("Command requires authentication, please run `datacol login`")
-	}
-
-	a := rc.GetAuth(stack)
-
-	if a == nil {
-		term.Fatalln("Command requires authentication, please run `datacol login`")
-	}
-	return a, rc
+	return loadAuthForStack(stack)
 }
 
 /* Exits if there is any error.*/
 func GetAuthOrDie(c *cli.Context) (*Auth, *Apprc) {
-	rc, err := LoadApprc()
-	if err != nil {
-		term.Fatalln("Command requires authentication, please run `datacol login`")
+	stack := c.String("stack")
+
+	if stack == "" {
+		// Some commands might not parse arguments
+		stack = os.Getenv("STACK")
 	}
 
-	stack := c.String("stack")
 	if stack == "" {
 		stack = GetAppSetting("stack")
 	}
-	a := rc.GetAuth(stack)
 
-	if a == nil {
-		term.Fatalln("Command requires authentication, please run `datacol login`")
-	}
-	return a, rc
+	return loadAuthForStack(stack)
 }
 
 /* Exits if there is any error.*/
@@ -152,4 +140,29 @@ func SetAuth(a *Auth) error {
 func NewAnonAUth() *Auth {
 	a := &Auth{ApiServer: "localhost"}
 	return a
+}
+
+func loadAuthForStack(stack string) (*Auth, *Apprc) {
+	rc, err := LoadApprc()
+	if err != nil {
+		exitWithLoginError("failed to load config file.")
+	}
+
+	if stack == "" {
+		term.Fatalln("No stack found. Please provide `STACK` environment variable or --stack flag")
+	}
+
+	a := rc.GetAuth(stack)
+
+	if a == nil {
+		exitWithLoginError(fmt.Sprintf("No stack found for `%s`.", stack))
+	}
+	return a, rc
+}
+
+func exitWithLoginError(msg ...string) {
+	for _, m := range msg {
+		term.Println(m)
+	}
+	term.Fatalln("Since the command requires authentication, please run `datacol login` if you haven't logged in.")
 }

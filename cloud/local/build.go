@@ -10,7 +10,7 @@ import (
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
+	"github.com/datacol-io/datacol/common"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -119,15 +119,17 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 		return nil, err
 	}
 
-	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false, []string{}, envVars, cloud.LocalProvider); err != nil {
-		return nil, err
-	}
-
 	r := &pb.Release{
 		Id:      common.GenerateId("R", 5),
 		App:     b.App,
 		BuildId: b.Id,
 		Status:  pb.StatusCreated,
+		Version: int64(len(g.Releases) + 1),
+	}
+
+	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false,
+		[]string{}, envVars, cloud.LocalProvider, fmt.Sprintf("%d", r.Version)); err != nil {
+		return nil, err
 	}
 
 	g.Releases = append(g.Releases, r)

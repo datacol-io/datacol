@@ -12,8 +12,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	sched "github.com/datacol-io/datacol/k8s"
 )
 
 func (a *AwsCloud) AppList() (pb.Apps, error) {
@@ -124,6 +124,19 @@ func (a *AwsCloud) AppDelete(name string) error {
 	}
 
 	return nil
+}
+
+// DomainUpdate updates list of Domains for an app
+// domain can be example.com if you want to add or :example.com if you want to delete
+func (p *AwsCloud) AppUpdateDomain(name, domain string) error {
+	app, err := p.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	app.Domains = common.MergeAppDomains(app.Domains, domain)
+
+	return p.saveApp(app)
 }
 
 func (p *AwsCloud) deleteAppResources(name string) error {

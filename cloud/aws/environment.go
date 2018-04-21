@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud/common"
+	"github.com/datacol-io/datacol/common"
 )
 
 func (a *AwsCloud) s3KeyForEnv(name string) string {

@@ -13,7 +13,7 @@ func init() {
 		Name:   "env",
 		Usage:  "manage environment variables for an app",
 		Action: cmdConfigList,
-		Flags:  []cli.Flag{&appFlag},
+		Flags:  []cli.Flag{&appFlag, &stackFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:      "set",

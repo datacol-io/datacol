@@ -17,6 +17,10 @@ message ListRequest {
   int32 limit = 2;
 }
 
+message ListResponse {
+  repeated string items = 1;
+}
+
 message AppRequest {
   string name = 1;
   string repo_url = 2;
@@ -71,6 +75,11 @@ message ResourceListResponse {
   repeated models.Resource resources = 1;
 }
 
+message AppListRequest {
+  string name = 1;
+  int32 limit = 2;
+}
+
 message BuildListResponse {
   repeated models.Build builds = 1;
 }
@@ -87,7 +96,7 @@ message CreateResourceRequest {
 
 message AppResourceReq {
   string app = 1;
-  string name = 2;
+  string resource = 2;
  }
 
 message KubectlReq {
@@ -124,6 +133,10 @@ message ReleaseListResponse {
 message CreateReleaseRequest {
   models.Build build = 1;
   string domain = 2;
+}
+
+message ListDomainReqponse {
+  repeated string url = 1;
 }
 
 service ProviderService {
@@ -166,6 +179,13 @@ service ProviderService {
     };
   }
 
+  //Update Domain API
+  rpc AppUpdateDomain(AppResourceReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/v1/domains/{app}"
+    };
+  }
+
   //Build Api
   rpc BuildCreate(CreateBuildRequest) returns (models.Build) {
     option (google.api.http) = {
@@ -197,7 +217,7 @@ service ProviderService {
     };
   }
 
-  rpc BuildList(AppRequest) returns (BuildListResponse) {
+  rpc BuildList(AppListRequest) returns (BuildListResponse) {
     option (google.api.http) = {
       get: "/v1/builds/{name}"
     };
@@ -261,13 +281,13 @@ service ProviderService {
 
   rpc ResourceLink(AppResourceReq) returns (models.Resource) {
     option (google.api.http) = {
-      put: "/v1/resources/{name}/link/{app}"
+      put: "/v1/resources/{app}/link/{resource}"
     };
   }
 
   rpc ResourceUnlink(AppResourceReq) returns (models.Resource) {
     option (google.api.http) = {
-      put: "/v1/resources/{name}/unlink/{app}"
+      put: "/v1/resources/{app}/unlink/{resource}"
     };
   }
 
@@ -287,7 +307,7 @@ service ProviderService {
 
   rpc ProcessList(AppRequest) returns (ProcessListResponse) {
     option (google.api.http) = { 
-      get: "/v1/process/list"
+      get: "/v1/process"
     };
   }
 

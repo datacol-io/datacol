@@ -1,9 +1,9 @@
-package kube_test
+package common_test
 
 import (
 	"testing"
 
-	"github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func TestMergeAppDomains(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.item, func(t *testing.T) {
-			assert.Equal(t, kube.MergeAppDomains(tc.domains, tc.item), tc.expected, "Should get correct domains")
+			assert.Equal(t, common.MergeAppDomains(tc.domains, tc.item), tc.expected, "Should get correct domains")
 		})
 	}
 }

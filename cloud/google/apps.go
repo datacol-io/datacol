@@ -9,8 +9,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	sched "github.com/datacol-io/datacol/k8s"
 )
 
 const appKind = "App"
@@ -79,6 +79,19 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 func (g *GCPCloud) AppDelete(name string) error {
 	g.deleteAppFromCluster(name)
 	return g.deleteAppFromDatastore(name)
+}
+
+// DomainUpdate updates list of Domains for an app
+// domain can be example.com if you want to add or :example.com if you want to delete
+func (g *GCPCloud) AppUpdateDomain(name, domain string) error {
+	app, err := g.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	app.Domains = common.MergeAppDomains(app.Domains, domain)
+
+	return g.saveApp(app)
 }
 
 func (g *GCPCloud) saveApp(app *pb.App) error {

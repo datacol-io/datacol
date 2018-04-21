@@ -37,18 +37,24 @@ func (c *Client) DeleteApp(name string) error {
 	return err
 }
 
+func (c *Client) AppDomainUpdate(name, domain string) error {
+	_, err := c.ProviderServiceClient.AppUpdateDomain(ctx, &pbs.AppResourceReq{App: name, Resource: domain})
+	return err
+}
+
 func (c *Client) RestartApp(name string) error {
 	_, err := c.ProviderServiceClient.AppRestart(ctx, &pbs.AppRequest{Name: name})
 	return err
 }
 
-func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, process string, out io.Writer) error {
+func (c *Client) StreamAppLogs(name string, follow bool, since time.Duration, process string, lines int, out io.Writer) error {
 	in, out := os.Stdin, os.Stdout
 	return c.Stream("/ws/v1/logs", map[string]string{
 		"app":     name,
 		"since":   since.String(),
 		"follow":  strconv.FormatBool(follow),
 		"Process": process,
+		"lines":   strconv.Itoa(lines),
 	}, in, out)
 }
 

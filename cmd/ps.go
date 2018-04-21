@@ -3,9 +3,12 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/appscode/go/term"
 	"github.com/datacol-io/datacol/cmd/stdcli"
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 )
 
@@ -17,11 +20,6 @@ func init() {
 		Flags:  []cli.Flag{&appFlag},
 		Subcommands: []cli.Command{
 			{
-				Name:   "scale",
-				Usage:  "scale the process",
-				Action: cmdAppScale,
-			},
-			{
 				Name:   "start",
 				Usage:  "start a process",
 				Action: cmdAppStart,
@@ -32,6 +30,14 @@ func init() {
 				Action: cmdAppStop,
 			},
 		},
+	})
+
+	stdcli.AddCommand(cli.Command{
+		Name:      "scale",
+		Usage:     "scale processes in an app",
+		Action:    cmdAppScale,
+		ArgsUsage: "<proctype>:<int> ...",
+		Flags:     []cli.Flag{&appFlag},
 	})
 }
 
@@ -49,7 +55,13 @@ func cmdAppPS(c *cli.Context) error {
 	stdcli.ExitOnError(err)
 
 	if len(items) > 0 {
-		term.Println(toJson(items))
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetColWidth(100)
+		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "COMMAND"})
+		for _, item := range items {
+			table.Append([]string{item.Proctype, fmt.Sprintf("%d", item.Count), item.Status, strings.Join(item.Command, " ")})
+		}
+		table.Render()
 	} else {
 		term.Println("No process running")
 	}

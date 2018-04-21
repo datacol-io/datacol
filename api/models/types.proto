@@ -35,6 +35,7 @@ message Release {
   string build_id  = 3 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
   string status    = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
   int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
+  int64 version    = 6 [(gogoproto.moretags) = "datastore:\"version,noindex\""];
 }
 
 message Resource {
@@ -61,10 +62,12 @@ message EnvConfig {
 }
 
 message Process {
-  string name = 1;
-  string proctype = 2;
-  int32 workers = 3;
-  string status = 4;
+  string proctype = 1;
+  int32 count = 2;
+  string status = 3;
+  string cpu = 4;
+  string memory = 5;
+  repeated string command = 6;
 }
 
 message Formation {

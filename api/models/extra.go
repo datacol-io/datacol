@@ -36,6 +36,7 @@ type Apps []*App
 type Builds []*Build
 type Releases []*Release
 type Resources []*Resource
+type AppDomains []string
 
 type ReleaseOptions struct {
 	Port   int
@@ -46,9 +47,10 @@ type ReleaseOptions struct {
 }
 
 type LogStreamOptions struct {
-	Follow   bool
-	Proctype string
-	Since    time.Duration
+	Follow    bool
+	Proctype  string
+	Since     time.Duration
+	TailLines string // number of recent lines to show for streaming (string format)
 }
 
 type AppCreateOptions struct {

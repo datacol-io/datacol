@@ -4,6 +4,26 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 
+## [1.0.0-alpha.13] - 2018-04-21
+### Fixes
+- [CLI] Remove code and description from GRCP errors
+- [API] Skipping ephemeral pods while log streaming
+- [CLI] `ps` should list recent pods with tabular format (Added cpu, memory fields)
+- [API] Don't stream logs from crashed/failed pods
+- Sort environment variables in API response
+- AWS nginx ingress controller to respect `Path: /`
+- Async support for streaming logs from mutiple processes.
+- Making `datacol run` independent of shell
+### Added
+- [CLI] Added domains:{add, remove} API
+- [CLI] Renaming command `ps scale` to `scale`
+- [CLI] Renaming command `build list` to `builds`
+- [API] version label into k8s deployments
+- Paging for `GET /v1/builds` API 
+- [CLI] Tabular output for listing apps and builds
+- [CLI] `STACK` env var for `datacol env`, `datacol infra`
+- [CLI] Number of logs lines for process logs (`--lines 10`)
+
 ## [1.0.0-alpha.12] - 2018-03-27
 ### Added
 - [CLI] `ps` to support container status
@@ -14,7 +34,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - AWS elasticsearch support
 - Websocket connection for streaming logs and Running one-off commands
 - Added `--ref` flag into deploy cmd
-- Proxy support through bastion Host 
+- Proxy support through bastion Host
 ### Fixed
 - CLI improvements
 - [CLI] Bump default version of GCP cluster to `1.7.14-gke.1`

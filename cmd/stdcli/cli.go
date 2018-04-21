@@ -14,6 +14,7 @@ import (
 	pb "github.com/datacol-io/datacol/api/models"
 	rollbarAPI "github.com/stvp/rollbar"
 	"github.com/urfave/cli"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 )
 
 func init() {
-	Version = "1.0.0-alpha.12"
+	Version = "1.0.0-alpha.13"
 	LocalAppDir = ".datacol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []cli.Command{}
@@ -137,6 +138,9 @@ func CheckFlagsPresence(c *cli.Context, flags ...string) {
 
 func ExitOnError(err error) {
 	if err != nil {
+		if gerr, ok := status.FromError(err); ok {
+			term.Fatalln(gerr.Message())
+		}
 		term.Fatalln(err)
 	}
 }

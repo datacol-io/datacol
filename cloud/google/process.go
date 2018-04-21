@@ -6,11 +6,11 @@ import (
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	"github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	kube "github.com/datacol-io/datacol/k8s"
 )
 
-func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string) error {
+func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command []string) error {
 	ns := g.DeploymentName
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
@@ -21,7 +21,7 @@ func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, command string)
 	envVars, _ := g.EnvironmentGet(name)
 	sqlproxy := g.appLinkedDB(app)
 
-	return kube.ProcessExec(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, sqlproxy, stream, cloud.GCPProvider)
+	return kube.ProcessRun(g.kubeClient(), cfg, ns, name, g.latestImage(app), command, envVars, sqlproxy, stream, cloud.GCPProvider)
 }
 
 func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {

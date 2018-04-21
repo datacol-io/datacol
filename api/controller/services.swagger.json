@@ -321,9 +321,35 @@
             "type": "string"
           },
           {
-            "name": "repo_url",
+            "name": "limit",
             "in": "query",
             "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/domains/{app}": {
+      "put": {
+        "summary": "Update Domain API",
+        "operationId": "AppUpdateDomain",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -466,31 +492,7 @@
         ]
       }
     },
-    "/v1/process/formation": {
-      "get": {
-        "operationId": "ProcessSave",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/protobufEmpty"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "app",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/process/list": {
+    "/v1/process": {
       "get": {
         "operationId": "ProcessList",
         "responses": {
@@ -510,6 +512,30 @@
           },
           {
             "name": "repo_url",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/process/formation": {
+      "get": {
+        "operationId": "ProcessSave",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
             "in": "query",
             "required": false,
             "type": "string"
@@ -670,6 +696,66 @@
         ]
       }
     },
+    "/v1/resources/{app}/link/{resource}": {
+      "put": {
+        "operationId": "ResourceLink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
+    "/v1/resources/{app}/unlink/{resource}": {
+      "put": {
+        "operationId": "ResourceUnlink",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/resources/{name}": {
       "get": {
         "operationId": "ResourceGet",
@@ -712,66 +798,6 @@
         "parameters": [
           {
             "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/resources/{name}/link/{app}": {
-      "put": {
-        "operationId": "ResourceLink",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/modelsResource"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "app",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ProviderService"
-        ]
-      }
-    },
-    "/v1/resources/{name}/unlink/{app}": {
-      "put": {
-        "operationId": "ResourceUnlink",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/modelsResource"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "app",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1002,18 +1028,27 @@
     "modelsProcess": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "proctype": {
           "type": "string"
         },
-        "workers": {
+        "count": {
           "type": "integer",
           "format": "int32"
         },
         "status": {
           "type": "string"
+        },
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1035,6 +1070,10 @@
         "created_at": {
           "type": "integer",
           "format": "int32"
+        },
+        "version": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

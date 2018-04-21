@@ -96,10 +96,10 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	}
 
 	sort.Slice(builds, func(i, j int) bool {
-		return builds[i].CreatedAt < builds[j].CreatedAt
+		return builds[i].CreatedAt > builds[j].CreatedAt
 	})
 
-	return builds, nil
+	return builds[0:limit], nil
 }
 
 func (a *AwsCloud) BuildImport(id, gzipPath string) error {

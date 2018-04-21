@@ -2,15 +2,13 @@ package local
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/appscode/go/log"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/cloud/common"
-	sched "github.com/datacol-io/datacol/cloud/kube"
+	"github.com/datacol-io/datacol/common"
+	sched "github.com/datacol-io/datacol/k8s"
 )
 
 func (l *LocalCloud) AppList() (pb.Apps, error) {
@@ -78,15 +76,15 @@ func (g *LocalCloud) AppDelete(name string) error {
 	return nil
 }
 
-func (g *LocalCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	return g.EnvMap[name], nil
-}
-
-func (g *LocalCloud) EnvironmentSet(name string, body io.Reader) error {
-	data, err := ioutil.ReadAll(body)
+// DomainUpdate updates list of Domains for an app
+// domain can be example.com if you want to add or :example.com if you want to delete
+func (g *LocalCloud) AppUpdateDomain(name, domain string) error {
+	app, err := g.AppGet(name)
 	if err != nil {
 		return err
 	}
-	g.EnvMap[name] = common.LoadEnvironment(data)
-	return nil
+
+	app.Domains = common.MergeAppDomains(app.Domains, domain)
+
+	return g.saveApp(app)
 }

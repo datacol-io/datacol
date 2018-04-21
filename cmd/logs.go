@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"time"
 
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
@@ -22,7 +21,11 @@ func init() {
 			&cli.DurationFlag{
 				Name:  "since",
 				Usage: "show logs since a duration (e.g. 10m or 1h2m10s)",
-				Value: 2 * time.Minute,
+			},
+			&cli.IntFlag{
+				Name:  "lines, l",
+				Usage: "Number of lines of recent log file to display",
+				Value: 10,
 			},
 			&cli.StringFlag{
 				Name:  "process, p",
@@ -46,7 +49,7 @@ func cmdAppLogStream(c *cli.Context) error {
 		name = c.Args().Get(0)
 	}
 
-	err = client.StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), c.String("process"), os.Stdout)
+	err = client.StreamAppLogs(name, c.Bool("follow"), c.Duration("since"), c.String("process"), c.Int("lines"), os.Stdout)
 	stdcli.ExitOnError(err)
 
 	return err

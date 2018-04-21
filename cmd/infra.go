@@ -47,6 +47,7 @@ func init() {
 		Name:   "infra",
 		Usage:  "Managed GCP stack resources and infrastructure",
 		Action: cmdResourceList,
+		Flags:  []cli.Flag{&stackFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:   "create",

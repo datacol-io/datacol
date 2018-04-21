@@ -36,10 +36,15 @@ func cmdAppRun(c *cli.Context) error {
 
 func prepareCommand(c *cli.Context) []string {
 	args := c.Args()
+
+	return append([]string{"env", fmt.Sprintf("TERM=%s", getTermEnv())}, args...)
+}
+
+func getTermEnv() string {
 	term := os.Getenv("TERM")
 	if term == "" {
 		term = "xterm"
 	}
 
-	return append([]string{"env", fmt.Sprintf("TERM=%s", term)}, args...)
+	return term
 }
