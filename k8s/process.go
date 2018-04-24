@@ -178,7 +178,11 @@ func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 }
 
 func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []string, req *DeployRequest, stream io.ReadWriter) error {
-	spec := newPodSpec(req)
+	spec, err := newPodSpec(req)
+	if err != nil {
+		return fmt.Errorf("creating container manifest for process: %v", err)
+	}
+
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
