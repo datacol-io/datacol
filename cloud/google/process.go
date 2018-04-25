@@ -28,6 +28,10 @@ func (g *GCPCloud) ProcessList(app string) ([]*pb.Process, error) {
 	return kube.ProcessList(g.kubeClient(), g.DeploymentName, app)
 }
 
+func (g *GCPCloud) ProcessLimits(name, resource string, limits map[string]string) error {
+	return kube.ProcessLimits(g.kubeClient(), g.DeploymentName, name, resource, limits)
+}
+
 func (g *GCPCloud) ProcessSave(name string, structure map[string]int32) error {
 	app, err := g.AppGet(name)
 	if err != nil {

@@ -57,5 +57,16 @@ func cmdLimitsSet(c *cli.Context) error {
 		payload[proctype] = value
 	}
 
+	isMemory := c.BoolT("memory")
+	isCpu := c.Bool("cpu")
+
+	if isMemory {
+		client.UpdateProcessLimits(name, "memory", payload)
+	} else if isCpu {
+		client.UpdateProcessLimits(name, "cpu", payload)
+	} else {
+		stdcli.ExitOnError("Unsupported resource type.")
+	}
+
 	return nil
 }

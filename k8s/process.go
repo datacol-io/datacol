@@ -211,3 +211,30 @@ func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []
 
 	return executer.Run()
 }
+
+func ProcessLimits(c *kubernetes.Clientset, ns, app, resource string, limits map[string]string) error {
+	deployments, err := getAllDeployments(c, ns, app)
+	if err != nil {
+		return err
+	}
+
+	resourceName := corev1.ResourceName(resource)
+
+	for _, dp := range deployments {
+		for proctype, rl := range limits {
+			if dp.ObjectMeta.Labels[typeLabel] == proctype {
+				cName := fmt.Sprintf("%s-%s", app, proctype)
+				if idx, container := findContainer(&dp, cName); idx > 0 {
+					mergeResourceConstraints(resourceName, container, rl)
+					if _, err := c.Extensions().Deployments(ns).Update(&dp); err != nil {
+						return err
+					}
+				} else {
+					log.Warnf("Didn't find container %s in %s deployment.", cName, dp.Name)
+				}
+			}
+		}
+	}
+
+	return nil
+}

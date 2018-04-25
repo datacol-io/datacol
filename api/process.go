@@ -84,6 +84,14 @@ func (s *Server) ProcessSave(ctx context.Context, req *pb.Formation) (*empty.Emp
 	return &empty.Empty{}, nil
 }
 
+func (s *Server) ProcessLimits(ctx context.Context, req *pb.ResourceLimits) (*empty.Empty, error) {
+	if err := s.Provider.ProcessLimits(req.App, req.Proctype, req.Limits); err != nil {
+		return nil, internalError(err, "Failed to set resource limits")
+	}
+
+	return &empty.Empty{}, nil
+}
+
 func (s *Server) ProcessList(ctx context.Context, req *pbs.AppRequest) (*pbs.ProcessListResponse, error) {
 	items, err := s.Provider.ProcessList(req.Name)
 
