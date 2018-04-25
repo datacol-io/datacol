@@ -218,14 +218,20 @@ func ProcessLimits(c *kubernetes.Clientset, ns, app, resource string, limits map
 		return err
 	}
 
+	log.Debugf("setting %s limits %v", resource, limits)
 	resourceName := corev1.ResourceName(resource)
 
 	for _, dp := range deployments {
 		for proctype, rl := range limits {
 			if dp.ObjectMeta.Labels[typeLabel] == proctype {
 				cName := fmt.Sprintf("%s-%s", app, proctype)
-				if idx, container := findContainer(&dp, cName); idx > 0 {
-					mergeResourceConstraints(resourceName, container, rl)
+
+				if idx, container := findContainer(&dp, cName); idx >= 0 {
+					if err := mergeResourceConstraints(resourceName, container, rl); err != nil {
+						return err
+					}
+
+					dp.Spec.Template.Spec.Containers[idx].Resources = container.Resources
 					if _, err := c.Extensions().Deployments(ns).Update(&dp); err != nil {
 						return err
 					}

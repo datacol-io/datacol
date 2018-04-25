@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [CLI] `datacol env unset` supports multiple parameters
 - Default memory limits (256Mi/512Mi) for any container
+- [CLI] `limits {set|unset}` API
 
 ## [1.0.0-alpha.13] - 2018-04-21
 ### Fixed

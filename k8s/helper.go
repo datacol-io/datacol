@@ -77,36 +77,63 @@ func mergeIngressRules(dest *v1beta1.Ingress, source *v1beta1.Ingress) *v1beta1.
 
 // mergeResourceConstraints sets the limit and requests values for cpu, memory for a container
 func mergeResourceConstraints(resourceType v1.ResourceName, container *v1.Container, reqLimit string) error {
-	resourceLimit, resourceRequest := container.Resources.Limits, container.Resources.Requests
+	var resourceLimit, resourceRequest v1.ResourceList
 
-	if reqLimit != "" {
-		parts := strings.Split(reqLimit, "/")
-		var request, limit string
-		if len(parts) == 2 {
-			request = parts[0]
-			limit = parts[1]
-		} else {
-			limit = parts[0]
-		}
+	if resourceLimit == nil {
+		resourceLimit = make(v1.ResourceList)
+	}
 
-		if request != "" {
-			value, err := resource.ParseQuantity(request)
-			if err != nil {
-				return err
+	if resourceRequest == nil {
+		resourceRequest = make(v1.ResourceList)
+	}
+
+	switch reqLimit {
+	case "0": // API trying to unset the limits
+		resourceLimit = container.Resources.Limits
+		resourceRequest = container.Resources.Requests
+
+		delete(resourceLimit, resourceType)
+		delete(resourceRequest, resourceType)
+	default:
+		// API trying to set <limit> or <request>/<limit>
+		if reqLimit != "" {
+			parts := strings.Split(reqLimit, "/")
+			var request, limit string
+			if len(parts) == 2 {
+				request = parts[0]
+				limit = parts[1]
+			} else {
+				limit = parts[0]
 			}
 
-			resourceRequest[resourceType] = value
-		}
+			// Set the non-empty request and limit values
+			if request != "" {
+				value, err := resource.ParseQuantity(request)
+				if err != nil {
+					return err
+				}
 
-		if limit != "" {
-			value, err := resource.ParseQuantity(limit)
-			if err != nil {
-				return err
+				log.Debugf("setting request value: %+v", value)
+				resourceRequest[resourceType] = value
 			}
 
-			resourceLimit[resourceType] = value
+			if limit != "" {
+				value, err := resource.ParseQuantity(limit)
+				if err != nil {
+					return err
+				}
+
+				log.Debugf("setting limit value: %+v", value)
+
+				resourceLimit[resourceType] = value
+			}
 		}
 	}
+
+	container.Resources.Limits = resourceLimit
+	container.Resources.Requests = resourceRequest
+
+	log.Debugf("merged %s limits: %+v", resourceType, container.Resources)
 
 	return nil
 }

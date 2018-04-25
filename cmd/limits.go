@@ -18,14 +18,28 @@ func init() {
 		Subcommands: []cli.Command{
 			{
 				Name:      "set",
-				Usage:     "update the constraint",
+				Usage:     "set the resource constraint",
 				ArgsUsage: "<proctype>=<limit> or <proctype>=<limit/request>",
 				Action:    cmdLimitsSet,
 				Flags: []cli.Flag{
-					cli.BoolTFlag{
+					cli.BoolFlag{
 						Name: "memory",
 					},
-					cli.BoolTFlag{
+					cli.BoolFlag{
+						Name: "cpu",
+					},
+				},
+			},
+			{
+				Name:      "unset",
+				Usage:     "unset the resource constraint",
+				ArgsUsage: "<proctype>",
+				Action:    cmdLimitsUnSet,
+				Flags: []cli.Flag{
+					cli.BoolFlag{
+						Name: "memory",
+					},
+					cli.BoolFlag{
 						Name: "cpu",
 					},
 				},
@@ -46,27 +60,65 @@ func cmdLimitsSet(c *cli.Context) error {
 		stdcli.Usage(c)
 	}
 
-	var payload map[string]string
+	resource, payload := parseResourceArgs(c, false)
+	stdcli.ExitOnError(client.UpdateProcessLimits(name, resource, payload))
+
+	term.Println("DONE")
+	return nil
+}
+
+func cmdLimitsUnSet(c *cli.Context) error {
+	_, name, err := getDirApp(".")
+	stdcli.ExitOnError(err)
+
+	client, close := getApiClient(c)
+	defer close()
+
+	if c.NArg() < 1 {
+		term.Warningln("No process type provided")
+		stdcli.Usage(c)
+	}
+
+	resource, payload := parseResourceArgs(c, true)
+	stdcli.ExitOnError(client.UpdateProcessLimits(name, resource, payload))
+
+	term.Println("DONE")
+	return nil
+}
+
+func parseResourceArgs(c *cli.Context, unset bool) (string, map[string]string) {
+	payload := make(map[string]string)
 
 	for _, args := range c.Args() {
 		parts := strings.Split(args, "=")
-		if len(parts) < 2 {
-			stdcli.ExitOnError(fmt.Errorf("Invalid argument: %v for resource constraints", args))
+		if unset {
+			payload[parts[0]] = "0"
+		} else {
+			if len(parts) < 2 {
+				term.Warningln("Invalid argument fromat:", args)
+				stdcli.Usage(c)
+			}
+
+			proctype, value := parts[0], parts[1]
+			payload[proctype] = value
 		}
-		proctype, value := parts[0], parts[1]
-		payload[proctype] = value
 	}
 
-	isMemory := c.BoolT("memory")
+	isMemory := c.Bool("memory")
 	isCpu := c.Bool("cpu")
 
-	if isMemory {
-		client.UpdateProcessLimits(name, "memory", payload)
-	} else if isCpu {
-		client.UpdateProcessLimits(name, "cpu", payload)
-	} else {
-		stdcli.ExitOnError("Unsupported resource type.")
+	if !isMemory && !isCpu {
+		isMemory = true // set the memory constraints by default
 	}
 
-	return nil
+	if isMemory {
+		return "memory", payload
+	} else if isCpu {
+		return "cpu", payload
+
+	}
+
+	stdcli.ExitOnError(fmt.Errorf("Unsupported resource type."))
+
+	return "", payload
 }
