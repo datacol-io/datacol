@@ -41,6 +41,19 @@ func (c *Client) SaveProcess(name string, options map[string]string) error {
 	return err
 }
 
+func (c *Client) UpdateProcessLimits(name, resource string, limits map[string]string) error {
+	rl := pb.ResourceLimits{
+		App:      name,
+		Proctype: resource,
+		Limits:   limits,
+	}
+
+	term.Printf("setting %s limits %v ...", resource, rl.Limits)
+
+	_, err := c.ProviderServiceClient.ProcessLimits(ctx, &rl)
+	return err
+}
+
 func (c *Client) RunProcess(name string, args []string) error {
 	return c.Stream("/ws/v1/exec", map[string]string{
 		"app":     name,

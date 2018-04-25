@@ -57,9 +57,14 @@ func cmdAppPS(c *cli.Context) error {
 	if len(items) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetColWidth(100)
-		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "COMMAND"})
+		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "CPU", "MEMORY", "COMMAND"})
 		for _, item := range items {
-			table.Append([]string{item.Proctype, fmt.Sprintf("%d", item.Count), item.Status, strings.Join(item.Command, " ")})
+			table.Append([]string{item.Proctype,
+				fmt.Sprintf("%d", item.Count),
+				item.Status,
+				item.Cpu,
+				item.Memory,
+				strings.Join(item.Command, " ")})
 		}
 		table.Render()
 	} else {

@@ -546,6 +546,22 @@
         ]
       }
     },
+    "/v1/process/limits": {
+      "put": {
+        "operationId": "ProcessLimits",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/process/run": {
       "get": {
         "summary": "Process api",

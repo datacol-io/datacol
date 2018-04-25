@@ -74,3 +74,9 @@ message Formation {
   string app = 1;
   map<string,int32> structure = 2;
 }
+
+message ResourceLimits {
+  string app = 1;
+  string proctype = 2;
+  map<string,string> limits = 3;
+}

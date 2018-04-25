@@ -3,9 +3,12 @@ package kube
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func ingressNamespace(parentNS string) string {
@@ -70,4 +73,92 @@ func mergeIngressRules(dest *v1beta1.Ingress, source *v1beta1.Ingress) *v1beta1.
 	log.Debugf("final ingress rules %s", toJson(dest.Spec.Rules))
 
 	return dest
+}
+
+// mergeResourceConstraints sets the limit and requests values for cpu, memory for a container
+func mergeResourceConstraints(resourceType v1.ResourceName, container *v1.Container, reqLimit string) error {
+	var resourceLimit, resourceRequest v1.ResourceList
+
+	if resourceLimit == nil {
+		resourceLimit = make(v1.ResourceList)
+	}
+
+	if resourceRequest == nil {
+		resourceRequest = make(v1.ResourceList)
+	}
+
+	switch reqLimit {
+	case "0": // API trying to unset the limits
+		resourceLimit = container.Resources.Limits
+		resourceRequest = container.Resources.Requests
+
+		delete(resourceLimit, resourceType)
+		delete(resourceRequest, resourceType)
+	default:
+		// API trying to set <limit> or <request>/<limit>
+		if reqLimit != "" {
+			parts := strings.Split(reqLimit, "/")
+			var request, limit string
+			if len(parts) == 2 {
+				request = parts[0]
+				limit = parts[1]
+			} else {
+				limit = parts[0]
+			}
+
+			// Set the non-empty request and limit values
+			if request != "" {
+				value, err := resource.ParseQuantity(request)
+				if err != nil {
+					return err
+				}
+
+				log.Debugf("setting request value: %+v", value)
+				resourceRequest[resourceType] = value
+			}
+
+			if limit != "" {
+				value, err := resource.ParseQuantity(limit)
+				if err != nil {
+					return err
+				}
+
+				log.Debugf("setting limit value: %+v", value)
+
+				resourceLimit[resourceType] = value
+			}
+		}
+	}
+
+	container.Resources.Limits = resourceLimit
+	container.Resources.Requests = resourceRequest
+
+	log.Debugf("merged %s limits: %+v", resourceType, container.Resources)
+
+	return nil
+}
+
+func getRequestLimit(rqrmts v1.ResourceRequirements, resource v1.ResourceName) (result string) {
+	var req, limit string
+
+	if qty, ok := rqrmts.Requests[resource]; ok {
+		req = qty.String()
+	}
+
+	if qty, ok := rqrmts.Limits[resource]; ok {
+		limit = qty.String()
+	}
+
+	if req != "" {
+		result += limit
+		if limit != "" {
+			result += "/"
+		}
+	}
+
+	if limit != "" {
+		result += limit
+	}
+
+	return
 }

@@ -131,12 +131,16 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 		//FIXME: ideally should report status of all pods for latest release/version
 		targetPod := pods[len(pods)-1]
 		status := getPodStatusStr(c, &targetPod)
+		proctype := dp.ObjectMeta.Labels[typeLabel]
+		_, container := findContainer(&dp, fmt.Sprintf("%s-%s", app, proctype))
 
 		items = append(items, &pb.Process{
-			Proctype: dp.ObjectMeta.Labels[typeLabel],
+			Proctype: proctype,
 			Count:    *dp.Spec.Replicas,
 			Status:   status,
-			Command:  targetPod.Spec.Containers[0].Args,
+			Command:  container.Args,
+			Cpu:      getRequestLimit(container.Resources, corev1.ResourceCPU),
+			Memory:   getRequestLimit(container.Resources, corev1.ResourceMemory),
 		})
 	}
 
@@ -178,7 +182,11 @@ func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 }
 
 func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []string, req *DeployRequest, stream io.ReadWriter) error {
-	spec := newPodSpec(req)
+	spec, err := newPodSpec(req)
+	if err != nil {
+		return fmt.Errorf("creating container manifest for process: %v", err)
+	}
+
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
@@ -206,4 +214,37 @@ func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []
 	}
 
 	return executer.Run()
+}
+
+func ProcessLimits(c *kubernetes.Clientset, ns, app, resource string, limits map[string]string) error {
+	deployments, err := getAllDeployments(c, ns, app)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("setting %s limits %v", resource, limits)
+	resourceName := corev1.ResourceName(resource)
+
+	for _, dp := range deployments {
+		for proctype, rl := range limits {
+			if dp.ObjectMeta.Labels[typeLabel] == proctype {
+				cName := fmt.Sprintf("%s-%s", app, proctype)
+
+				if idx, container := findContainer(&dp, cName); idx >= 0 {
+					if err := mergeResourceConstraints(resourceName, container, rl); err != nil {
+						return err
+					}
+
+					dp.Spec.Template.Spec.Containers[idx].Resources = container.Resources
+					if _, err := c.Extensions().Deployments(ns).Update(&dp); err != nil {
+						return err
+					}
+				} else {
+					log.Warnf("Didn't find container %s in %s deployment.", cName, dp.Name)
+				}
+			}
+		}
+	}
+
+	return nil
 }
