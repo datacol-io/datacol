@@ -40,9 +40,9 @@ gentest:
 		$(SERVICE_PROTO_DIR)/*.proto
 
 gen:
-	go-bindata -o cmd/provider/aws/templates.go cmd/provider/aws/templates/ && sed -i 's/main/aws/g' cmd/provider/aws/templates.go
-	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && sed -i 's/main/aws/g' cloud/aws/templates.go
-	go-bindata -o cloud/google/templates.go cloud/google/templates/ && sed -i 's/main/google/g' cloud/google/templates.go
+	go-bindata -o cmd/provider/aws/templates.go cmd/provider/aws/templates/ && gsed -i 's/main/aws/g' cmd/provider/aws/templates.go
+	go-bindata -o cloud/aws/templates.go cloud/aws/templates/ && gsed -i 's/main/aws/g' cloud/aws/templates.go
+	go-bindata -o cloud/google/templates.go cloud/google/templates/ && gsed -i 's/main/google/g' cloud/google/templates.go
 
 	## building api/models/*.proto
 	protoc -I $(MODEL_PROTO_DIR) $(PROTOC_INCLUDE_DIR) \

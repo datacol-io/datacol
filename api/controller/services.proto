@@ -139,6 +139,13 @@ message ListDomainReqponse {
   repeated string url = 1;
 }
 
+message CreateCertReq {
+  string app = 1;
+  string domain = 2;
+  bytes crt = 3;
+  bytes key = 4;
+}
+
 service ProviderService {
   rpc Auth(AuthRequest) returns (AuthResponse) {
     option (google.api.http) = {
@@ -176,6 +183,13 @@ service ProviderService {
   rpc AppDelete(AppRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/apps/{name}"
+    };
+  }
+
+  //Certificates API
+  rpc CertificateCreate(CreateCertReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/certs/{app}"
     };
   }
 

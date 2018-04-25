@@ -14,6 +14,9 @@ type Provider interface {
 	AppList() (pb.Apps, error)
 	AppUpdateDomain(string, string) error
 
+	CertificateCreate(app, domain string, cert, key []byte) error
+	// CertificateDelete(app, domain string) error
+
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error
 
