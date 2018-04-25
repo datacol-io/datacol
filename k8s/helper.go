@@ -137,3 +137,28 @@ func mergeResourceConstraints(resourceType v1.ResourceName, container *v1.Contai
 
 	return nil
 }
+
+func getRequestLimit(rqrmts v1.ResourceRequirements, resource v1.ResourceName) (result string) {
+	var req, limit string
+
+	if qty, ok := rqrmts.Requests[resource]; ok {
+		req = qty.String()
+	}
+
+	if qty, ok := rqrmts.Limits[resource]; ok {
+		limit = qty.String()
+	}
+
+	if req != "" {
+		result += limit
+		if limit != "" {
+			result += "/"
+		}
+	}
+
+	if limit != "" {
+		result += limit
+	}
+
+	return
+}

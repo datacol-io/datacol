@@ -131,12 +131,16 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 		//FIXME: ideally should report status of all pods for latest release/version
 		targetPod := pods[len(pods)-1]
 		status := getPodStatusStr(c, &targetPod)
+		proctype := dp.ObjectMeta.Labels[typeLabel]
+		_, container := findContainer(&dp, fmt.Sprintf("%s-%s", app, proctype))
 
 		items = append(items, &pb.Process{
-			Proctype: dp.ObjectMeta.Labels[typeLabel],
+			Proctype: proctype,
 			Count:    *dp.Spec.Replicas,
 			Status:   status,
-			Command:  targetPod.Spec.Containers[0].Args,
+			Command:  container.Args,
+			Cpu:      getRequestLimit(container.Resources, corev1.ResourceCPU),
+			Memory:   getRequestLimit(container.Resources, corev1.ResourceMemory),
 		})
 	}
 
