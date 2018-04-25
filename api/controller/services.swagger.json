@@ -334,6 +334,28 @@
       }
     },
     "/v1/certs/{app}": {
+      "delete": {
+        "operationId": "CertificateDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
+      },
       "post": {
         "summary": "Certificates API",
         "operationId": "CertificateCreate",

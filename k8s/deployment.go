@@ -116,10 +116,12 @@ func newContainer(payload *DeployRequest) (v1.Container, error) {
 	}
 
 	if payload.ContainerPort.IntVal > 0 {
-		container.Ports = []v1.ContainerPort{{
-			Name:          "http",
-			ContainerPort: int32(payload.ContainerPort.IntVal),
-		}}
+		container.Ports = []v1.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: int32(payload.ContainerPort.IntVal),
+			},
+		}
 
 		container.ReadinessProbe = &v1.Probe{
 			Handler: v1.Handler{
@@ -179,11 +181,7 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	}
 
 	rules := ingressRulesManifest(r.ServiceID, ingressPath, r.ContainerPort, domains)
-
-	//Note: making name dependent on namespace i.e. stackName will only provision one load-balancer per stack
-	// change this if you want to allocate individual load balanacer for each app and use Name = payload.Request.ServiceID
-	// Also if you change this remember to chage in AppGet to fetch IP of load balancer code
-	name := fmt.Sprintf("%s-ing", payload.Request.Namespace)
+	name := ingressName(payload.Request.Namespace)
 
 	ing := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{

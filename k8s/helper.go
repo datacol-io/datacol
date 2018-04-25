@@ -11,6 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+func ingressName(ns string) string {
+	//Note: making name dependent on namespace i.e. stackName will only provision one load-balancer per stack
+	// change this if you want to allocate individual load balanacer for each app and use Name = payload.Request.ServiceID
+	// Also if you change this remember to chage in AppGet to fetch IP of load balancer code
+	return fmt.Sprintf("%s-ing", ns)
+}
+
 func ingressNamespace(parentNS string) string {
 	// return ingressDefaultNamespace
 	return parentNS
