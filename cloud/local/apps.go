@@ -44,13 +44,33 @@ func (g *LocalCloud) AppRestart(app string) error {
 }
 
 func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
+	var app *pb.App
 	for _, a := range g.Apps {
 		if a.Name == name {
-			return a, nil
+			app = a
 		}
 	}
 
-	return nil, fmt.Errorf("App Not Found")
+	if app == nil {
+		return nil, fmt.Errorf("App Not Found")
+	}
+
+	if app.BuildId != "" {
+		b, err := g.BuildGet(name, app.BuildId)
+		if err != nil {
+			return nil, err
+		}
+
+		proctype, kc := common.GetDefaultProctype(b), g.kubeClient()
+		serviceName := common.GetJobID(name, proctype)
+
+		if app.Endpoint, err = sched.GetServiceEndpoint(kc, g.Name, serviceName); err != nil {
+			return app, err
+		}
+		return app, g.saveApp(app)
+	}
+
+	return app, nil
 }
 
 func (g *LocalCloud) saveApp(a *pb.App) error {

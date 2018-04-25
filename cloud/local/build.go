@@ -128,7 +128,7 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	}
 
 	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false,
-		[]string{}, envVars, cloud.LocalProvider, fmt.Sprintf("%d", r.Version)); err != nil {
+		app.Domains, envVars, cloud.LocalProvider, fmt.Sprintf("%d", r.Version)); err != nil {
 		return nil, err
 	}
 
