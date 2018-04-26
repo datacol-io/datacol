@@ -527,7 +527,8 @@ Resources:
         Fn::Base64:
           Fn::Sub: |
             #!/bin/bash
-
+            apt-get install unzip --yes
+            
             mkdir -p /opt/datacol &&
               curl -Ls /tmp https://storage.googleapis.com/${ArtifactBucket}/binaries/${DatacolVersion}/apictl.zip > /tmp/apictl.zip &&
               unzip /tmp/apictl.zip -d /opt/datacol &&

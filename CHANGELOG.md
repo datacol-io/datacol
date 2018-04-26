@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - [CLI] Check build status before deploying an app
 - Ingress integration with LocalProvider (minikube) 
+- Install `unzip` for datacol controller
 ### Added
 - [CLI] `datacol env unset` supports multiple parameters
 - Default memory limits (256Mi/512Mi) for any container
