@@ -42,7 +42,7 @@ func init() {
 }
 
 func cmdAppPS(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -74,7 +74,7 @@ func cmdAppPS(c *cli.Context) error {
 }
 
 func cmdAppScale(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -92,7 +92,7 @@ func cmdAppScale(c *cli.Context) error {
 }
 
 func cmdAppStart(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -115,7 +115,7 @@ func cmdAppStart(c *cli.Context) error {
 }
 
 func cmdAppStop(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)

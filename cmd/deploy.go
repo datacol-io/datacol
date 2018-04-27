@@ -46,12 +46,13 @@ func init() {
 				Name:  "expose",
 				Usage: "expose the service to the public",
 			},
+			&appFlag,
 		},
 	})
 }
 
 func cmdDeploy(c *cli.Context) error {
-	dir, name, err := getDirApp(".")
+	dir, name, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)

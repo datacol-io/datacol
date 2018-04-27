@@ -49,7 +49,7 @@ func init() {
 }
 
 func cmdLimitsSet(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -68,7 +68,7 @@ func cmdLimitsSet(c *cli.Context) error {
 }
 
 func cmdLimitsUnSet(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)

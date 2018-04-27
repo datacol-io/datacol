@@ -13,26 +13,26 @@ func init() {
 		Name:   "domains",
 		Usage:  "Manage your domains for an app",
 		Action: cmdDomainsList,
-		Flags:  []cli.Flag{&stackFlag},
+		Flags:  []cli.Flag{&stackFlag, &appFlag},
 		Subcommands: []cli.Command{
 			{
 				Name:      "add",
 				ArgsUsage: "<domain>",
 				Action:    cmdAddDomain,
-				Flags:     []cli.Flag{appFlag},
+				Flags:     []cli.Flag{&appFlag},
 			},
 			{
 				Name:      "remove",
 				ArgsUsage: "<domain>",
 				Action:    cmdRemoveDomain,
-				Flags:     []cli.Flag{appFlag},
+				Flags:     []cli.Flag{&appFlag},
 			},
 		},
 	})
 }
 
 func cmdDomainsList(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)
@@ -58,7 +58,7 @@ func cmdRemoveDomain(c *cli.Context) error {
 }
 
 func modifyDomain(c *cli.Context, delete bool) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)

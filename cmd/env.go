@@ -19,11 +19,13 @@ func init() {
 				Name:      "set",
 				UsageText: "set env variables",
 				Action:    cmdConfigSet,
+				Flags:     []cli.Flag{&appFlag, &stackFlag},
 			},
 			{
 				Name:      "unset",
 				UsageText: "unset env vars",
 				Action:    cmdConfigUnset,
+				Flags:     []cli.Flag{&appFlag, &stackFlag},
 			},
 		},
 	})
@@ -80,7 +82,7 @@ func cmdConfigSet(c *cli.Context) error {
 }
 
 func cmdConfigUnset(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
