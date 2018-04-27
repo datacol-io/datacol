@@ -27,7 +27,7 @@ var (
 	projectNotFound = errors.New("Invalid project id")
 
 	defaultGcpZone         = "asia-east1-a"    //Taiwan
-	defaultAWSZone         = "ap-southeast-1a" //Singapur
+	defaultAWSZone         = "ap-southeast-1a" //Singapore
 	defaultAWSInstanceType = "m4.large"
 	defaultGCPInstanceType = "n1-standard-1"
 
