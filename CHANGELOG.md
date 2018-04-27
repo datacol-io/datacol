@@ -7,12 +7,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - [CLI] Check build status before deploying an app
 - Ingress integration with LocalProvider (minikube) 
 - Install `unzip` for datacol controller
+- Controller AMI for us-east-1 region
+- `datacol destroy <name>` don't need `STACK` env var
+- CLI to respect `--app` and `--stack` flag
 ### Added
 - [CLI] `datacol env unset` supports multiple parameters
 - Default memory limits (256Mi/512Mi) for any container
 - [CLI] `limits {set|unset}` API
 - [CLI] Output `CPU`, `Memory` in `ps` command
 - *Certificate management API*
+- `datacol switch` command
 
 ## [1.0.0-alpha.13] - 2018-04-21
 ### Fixed

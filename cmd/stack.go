@@ -407,7 +407,7 @@ func initializeGCP(opts *gcp.InitOptions, nodes int, optout bool) error {
 func cmdStackDestroy(c *cli.Context) (err error) {
 	stack := c.Args().First()
 	if stack == "" {
-		term.Warningln("Missing required argument: name")
+		term.Warningln("Missing required argument: <name>")
 		stdcli.Usage(c)
 	}
 
@@ -421,9 +421,9 @@ func cmdStackDestroy(c *cli.Context) (err error) {
 
 	switch strings.ToLower(provider) {
 	case "gcp":
-		err = gcpTeardown(c)
+		err = gcpTeardown(c, stack)
 	case "aws":
-		err = awsTeardown(c)
+		err = awsTeardown(c, stack)
 	default:
 		err = fmt.Errorf("Invalid cloud provider: %s. Should be either of aws or gcp.", provider)
 	}
@@ -433,8 +433,8 @@ func cmdStackDestroy(c *cli.Context) (err error) {
 	return nil
 }
 
-func awsTeardown(c *cli.Context) error {
-	auth, rc := stdcli.GetAuthOrDie(c)
+func awsTeardown(c *cli.Context, name string) error {
+	auth, rc := stdcli.GetAuthContextOrDie(name)
 	var credentialsFile string
 
 	credentialsFile = filepath.Join(pb.ConfigPath, auth.Name, pb.AwsCredentialFile)
@@ -459,8 +459,8 @@ func awsTeardown(c *cli.Context) error {
 	return os.RemoveAll(filepath.Join(pb.ConfigPath, auth.Name))
 }
 
-func gcpTeardown(c *cli.Context) error {
-	auth, rc := stdcli.GetAuthOrDie(c)
+func gcpTeardown(c *cli.Context, name string) error {
+	auth, rc := stdcli.GetAuthContextOrDie(name)
 	if err := gcp.TeardownStack(auth.Name, auth.Project, auth.Bucket); err != nil {
 		return err
 	}

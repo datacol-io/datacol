@@ -99,6 +99,10 @@ func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
 		return builds[i].CreatedAt > builds[j].CreatedAt
 	})
 
+	if len(res.Items) < limit {
+		limit = len(res.Items)
+	}
+
 	return builds[0:limit], nil
 }
 
