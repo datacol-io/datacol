@@ -19,7 +19,7 @@ func init() {
 			{
 				Name:      "set",
 				Usage:     "set the resource constraint",
-				ArgsUsage: "<proctype>=<limit> or <proctype>=<limit/request>",
+				ArgsUsage: "<proctype>=<limit> or <proctype>=<request/limit>",
 				Action:    cmdLimitsSet,
 				Flags: []cli.Flag{
 					cli.BoolFlag{

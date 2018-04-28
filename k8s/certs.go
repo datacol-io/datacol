@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/datacol-io/datacol/cloud"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -58,10 +59,10 @@ func UpdateTLSCertificates(c *kubernetes.Clientset, ns, app, domain, cert, key s
 				managedBy: heritage,
 			},
 		},
-		Type: core_v1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"tls.crt": []byte(cert),
-			"tls.key": []byte(key),
+		Type: core_v1.SecretTypeTLS,
+		StringData: map[string]string{
+			core_v1.TLSCertKey:       cert,
+			core_v1.TLSPrivateKeyKey: key,
 		},
 	}
 
@@ -70,7 +71,13 @@ func UpdateTLSCertificates(c *kubernetes.Clientset, ns, app, domain, cert, key s
 			return err
 		}
 
+		log.Infof("Will update the %s secret", secretName)
+		log.Debugln(toJson(secret))
+
 		_, err = c.Core().Secrets(ns).Update(secret)
+		if err != nil {
+			return fmt.Errorf("updating TLS certificates: %v", err)
+		}
 	}
 
 	_, err = c.Extensions().Ingresses(ns).Update(ing)

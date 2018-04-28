@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixed
+- Bump default GKE cluster version to `1.8.8-gke.0`
+- Bump GCP image to `debian-8-jessie-v20170523` version
 - [CLI] Check build status before deploying an app
 - Ingress integration with LocalProvider (minikube) 
 - Install `unzip` for datacol controller

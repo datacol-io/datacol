@@ -79,5 +79,7 @@ func cmdTLSDelete(c *cli.Context) error {
 }
 
 func encodeStr(data []byte) string {
+	return string(data)
+
 	return base64.StdEncoding.EncodeToString(data)
 }

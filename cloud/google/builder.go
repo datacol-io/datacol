@@ -56,9 +56,10 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).
-		Filter("app = ", app).
-		Limit(limit).
-		Order("-" + "created_at") // descending order
+		Filter("app = ", app)
+
+	// Limit(limit)
+	// Order("-" + "created_at") // FIXME:: need indexes for created_at in desc order
 
 	var builds pb.Builds
 	_, err := g.datastore().GetAll(context.Background(), q, &builds)

@@ -429,7 +429,7 @@ resources:
     - autoDelete: true
       boot: true
       initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8-jessie-v20170426
+        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8-jessie-v20170523
     networkInterfaces:
     - accessConfigs:
       - name: external-nat

@@ -32,7 +32,7 @@ var (
 	defaultGCPInstanceType = "n1-standard-1"
 
 	//Default GKE cluster version if not specified
-	defaultGKEVersion = "1.7.14-gke.1"
+	defaultGKEVersion = "1.8.8-gke.0"
 )
 
 const (

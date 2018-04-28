@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/appscode/go/term"
 	"github.com/datacol-io/datacol/cmd/stdcli"
@@ -57,14 +56,13 @@ func cmdAppPS(c *cli.Context) error {
 	if len(items) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetColWidth(100)
-		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "CPU", "MEMORY", "COMMAND"})
+		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "CPU", "MEMORY"})
 		for _, item := range items {
 			table.Append([]string{item.Proctype,
 				fmt.Sprintf("%d", item.Count),
 				item.Status,
 				item.Cpu,
-				item.Memory,
-				strings.Join(item.Command, " ")})
+				item.Memory})
 		}
 		table.Render()
 	} else {
