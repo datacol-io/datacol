@@ -157,7 +157,7 @@ func getRequestLimit(rqrmts v1.ResourceRequirements, resource v1.ResourceName) (
 	}
 
 	if req != "" {
-		result += limit
+		result += req
 		if limit != "" {
 			result += "/"
 		}

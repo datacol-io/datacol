@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixed
+- Showing request/limit for memory, cpu for a process 
 - Bump default GKE cluster version to `1.8.8-gke.0`
 - Bump GCP image to `debian-8-jessie-v20170523` version
 - [CLI] Check build status before deploying an app
@@ -13,6 +14,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `datacol destroy <name>` don't need `STACK` env var
 - CLI to respect `--app` and `--stack` flag
 ### Added
+- Index for `status` and `created_at` for datastore Build object
 - [CLI] `datacol env unset` supports multiple parameters
 - Default memory limits (256Mi/512Mi) for any container
 - [CLI] `limits {set|unset}` API

@@ -23,8 +23,8 @@ message Build {
   string id             = 1 [(gogoproto.moretags) = "datastore:\"id\""];
   string app            = 2 [(gogoproto.moretags) = "datastore:\"app\""];
   string remote_id      = 3 [(gogoproto.moretags) = "datastore:\"remote_id,noindex\""];
-  string status         = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
-  int32 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
+  string status         = 4 [(gogoproto.moretags) = "datastore:\"status\""];
+  int32 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
   bytes procfile  = 6 [(gogoproto.moretags) = "datastore:\"procfile,noindex\""];
   string version  = 7  [(gogoproto.moretags) = "datastore:\"version,noindex\""];
 }
