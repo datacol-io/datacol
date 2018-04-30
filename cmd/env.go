@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
+	"github.com/fatih/color"
 	"github.com/urfave/cli"
 )
 
@@ -48,7 +49,7 @@ func cmdConfigList(c *cli.Context) error {
 
 	data := ""
 	for key, value := range env {
-		data += fmt.Sprintf("%s=%s\n", key, value)
+		data += fmt.Sprintf("%s=%s\n", color.GreenString(key), value)
 	}
 
 	fmt.Printf(data)

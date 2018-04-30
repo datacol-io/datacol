@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - CLI to respect `--app` and `--stack` flag
 ### Added
 - Index for `status` and `created_at` for datastore Build object
+- Colored output for `datacol env`
 - [CLI] `datacol env unset` supports multiple parameters
 - Default memory limits (256Mi/512Mi) for any container
 - [CLI] `limits {set|unset}` API
