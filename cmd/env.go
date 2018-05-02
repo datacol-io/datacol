@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	term "github.com/appscode/go/term"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/fatih/color"
@@ -79,6 +80,9 @@ func cmdConfigSet(c *cli.Context) error {
 	}
 
 	stdcli.ExitOnError(ct.SetEnvironment(name, data))
+
+	term.Infoln("Next, Please run `datacol restart` to propogate changes.")
+
 	return nil
 }
 
@@ -102,5 +106,6 @@ func cmdConfigUnset(c *cli.Context) error {
 	}
 
 	stdcli.ExitOnError(client.SetEnvironment(name, data))
+	term.Infoln("Next, Please run `datacol restart` to propogate changes.")
 	return nil
 }
