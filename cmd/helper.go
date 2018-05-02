@@ -32,28 +32,9 @@ func withIntSuffix(seed string) string {
 var (
 	crashing = false
 	re       = regexp.MustCompile("[^a-z0-9]+")
-	dkrYAML  = `FROM gcr.io/google-appengine/{{ .Runtime }}
-
-{{- range .RuntimeSteps}}
-{{.}}
-{{- end }}
-
-ENV PORT 8080
-{{- range $key, $value := .EnvVariables }}
-ENV {{ $key }} {{ $value }}
-{{- end }}
-
-{{- range .Network.Ports }}
-EXPOSE {{.}}
-{{- end }}
-EXPOSE 8080
-
-ADD . /app
-CMD {{ .Entrypoint }}
-`
 )
 
-func handlePanic() {
+func handlePanic(version, token string) {
 	if crashing {
 		return
 	}
@@ -65,7 +46,7 @@ func handlePanic() {
 			err = errors.New(rec.(string))
 		}
 
-		stdcli.HandlePanicErr(err)
+		stdcli.HandlePanicErr(err, token, version)
 		os.Exit(1)
 	}
 }
@@ -76,40 +57,6 @@ func slug(s string) string {
 
 func consoleURL(api, pid string) string {
 	return fmt.Sprintf("https://console.developers.google.com/apis/api/%s/overview?project=%s", api, pid)
-}
-
-type appYAMLConfig struct {
-	Runtime       string            `yaml:"runtime"`
-	Env           string            `yaml:"env"`
-	Entrypoint    string            `yaml:"entrypoint"`
-	EnvVariables  map[string]string `yaml:"env_variables"`
-	RuntimeConfig struct {
-		PythonVersion string `yaml:"python_version"`
-	} `yaml:"runtime_config"`
-	Network struct {
-		Ports []string `yaml:"forwarded_ports"`
-	} `yaml:"network"`
-	Resources struct {
-		CPU      string `yaml:"cpu"`
-		Memory   string `yaml:"memory_gb"`
-		Disksize string `yaml:"disk_size_gb"`
-	} `yaml:"resources"`
-	HealthCheck struct {
-		EnableCheck   bool  `yaml:"enable_health_check"`
-		CheckInternal int32 `yaml:"check_interval_sec"`
-		TimeoutTh     int32 `yaml:"timeout_sec"`
-		HealthyTh     int32 `yaml:"healthy_threshold"`
-		UnhealthyTh   int32 `yaml:"unhealthy_threshold"`
-		RestartTh     int32 `yaml:"restart_threshold"`
-	} `yaml:"health_check"`
-	AutomaticScalinng struct {
-		MinInstances int32 `yaml:"min_num_instances"`
-		MaxInstances int32 `yaml:"max_num_instances"`
-	} `yaml:"automatic_scaling"`
-	ManualScaling struct {
-		Instances int32 `yaml:"instances"`
-	} `yaml:"manual_scaling"`
-	RuntimeSteps []string
 }
 
 func toJson(object interface{}) string {

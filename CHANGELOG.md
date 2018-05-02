@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixed
+- Persist limit/memory values across deplopyments
 - Validate certificate in `tls set` command
 - Sorted keys in `datacol env`
 - Showing request/limit for memory, cpu for a process 
@@ -16,6 +17,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `datacol destroy <name>` don't need `STACK` env var
 - CLI to respect `--app` and `--stack` flag
 ### Added
+- Inject Version, and Rollbar Token during build for CLI and API
 - TLS certificates for GCP based stacks
 - Index for `status` and `created_at` for datastore Build object
 - Colored output for `datacol env`

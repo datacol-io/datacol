@@ -157,13 +157,17 @@ func cmdAWSStackCreate(c *cli.Context) error {
 		Zone:                   c.String("zone"),
 		Region:                 c.String("region"),
 		Bucket:                 c.String("bucket"),
-		Version:                stdcli.Version,
+		Version:                c.App.Version,
 		APIKey:                 c.String("ApiKey"),
 		KeyName:                c.String("key"),
 		UseSpotInstance:        c.Bool("preemptible"),
 		CreateCluster:          len(c.String("cluster")) == 0,
 		ClusterInstanceType:    c.String("cluster-instance-type"),
 		ControllerInstanceType: c.String("controller-instance-type"),
+	}
+
+	if options.Version == "" {
+		return errors.New("No version found for `datacol` cli")
 	}
 
 	if len(options.APIKey) == 0 {
@@ -224,13 +228,17 @@ func cmdGCPStackCreate(c *cli.Context) error {
 		Zone:           zone,
 		Bucket:         bucket,
 		Preemptible:    preemptible,
-		Version:        stdcli.Version,
+		Version:        c.App.Version,
 		ApiKey:         password,
 		SAKeyPath:      svaKey,
 		ClusterVersion: c.String("cluster-version"),
 
 		//FIXME: doesn't get applied into deployment spec yet
 		ControllerMachineType: apiMachineType,
+	}
+
+	if options.Version == "" {
+		return errors.New("No version found for `datacol` cli")
 	}
 
 	ec := env.FromHost()

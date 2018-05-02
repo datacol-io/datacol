@@ -257,14 +257,21 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 			return nil, fmt.Errorf("creating container manifest: %v", err)
 		}
 
-		if i, _ := findContainer(d, payload.ServiceID); i >= 0 {
-			d.Spec.Template.Spec.Containers[i] = newcnt
-			//TODO: we are only updating containers schema for existing deployment. Add support for updating any any schema change
+		if i, prevCntnr := findContainer(d, payload.ServiceID); i >= 0 {
+			//TODO: we are only updating containers schema for existing deployment.
+			//Add support for updating any any schema change
 			//Below is one workaround of it.
 
 			if payload.Replicas != nil {
 				d.Spec.Replicas = payload.Replicas
 			}
+
+			// Persist limit/memory between deplopyment.
+			// TODO: Ideally though we should persist it into App model and fetch the values
+			newcnt.Resources.Limits = prevCntnr.Resources.Limits
+			newcnt.Resources.Requests = prevCntnr.Resources.Requests
+
+			d.Spec.Template.Spec.Containers[i] = newcnt
 		}
 	} else {
 		d, err = newDeployment(payload)

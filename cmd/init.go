@@ -34,8 +34,8 @@ func init() {
 	}
 }
 
-func Initialize() {
-	defer handlePanic()
+func Initialize(version, rbToken string) {
+	defer handlePanic(version, rbToken)
 
 	log.SetFormatter(&log.TextFormatter{
 		DisableTimestamp: true,
@@ -46,6 +46,7 @@ func Initialize() {
 	}
 
 	app := stdcli.New()
+	app.Version = version
 
 	app.Run(os.Args)
 }

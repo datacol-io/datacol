@@ -180,7 +180,7 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 			return endpoint, nil
 		}
 
-		// If customer ingress controller is deployed by us (for AWS), try to get the load balancer host from ingress-service
+		// If customer ingress controller is deployed by us (for AWS/Minikube), try to get the load balancer host from ingress-service
 		if _, ok := ing.Annotations[ingressAnnotationName]; ok {
 			svc, err := c.Core().Services(ingressNamespace(ns)).Get(nginxAppName, meta_v1.GetOptions{})
 			if err != nil {
