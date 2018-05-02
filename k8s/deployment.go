@@ -16,8 +16,8 @@ import (
 )
 
 func newDeployment(payload *DeployRequest) (*v1beta1.Deployment, error) {
-	maxunavailable := intstr.FromInt(0)
-	maxsurge := intstr.FromInt(1)
+	maxunavailable := intstr.FromString("25%")
+	maxsurge := intstr.FromString("25%")
 
 	podSpec, err := newPodSpec(payload)
 	if err != nil {

@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -15,10 +14,6 @@ import (
 )
 
 func UpdateTLSCertificates(c *kubernetes.Clientset, ns, app, domain, cert, key string, provider cloud.CloudProvider) (err error) {
-	if provider == cloud.GCPProvider {
-		return errors.New("TLS certificates are not implemented for GCP yet.")
-	}
-
 	ingName := ingressName(ns)
 	secretName := fmt.Sprintf("%s-%s", app, strings.Replace(domain, ".", "-", -1))
 
@@ -86,10 +81,6 @@ func UpdateTLSCertificates(c *kubernetes.Clientset, ns, app, domain, cert, key s
 }
 
 func DeleteTLSCertificates(c *kubernetes.Clientset, ns, app, domain string, provider cloud.CloudProvider) error {
-	if provider == cloud.GCPProvider {
-		return errors.New("TLS certificates are not implemented for GCP yet.")
-	}
-
 	ingName := ingressName(ns)
 	secretName := fmt.Sprintf("%s-%s", app, strings.Replace(domain, ".", "-", -1))
 

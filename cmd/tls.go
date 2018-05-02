@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 
 	term "github.com/appscode/go/term"
@@ -43,6 +45,11 @@ func cmdTLSAdd(c *cli.Context) error {
 	defer close()
 
 	domain, tlsCrtPath, tlsKeyPath := c.Args().Get(0), c.Args().Get(1), c.Args().Get(2)
+
+	_, err = tls.LoadX509KeyPair(tlsCrtPath, tlsKeyPath)
+	if err != nil {
+		stdcli.ExitOnError(fmt.Errorf("invalid certificate: %v", err))
+	}
 
 	crtData, err := ioutil.ReadFile(tlsCrtPath)
 	if err != nil {

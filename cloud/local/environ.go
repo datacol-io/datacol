@@ -9,7 +9,7 @@ import (
 )
 
 func (g *LocalCloud) EnvironmentGet(name string) (pb.Environment, error) {
-	return common.SortEnvironment(g.EnvMap[name]), nil
+	return g.EnvMap[name], nil
 }
 
 func (g *LocalCloud) EnvironmentSet(name string, body io.Reader) error {

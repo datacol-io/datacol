@@ -10,11 +10,13 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"gopkg.in/yaml.v2"
 )
@@ -169,4 +171,17 @@ func elaspedDuration(t time.Time) string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+func sortEnvKeys(current pb.Environment) []string {
+	keys := make([]string, 0, len(current))
+	for key := range current {
+		keys = append(keys, key)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	return keys
 }

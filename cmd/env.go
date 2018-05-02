@@ -48,8 +48,8 @@ func cmdConfigList(c *cli.Context) error {
 	stdcli.ExitOnError(err)
 
 	data := ""
-	for key, value := range env {
-		data += fmt.Sprintf("%s=%s\n", color.GreenString(key), value)
+	for _, key := range sortEnvKeys(env) {
+		data += fmt.Sprintf("%s=%s\n", color.GreenString(key), env[key])
 	}
 
 	fmt.Printf(data)
