@@ -142,6 +142,10 @@ func ExitOnError(err error) {
 	}
 }
 
+func ExitOnErrorf(msg string, args ...interface{}) {
+	ExitOnError(fmt.Errorf(msg, args...))
+}
+
 func HandlePanicErr(err error, token, version string) {
 	term.Errorln(err.Error())
 
@@ -168,7 +172,7 @@ func HandlePanicErr(err error, token, version string) {
 func EnsureOnlyFlags(c *cli.Context, args []string) {
 	for _, a := range args {
 		if !strings.HasPrefix(a, "--") {
-			ExitOnError(fmt.Errorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a))
+			ExitOnErrorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a)
 			Usage(c)
 		}
 	}

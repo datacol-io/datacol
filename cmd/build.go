@@ -188,7 +188,7 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 	dockerfileName := "Dockerfile"
 
 	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
-		stdcli.ExitOnError(fmt.Errorf("Dockerfile not found."))
+		stdcli.ExitOnErrorf("Dockerfile not found.")
 	}
 
 	fmt.Print("Creating tarball ...")

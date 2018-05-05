@@ -48,7 +48,7 @@ func (c *Client) UpdateProcessLimits(name, resource string, limits map[string]st
 		Limits:   limits,
 	}
 
-	term.Printf("setting %s limits %v ...", resource, rl.Limits)
+	term.Printf("setting %s limits %v in %s ...", resource, rl.Limits, name)
 
 	_, err := c.ProviderServiceClient.ProcessLimits(ctx, &rl)
 	return err

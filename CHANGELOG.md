@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 ### Fixed
+- Support `<passowrd>` flag into `datacol login` CLI
+- Support `--app` flags for setting limits
 - Persist limit/memory values across deplopyments
 - Validate certificate in `tls set` command
 - Sorted keys in `datacol env`

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	term "github.com/appscode/go/term"
@@ -28,6 +27,7 @@ func init() {
 					cli.BoolFlag{
 						Name: "cpu",
 					},
+					&appFlag,
 				},
 			},
 			{
@@ -42,6 +42,7 @@ func init() {
 					cli.BoolFlag{
 						Name: "cpu",
 					},
+					&appFlag,
 				},
 			},
 		},
@@ -118,7 +119,7 @@ func parseResourceArgs(c *cli.Context, unset bool) (string, map[string]string) {
 
 	}
 
-	stdcli.ExitOnError(fmt.Errorf("Unsupported resource type."))
+	stdcli.ExitOnErrorf("Unsupported resource type.")
 
 	return "", payload
 }
