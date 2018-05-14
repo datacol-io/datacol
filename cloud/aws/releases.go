@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -37,25 +38,41 @@ func (a *AwsCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
 		releases[i] = a.releaseFromItem(item)
 	}
 
-	return releases, nil
+	sort.Slice(releases, func(i, j int) bool {
+		return releases[i].CreatedAt > releases[j].CreatedAt
+	})
+
+	if len(res.Items) < limit {
+		limit = len(res.Items)
+	}
+
+	return releases[0:limit], nil
+}
+
+func (a *AwsCloud) ReleaseGet(app, id string) (*pb.Release, error) {
+	req := &dynamodb.GetItemInput{
+		ConsistentRead: aws.Bool(true),
+		TableName:      aws.String(a.dynamoReleases()),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {S: aws.String(id)},
+		},
+	}
+
+	res, err := a.dynamodb().GetItem(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Item == nil {
+		return nil, fmt.Errorf("no release found by id: %s", id)
+	}
+
+	release := a.releaseFromItem(res.Item)
+
+	return release, nil
 }
 
 func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
-	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
-		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(b.App), b.Id,
-	)
-	log.Debugf("---- Docker Image: %s", image)
-
-	app, err := a.AppGet(b.App)
-	if err != nil {
-		return nil, err
-	}
-
-	envVars, err := a.EnvironmentGet(b.App)
-	if err != nil {
-		return nil, err
-	}
-
 	r := &pb.Release{
 		Id:        generateId("R", 5),
 		App:       b.App,
@@ -65,24 +82,54 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		Version:   a.releaseCount(b.App) + 1,
 	}
 
-	if err = a.releaseSave(r); err != nil {
+	if err := a.releaseSave(r); err != nil {
 		return r, err
+	}
+
+	return r, nil
+}
+
+func (a *AwsCloud) ReleasePromote(name, id string) error {
+	r, err := a.ReleaseGet(name, id)
+	if err != nil {
+		return err
+	}
+
+	if r.BuildId == "" {
+		return fmt.Errorf("No build found for release: %s", id)
+	}
+
+	b, err := a.BuildGet(name, r.BuildId)
+	if err != nil {
+		return err
+	}
+
+	image := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
+		os.Getenv("AWS_ACCOUNT_ID"), a.Region, a.ecrRepository(name), r.BuildId,
+	)
+
+	app, err := a.AppGet(name)
+	if err != nil {
+		return err
+	}
+
+	envVars, err := a.EnvironmentGet(name)
+	if err != nil {
+		return err
+	}
+
+	rversion := fmt.Sprintf("%d", r.Version)
+
+	if err = common.UpdateApp(a.kubeClient(), b, a.DeploymentName,
+		image, false, app.Domains, envVars, cloud.AwsProvider, rversion); err != nil {
+		return err
 	}
 
 	app.BuildId = b.Id
 	app.ReleaseId = r.Id
-	rversion := fmt.Sprintf("%d", r.Version)
 
-	log.Debugf("Saving app state: %s err:%v", toJson(app), a.saveApp(app)) // note the mutate function
+	return a.saveApp(app)
 
-	if err := common.UpdateApp(a.kubeClient(), b, a.DeploymentName,
-		image, false, app.Domains, envVars, cloud.AwsProvider, rversion); err != nil {
-		return nil, err
-	}
-
-	//TODO: update release status
-
-	return r, nil
 }
 
 func (a *AwsCloud) releaseSave(r *pb.Release) error {

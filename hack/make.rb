@@ -35,7 +35,7 @@ def build_all
       bin_name += ".exe" if os == "windows"
 
       with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build " +
-               "-ldflags=\"-s -w -X main.rbToken=#{$rb_token} -X main.version=#{$version}\"" +
+               "-ldflags=\"-s -w -X main.rbToken=#{$rb_token} -X main.version=#{$version}\" " +
                "-o dist/#{$version}/#{bin_name} .")
     end
   end

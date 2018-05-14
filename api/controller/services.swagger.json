@@ -679,6 +679,34 @@
         "tags": [
           "ProviderService"
         ]
+      },
+      "post": {
+        "operationId": "ReleasePromote",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/protobufEmpty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProviderService"
+        ]
       }
     },
     "/v1/releases/{name}": {

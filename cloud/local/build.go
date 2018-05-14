@@ -9,8 +9,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud"
-	"github.com/datacol-io/datacol/common"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -30,10 +28,6 @@ func (g *LocalCloud) BuildDelete(app, id string) error {
 
 func (g *LocalCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	return g.Builds, nil
-}
-
-func (g *LocalCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	return nil, nil
 }
 
 func (g *LocalCloud) ReleaseDelete(app, id string) error {
@@ -103,38 +97,4 @@ func (g *LocalCloud) BuildLogs(app, id string, index int) (int, []string, error)
 
 func (g *LocalCloud) BuildLogsStream(id string) (io.Reader, error) {
 	return nil, nil
-}
-
-func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Release, error) {
-	image := fmt.Sprintf("%v/%v:%v", g.RegistryAddress, b.App, b.Id)
-	log.Printf("---- Docker Image: %s\n", image)
-
-	envVars, err := g.EnvironmentGet(b.App)
-	if err != nil {
-		return nil, err
-	}
-
-	app, err := g.AppGet(b.App)
-	if err != nil {
-		return nil, err
-	}
-
-	r := &pb.Release{
-		Id:      common.GenerateId("R", 5),
-		App:     b.App,
-		BuildId: b.Id,
-		Status:  pb.StatusCreated,
-		Version: int64(len(g.Releases) + 1),
-	}
-
-	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false,
-		app.Domains, envVars, cloud.LocalProvider, fmt.Sprintf("%d", r.Version)); err != nil {
-		return nil, err
-	}
-
-	g.Releases = append(g.Releases, r)
-	app.BuildId = b.Id
-	app.ReleaseId = r.Id
-
-	return r, g.saveApp(app)
 }

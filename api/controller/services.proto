@@ -274,6 +274,13 @@ service ProviderService {
     };
   }
 
+  rpc ReleasePromote(AppIdRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/releases/{app}/{id}"
+    };
+  }
+
+
   // Resource endpoints
   rpc ResourceList(ListRequest) returns (ResourceListResponse) {
     option (google.api.http) = {

@@ -31,6 +31,7 @@ type Provider interface {
 
 	ReleaseList(string, int) (pb.Releases, error)
 	ReleaseDelete(string, string) error
+	ReleasePromote(app, id string) error
 
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
 

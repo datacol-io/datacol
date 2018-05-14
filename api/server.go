@@ -322,6 +322,14 @@ func (s *Server) ReleaseDelete(ctx context.Context, req *pbs.AppIdRequest) (*emp
 	return emptyMsg, nil
 }
 
+func (s *Server) ReleasePromote(ctx context.Context, req *pbs.AppIdRequest) (*empty.Empty, error) {
+	err := s.Provider.ReleasePromote(req.App, req.Id)
+	if err != nil {
+		return nil, internalError(err, "failed to promote release.")
+	}
+	return emptyMsg, nil
+}
+
 func (s *Server) EnvironmentGet(ctx context.Context, req *pbs.AppRequest) (*pb.EnvConfig, error) {
 	env, err := s.Provider.EnvironmentGet(req.Name)
 	if err != nil {
