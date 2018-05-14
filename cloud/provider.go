@@ -14,6 +14,9 @@ type Provider interface {
 	AppList() (pb.Apps, error)
 	AppUpdateDomain(string, string) error
 
+	CertificateCreate(app, domain, cert, key string) error
+	CertificateDelete(app, domain string) error
+
 	EnvironmentGet(app string) (pb.Environment, error)
 	EnvironmentSet(app string, body io.Reader) error
 
@@ -34,6 +37,7 @@ type Provider interface {
 	ProcessList(app string) ([]*pb.Process, error)
 	ProcessRun(app string, r io.ReadWriter, command []string) error
 	ProcessSave(app string, formation map[string]int32) error
+	ProcessLimits(app, resource string, limits map[string]string) error
 
 	ResourceList() (pb.Resources, error)
 	ResourceCreate(name, kind string, params map[string]string) (*pb.Resource, error)

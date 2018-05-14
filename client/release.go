@@ -42,7 +42,7 @@ func (c *Client) ReleaseBuild(build *models.Build, options models.ReleaseOptions
 
 func (c *Client) waitForLoadBalancerIp(name string) error {
 	waitTill := time.Now().Add(time.Duration(1) * time.Minute)
-	fmt.Printf("waiting for ip")
+	fmt.Printf("waiting for IP")
 
 	for {
 		time.Sleep(1 * time.Second)

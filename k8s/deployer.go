@@ -3,6 +3,8 @@ package kube
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/datacol-io/datacol/cloud"
 	"k8s.io/api/core/v1"
@@ -29,6 +31,11 @@ type Deployer struct {
 	Client *kubernetes.Clientset
 }
 
+type LimitRequest struct {
+	resourceType string
+	reqLimit     string
+}
+
 type DeployRequest struct {
 	Entrypoint    []string
 	Args          []string
@@ -42,6 +49,11 @@ type DeployRequest struct {
 		InitialDelayReadinessSeconds int
 		TimeoutSeconds               int32
 	}
+
+	// Will represent limits and requests for resources. It can be <limit> or <request>:<limit>
+	memoryReqLimits string
+	cpuReqLimits    string
+
 	Image     string
 	Replicas  *int32
 	ServiceID string
@@ -96,6 +108,14 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 			return nil, fmt.Errorf("creating namespace %v err: %v", payload.Namespace, err)
 		}
 	}
+
+	if _, err := d.Client.Core().LimitRanges(payload.Namespace).Create(defaultLimitRange(payload)); err != nil {
+		if !kerrors.IsAlreadyExists(err) {
+			return nil, fmt.Errorf("creating default limit-range %v err: %v", payload.Namespace, err)
+		}
+	}
+
+	//TODO: create a limit Range for the namespace (https://hackernoon.com/top-10-kubernetes-tips-and-tricks-27528c2d0222)
 
 	// create deployment
 	dp, err := d.CreateOrUpdateDeployment(payload)
@@ -231,17 +251,33 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 
 	if err == nil {
 		found = true
-		if i, _ := findContainer(d, payload.ServiceID); i >= 0 {
-			d.Spec.Template.Spec.Containers[i] = newContainer(payload)
-			//TODO: we are only updating containers schema for existing deployment. Add support for updating any any schema change
+
+		newcnt, err := newContainer(payload)
+		if err != nil {
+			return nil, fmt.Errorf("creating container manifest: %v", err)
+		}
+
+		if i, prevCntnr := findContainer(d, payload.ServiceID); i >= 0 {
+			//TODO: we are only updating containers schema for existing deployment.
+			//Add support for updating any any schema change
 			//Below is one workaround of it.
 
 			if payload.Replicas != nil {
 				d.Spec.Replicas = payload.Replicas
 			}
+
+			// Persist limit/memory between deplopyment.
+			// TODO: Ideally though we should persist it into App model and fetch the values
+			newcnt.Resources.Limits = prevCntnr.Resources.Limits
+			newcnt.Resources.Requests = prevCntnr.Resources.Requests
+
+			d.Spec.Template.Spec.Containers[i] = newcnt
 		}
 	} else {
-		d = newDeployment(payload)
+		d, err = newDeployment(payload)
+		if err != nil {
+			return d, fmt.Errorf("creating deployment manifest: %v", err)
+		}
 	}
 
 	if !found {
@@ -301,6 +337,34 @@ func (r *Deployer) CreateOrUpdateIngress(ingress *v1beta1.Ingress, env string, p
 
 	log.Debugf("Ingress spec updated: %v", toJson(newIngress))
 	return newIngress, nil
+}
+
+func defaultLimitRange(payload *DeployRequest) *v1.LimitRange {
+	lrName := "default-limit-range"
+
+	// It will set default memory limits to any container in the give namespace
+	lr := &v1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: lrName,
+			Labels: map[string]string{
+				managedBy: heritage,
+			},
+		},
+		Spec: v1.LimitRangeSpec{[]v1.LimitRangeItem{
+			{
+				Type: v1.LimitTypeContainer,
+				Default: v1.ResourceList{
+					v1.ResourceMemory: resource.MustParse("512Mi"),
+				},
+				DefaultRequest: v1.ResourceList{
+					v1.ResourceMemory: resource.MustParse("256Mi"),
+				},
+			},
+		},
+		},
+	}
+
+	return lr
 }
 
 func checkforFailedEvents(c *kubernetes.Clientset, ns string, labels map[string]string) {

@@ -4,8 +4,36 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 
+## [1.0.0-alpha.14] - 2018-05-15
+### Fixed
+- Support `<passowrd>` flag into `datacol login` CLI
+- Support `--app` flags for setting limits
+- Persist limit/memory values across deplopyments
+- Validate certificate in `tls set` command
+- Sorted keys in `datacol env`
+- Showing request/limit for memory, cpu for a process 
+- Bump default GKE cluster version to `1.8.8-gke.0`
+- Bump GCP image to `debian-8-jessie-v20170523` version
+- [CLI] Check build status before deploying an app
+- Ingress integration with LocalProvider (minikube) 
+- Install `unzip` for datacol controller
+- Controller AMI for us-east-1 region
+- `datacol destroy <name>` don't need `STACK` env var
+- CLI to respect `--app` and `--stack` flag
+### Added
+- Inject Version, and Rollbar Token during build for CLI and API
+- TLS certificates for GCP based stacks
+- Index for `status` and `created_at` for datastore Build object
+- Colored output for `datacol env`
+- [CLI] `datacol env unset` supports multiple parameters
+- Default memory limits (256Mi/512Mi) for any container
+- [CLI] `limits {set|unset}` API
+- [CLI] Output `CPU`, `Memory` in `ps` command
+- *Certificate management API*
+- `datacol switch` command
+
 ## [1.0.0-alpha.13] - 2018-04-21
-### Fixes
+### Fixed
 - [CLI] Remove code and description from GRCP errors
 - [API] Skipping ephemeral pods while log streaming
 - [CLI] `ps` should list recent pods with tabular format (Added cpu, memory fields)

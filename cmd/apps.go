@@ -38,12 +38,12 @@ func init() {
 			cli.Command{
 				Name:   "delete",
 				Action: cmdAppDelete,
-				Flags:  []cli.Flag{appFlag},
+				Flags:  []cli.Flag{&appFlag},
 			},
 			cli.Command{
 				Name:   "info",
 				Action: cmdAppInfo,
-				Flags:  []cli.Flag{},
+				Flags:  []cli.Flag{&appFlag},
 			},
 		},
 	})
@@ -57,7 +57,7 @@ func init() {
 }
 
 func cmdAppRestart(c *cli.Context) error {
-	_, app, err := getDirApp(".")
+	_, app, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -95,7 +95,7 @@ func cmdAppCreate(c *cli.Context) error {
 	name := c.String("name")
 
 	if len(name) == 0 {
-		_, n, err := getDirApp(".")
+		n, err := getCurrentApp(c)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func cmdAppCreate(c *cli.Context) error {
 }
 
 func cmdAppInfo(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)
@@ -145,7 +145,7 @@ func cmdAppInfo(c *cli.Context) error {
 }
 
 func cmdAppDelete(c *cli.Context) error {
-	abs, name, err := getDirApp(".")
+	abs, name, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)

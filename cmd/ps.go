@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/appscode/go/term"
 	"github.com/datacol-io/datacol/cmd/stdcli"
@@ -42,7 +41,7 @@ func init() {
 }
 
 func cmdAppPS(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -57,9 +56,13 @@ func cmdAppPS(c *cli.Context) error {
 	if len(items) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetColWidth(100)
-		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "COMMAND"})
+		table.SetHeader([]string{"PROCESS", "REPLICAS", "STATUS", "CPU", "MEMORY"})
 		for _, item := range items {
-			table.Append([]string{item.Proctype, fmt.Sprintf("%d", item.Count), item.Status, strings.Join(item.Command, " ")})
+			table.Append([]string{item.Proctype,
+				fmt.Sprintf("%d", item.Count),
+				item.Status,
+				item.Cpu,
+				item.Memory})
 		}
 		table.Render()
 	} else {
@@ -69,7 +72,7 @@ func cmdAppPS(c *cli.Context) error {
 }
 
 func cmdAppScale(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -87,7 +90,7 @@ func cmdAppScale(c *cli.Context) error {
 }
 
 func cmdAppStart(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -110,7 +113,7 @@ func cmdAppStart(c *cli.Context) error {
 }
 
 func cmdAppStop(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)

@@ -19,14 +19,12 @@ import (
 
 var (
 	Binary      string
-	Version     string
 	Commands    []cli.Command
 	LocalAppDir string
 	Stack404    error
 )
 
 func init() {
-	Version = "1.0.0-alpha.13"
 	LocalAppDir = ".datacol"
 	Binary = filepath.Base(os.Args[0])
 	Commands = []cli.Command{}
@@ -38,7 +36,6 @@ func New() *cli.App {
 
 	app.Name = Binary
 	app.Commands = Commands
-	app.Version = Version
 	app.CommandNotFound = func(c *cli.Context, cmd string) {
 		fmt.Fprintf(os.Stderr, "No such command \"%s\". Try `%s help`\n", cmd, Binary)
 		os.Exit(1)
@@ -145,16 +142,37 @@ func ExitOnError(err error) {
 	}
 }
 
-func HandlePanicErr(err error) {
-	fmt.Println(err.Error())
-	rollbar(err, "error")
+func ExitOnErrorf(msg string, args ...interface{}) {
+	ExitOnError(fmt.Errorf(msg, args...))
+}
+
+func HandlePanicErr(err error, token, version string) {
+	term.Errorln(err.Error())
+
+	rollbarAPI.Platform = "client"
+	rollbarAPI.Token = token
+	var cmd string
+
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+
+	fields := []*rollbarAPI.Field{
+		{"version", version},
+		{"os", runtime.GOOS},
+		{"arch", runtime.GOARCH},
+		{"command", cmd},
+	}
+
+	rollbarAPI.Error("error", err, fields...)
+	rollbarAPI.Wait()
 }
 
 // EnsureOnlyFlags ensures that every element in the args slice starts with --
 func EnsureOnlyFlags(c *cli.Context, args []string) {
 	for _, a := range args {
 		if !strings.HasPrefix(a, "--") {
-			ExitOnError(fmt.Errorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a))
+			ExitOnErrorf("got unexpected argument '%s'; please provide parameters in --flag or --flag=value format", a)
 			Usage(c)
 		}
 	}
@@ -207,9 +225,9 @@ func Usage(c *cli.Context) {
 	os.Exit(129)
 }
 
-func rollbar(err error, level string) {
+func rollbar(err error, level, token, version string) {
 	rollbarAPI.Platform = "client"
-	rollbarAPI.Token = "f2feac705b1c41069ba478523ce36657"
+	rollbarAPI.Token = token
 	var cmd string
 
 	if len(os.Args) > 1 {
@@ -217,7 +235,7 @@ func rollbar(err error, level string) {
 	}
 
 	fields := []*rollbarAPI.Field{
-		{"version", Version},
+		{"version", version},
 		{"os", runtime.GOOS},
 		{"arch", runtime.GOARCH},
 		{"command", cmd},

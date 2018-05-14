@@ -46,12 +46,13 @@ func init() {
 				Name:  "expose",
 				Usage: "expose the service to the public",
 			},
+			&appFlag,
 		},
 	})
 }
 
 func cmdDeploy(c *cli.Context) error {
-	dir, name, err := getDirApp(".")
+	dir, name, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	client, close := getApiClient(c)
@@ -86,6 +87,9 @@ func cmdDeploy(c *cli.Context) error {
 
 		build = b
 	}
+
+	build, err = client.GetBuild(name, build.Id)
+	stdcli.ExitOnError(err)
 
 	if build.Status == "FAILED" {
 		term.Fatalln(fmt.Sprintf("BUILD=%s is having FAILED status.", buildID))

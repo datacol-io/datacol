@@ -1,4 +1,4 @@
-version=1.0.0-alpha.13
+version=1.0.0-alpha.14
 MODEL_PROTO_DIR=./api/models
 SERVICE_PROTO_DIR=./api/controller
 VEDNOR_GOOGLE_APIS=./vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
@@ -18,10 +18,10 @@ vet:
 	goimports ./cmd ./cmd/provider/gcp ./client/ ./cloud/google/ ./cloud/aws/ ./cloud/ ./api ./api/models/ ./api/controller/
 
 cmd:
-	go build -o datacol -ldflags="-s -w" .
+	go build -o datacol -ldflags="-s -w -X main.version=$(version)" .
 
 api:
-	go build -o apictl -ldflags="-s -w" -i api/*.go
+	go build -o apictl -ldflags="-s -w -X main.rbToken=$(ROLLBAR_TOKEN)" -i api/*.go
 
 proto:
 	go install -v ./vendor/github.com/golang/protobuf/protoc-gen-go

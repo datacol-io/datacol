@@ -40,7 +40,7 @@ func cmdStackProxy(c *cli.Context) error {
 			host = parts[1]
 			hostport = parseInt(parts[2])
 		default:
-			stdcli.ExitOnError(fmt.Errorf("invalid argument: %s", arg))
+			stdcli.ExitOnErrorf("invalid argument: %s", arg)
 		}
 
 		client, close := getApiClient(c)

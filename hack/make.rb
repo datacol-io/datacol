@@ -1,28 +1,29 @@
-require 'rubygems'
+require "rubygems"
 
-$version = ENV.fetch('VERSION', "1.0.0-alpha.13")
-$env     = ENV.fetch('DATACOL_ENV') # dev or prod
-$cgo     = ENV.fetch("CGO_ENABLED", "0")
+$version = ENV.fetch("VERSION", "1.0.0-alpha.14")
+$env = ENV.fetch("DATACOL_ENV") # dev or prod
+$cgo = ENV.fetch("CGO_ENABLED", "0")
+$rb_token = ENV.fetch("ROLLBAR_TOKEN")
 
 $bin_matrix =
   case $env
-  when 'prod'
+  when "prod"
     {
-      darwin: ['386', 'amd64'],
-      linux: ['arm', '386', 'amd64'],
-      windows: ['386', 'amd64']
+      darwin: ["386", "amd64"],
+      linux: ["arm", "386", "amd64"],
+      windows: ["386", "amd64"],
     }
   else
-    { 
-      darwin: ['amd64'], 
-      linux: ['amd64'] 
+    {
+      darwin: ["amd64"],
+      linux: ["amd64"],
     }
   end
 
 $cli_name = "datacol"
 $api_name = "apictl"
 
-$bucket_prefix = $env == 'prod' ?  "gs://datacol-distros" : "gs://datacol-dev"
+$bucket_prefix = $env == "prod" ? "gs://datacol-distros" : "gs://datacol-dev"
 
 puts "ENV=#{$env} bucket=#{$bucket_prefix}/#{$version}"
 
@@ -31,9 +32,11 @@ def build_all
     with_cmd("mkdir -p dist/#{$version}")
     archs.each do |arch|
       bin_name = "#{$cli_name}-#{os}-#{arch}"
-      bin_name += ".exe" if os == 'windows'
+      bin_name += ".exe" if os == "windows"
 
-      with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{bin_name} .")
+      with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build " +
+               "-ldflags=\"-s -w -X main.rbToken=#{$rb_token} -X main.version=#{$version}\"" +
+               "-o dist/#{$version}/#{bin_name} .")
     end
   end
 end
@@ -45,8 +48,8 @@ end
 
 def apictl
   api_name = "apictl"
-  os, arch = 'linux', 'amd64'
-  with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build -ldflags=\"-s -w\" -o dist/#{$version}/#{api_name} api/*.go")
+  os, arch = "linux", "amd64"
+  with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build -ldflags=\"-s -w -X main.rbToken=#{$rb_token}\" -o dist/#{$version}/#{api_name} api/*.go")
 
   binary_dest = "#{$bucket_prefix}/binaries/#{$version}/#{api_name}.zip"
   version_dir = "dist/#{$version}"
@@ -77,7 +80,7 @@ end
 def push_zip
   version_dir = "dist/#{$version}"
 
-  { osx: 'darwin-amd64', linux: 'linux-amd64' }.each do |zipbin, name|
+  {osx: "darwin-amd64", linux: "linux-amd64"}.each do |zipbin, name|
     with_cmd("pushd #{version_dir} && \
              cp #{$cli_name}-#{name} datacol && \
              zip #{zipbin}.zip datacol && \

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -56,14 +57,23 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 
 func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
 	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).
-		Filter("app = ", app).
-		Limit(limit).
-		Order("-" + "created_at") // descending order
+		Filter("app = ", app)
+
+		// Limit(limit).
+		// Order("-" + "created_at") // FIXME:: need compound for created_at in desc order
 
 	var builds pb.Builds
 	_, err := g.datastore().GetAll(context.Background(), q, &builds)
 
-	return builds, err
+	sort.Slice(builds, func(i, j int) bool {
+		return builds[i].CreatedAt > builds[j].CreatedAt
+	})
+
+	if len(builds) < limit {
+		limit = len(builds)
+	}
+
+	return builds[0:limit], err
 }
 
 func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {

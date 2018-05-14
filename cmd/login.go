@@ -18,7 +18,7 @@ import (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:      "login",
-		ArgsUsage: "[host]",
+		ArgsUsage: "<host> [password]",
 		Usage:     "login in to datacol",
 		Action:    cmdLogin,
 	})
@@ -31,13 +31,20 @@ func cmdLogin(c *cli.Context) error {
 		stdcli.Usage(c)
 	}
 
-	r := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your password: ")
+	var passwd string
+	if c.NArg() > 1 {
+		passwd = c.Args().Get(1)
+	} else {
 
-	p, err := r.ReadString('\n')
-	stdcli.ExitOnError(err)
+		r := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter your password: ")
 
-	passwd := strings.TrimSpace(p)
+		p, err := r.ReadString('\n')
+		stdcli.ExitOnError(err)
+
+		passwd = strings.TrimSpace(p)
+	}
+
 	api, close := client.GrpcClient(host, passwd)
 	defer close()
 

@@ -34,8 +34,8 @@ func init() {
 	}
 }
 
-func Initialize() {
-	defer handlePanic()
+func Initialize(version, rbToken string) {
+	defer handlePanic(version, rbToken)
 
 	log.SetFormatter(&log.TextFormatter{
 		DisableTimestamp: true,
@@ -46,6 +46,7 @@ func Initialize() {
 	}
 
 	app := stdcli.New()
+	app.Version = version
 
 	app.Run(os.Args)
 }
@@ -54,13 +55,17 @@ func getApiClient(c *cli.Context) (*client.Client, func() error) {
 	return client.NewClient(c)
 }
 
-func getDirApp(path string) (string, string, error) {
+func getDirApp(path string, c *cli.Context) (string, string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return abs, "", err
 	}
 
-	app := stdcli.GetAppSetting("app")
+	app := c.String("app")
+	if app == "" {
+		app = stdcli.GetAppSetting("app")
+	}
+
 	if len(app) == 0 {
 		app = filepath.Base(abs)
 	}
@@ -73,6 +78,7 @@ func getCurrentApp(c *cli.Context) (string, error) {
 		return app, nil
 	}
 
-	_, app, err := getDirApp(".")
+	_, app, err := getDirApp(".", c)
+
 	return app, err
 }

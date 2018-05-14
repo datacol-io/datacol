@@ -15,11 +15,13 @@ import (
 )
 
 var (
-	rpcPort = 10000
-	port    = 8080
-	logPath string
-	debugF  bool
-	timeout int
+	rpcPort  = 10000
+	port     = 8080
+	logPath  string
+	debugF   bool
+	timeout  int
+	crashing bool
+	rbToken  string
 )
 
 func init() {
@@ -86,10 +88,13 @@ func main() {
 	setupLogging()
 	server := newServer()
 	runRpcServer(server)
-
 	time.Sleep(time.Duration(timeout) * time.Second)
 
+	if rbToken == "" {
+		log.Warnf("Won't send notifications to rollbar.")
+	}
+
 	if err := runHttpServer(server); err != nil {
-		log.Fatal(err)
+		handlePanicErr(err, rbToken)
 	}
 }

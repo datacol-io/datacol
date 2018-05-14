@@ -15,9 +15,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
-	maxunavailable := intstr.FromInt(0)
-	maxsurge := intstr.FromInt(1)
+func newDeployment(payload *DeployRequest) (*v1beta1.Deployment, error) {
+	maxunavailable := intstr.FromString("25%")
+	maxsurge := intstr.FromString("25%")
+
+	podSpec, err := newPodSpec(payload)
+	if err != nil {
+		return nil, err
+	}
 
 	labels := map[string]string{
 		appLabel:  payload.App,
@@ -44,11 +49,11 @@ func newDeployment(payload *DeployRequest) *v1beta1.Deployment {
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: newPodMetadata(payload),
-				Spec:       newPodSpec(payload).Spec,
+				Spec:       podSpec.Spec,
 			},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: k8sBetaAPIVersion, Kind: "Deployment"},
-	}
+	}, nil
 }
 
 func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
@@ -64,11 +69,16 @@ func newPodMetadata(req *DeployRequest) metav1.ObjectMeta {
 	}
 }
 
-func newPodSpec(req *DeployRequest) *v1.Pod {
+func newPodSpec(req *DeployRequest) (*v1.Pod, error) {
+	newcnt, err := newContainer(req)
+	if err != nil {
+		return nil, err
+	}
+
 	pod := &v1.Pod{
 		ObjectMeta: newPodMetadata(req),
 		Spec: v1.PodSpec{
-			Containers: []v1.Container{newContainer(req)},
+			Containers: []v1.Container{newcnt},
 		},
 	}
 
@@ -76,7 +86,7 @@ func newPodSpec(req *DeployRequest) *v1.Pod {
 		MergeCloudSQLManifest(&pod.Spec, req.App, req.EnvVars)
 	}
 
-	return pod
+	return pod, nil
 }
 
 func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
@@ -90,7 +100,7 @@ func newProbe(payload *DeployRequest, delay int32) *v1.Probe {
 	}
 }
 
-func newContainer(payload *DeployRequest) v1.Container {
+func newContainer(payload *DeployRequest) (v1.Container, error) {
 	envVars := []v1.EnvVar{}
 	for k, v := range payload.EnvVars {
 		envVars = append(envVars, v1.EnvVar{Name: k, Value: v})
@@ -106,10 +116,12 @@ func newContainer(payload *DeployRequest) v1.Container {
 	}
 
 	if payload.ContainerPort.IntVal > 0 {
-		container.Ports = []v1.ContainerPort{{
-			Name:          "http",
-			ContainerPort: int32(payload.ContainerPort.IntVal),
-		}}
+		container.Ports = []v1.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: int32(payload.ContainerPort.IntVal),
+			},
+		}
 
 		container.ReadinessProbe = &v1.Probe{
 			Handler: v1.Handler{
@@ -124,7 +136,15 @@ func newContainer(payload *DeployRequest) v1.Container {
 		}
 	}
 
-	return container
+	if err := mergeResourceConstraints(v1.ResourceCPU, &container, payload.cpuReqLimits); err != nil {
+		return container, nil
+	}
+
+	if err := mergeResourceConstraints(v1.ResourceMemory, &container, payload.memoryReqLimits); err != nil {
+		return container, nil
+	}
+
+	return container, nil
 }
 
 func ingressRulesManifest(service, path string, port intstr.IntOrString, domains []string) []v1beta1.IngressRule {
@@ -161,11 +181,7 @@ func newIngress(payload *DeployResponse, domains []string) *v1beta1.Ingress {
 	}
 
 	rules := ingressRulesManifest(r.ServiceID, ingressPath, r.ContainerPort, domains)
-
-	//Note: making name dependent on namespace i.e. stackName will only provision one load-balancer per stack
-	// change this if you want to allocate individual load balanacer for each app and use Name = payload.Request.ServiceID
-	// Also if you change this remember to chage in AppGet to fetch IP of load balancer code
-	name := fmt.Sprintf("%s-ing", payload.Request.Namespace)
+	name := ingressName(payload.Request.Namespace)
 
 	ing := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{

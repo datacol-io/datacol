@@ -235,7 +235,7 @@ func cmdResourceCreate(c *cli.Context) error {
 }
 
 func cmdLinkCreate(c *cli.Context) error {
-	_, app, err := getDirApp(".")
+	app, err := getCurrentApp(c)
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func cmdLinkCreate(c *cli.Context) error {
 }
 
 func cmdLinkDelete(c *cli.Context) error {
-	_, app, err := getDirApp(".")
+	app, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
 	name := c.Args().First()

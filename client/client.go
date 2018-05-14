@@ -10,7 +10,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	io_ext "github.com/appscode/go/io"
-	term "github.com/appscode/go/term"
 	pb "github.com/datacol-io/datacol/api/controller"
 	"github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
@@ -106,7 +105,7 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 	)
 	if err != nil {
 		if err == grpc.ErrClientConnTimeout || err == context.DeadlineExceeded {
-			term.Errorln("Couldn't connect to the Controller API. Did you initialize the stack using `datacol init`")
+			stdcli.ExitOnErrorf("Couldn't connect to %s", address)
 		}
 
 		stdcli.ExitOnError(err)

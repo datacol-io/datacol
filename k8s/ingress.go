@@ -273,8 +273,8 @@ func (r *awsIngress) setupDefaultBackend(ns string) {
 	}
 
 	replica, labels := int32(1), map[string]string{appLabel: defaultBackendName}
-	cpuLimit := resource.NewQuantity(10, resource.DecimalSI)
-	reqLimit := resource.NewQuantity(20, resource.BinarySI)
+	cpuLimit, cpuRequest := resource.MustParse("10m"), resource.MustParse("10m")
+	memoryLimit, memoryRequest := resource.MustParse("20Mi"), resource.MustParse("20Mi")
 
 	defaultBackendSvc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -329,18 +329,15 @@ func (r *awsIngress) setupDefaultBackend(ns string) {
 		},
 	}
 
-	if false {
-		//FIXME: Not enabling the the resources for now
-		defaultbackendDp.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceCPU:    *cpuLimit,
-				v1.ResourceMemory: *reqLimit,
-			},
-			Requests: v1.ResourceList{
-				v1.ResourceCPU:    *cpuLimit,
-				v1.ResourceMemory: *reqLimit,
-			},
-		}
+	defaultbackendDp.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:    cpuLimit,
+			v1.ResourceMemory: memoryLimit,
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:    cpuRequest,
+			v1.ResourceMemory: memoryRequest,
+		},
 	}
 
 	if _, r.err = r.Client.Extensions().Deployments(ns).Get(defaultbackendDp.Name, metav1.GetOptions{}); r.err != nil {
@@ -367,7 +364,7 @@ func (r *awsIngress) setupIngressController(ns string) {
 		return
 	}
 
-	replica, labels := int32(1), map[string]string{appLabel: nginxAppName}
+	replica, labels := int32(3), map[string]string{appLabel: nginxAppName}
 
 	nginxConfig := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

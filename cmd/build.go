@@ -35,6 +35,7 @@ func init() {
 				Name:  "ref",
 				Usage: "branch or commit Id of git repository",
 			},
+			&appFlag,
 		},
 	})
 
@@ -48,6 +49,7 @@ func init() {
 				Usage: "Limit the number of recent builds to fetch",
 				Value: 5,
 			},
+			&appFlag,
 		},
 		Subcommands: []cli.Command{
 			{
@@ -61,7 +63,7 @@ func init() {
 }
 
 func cmdBuildList(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	name, err := getCurrentApp(c)
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func cmdBuildList(c *cli.Context) error {
 }
 
 func cmdBuildDelete(c *cli.Context) error {
-	_, name, err := getDirApp(".")
+	_, name, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	api, close := getApiClient(c)
@@ -104,7 +106,7 @@ func cmdBuild(c *cli.Context) error {
 	api, close := getApiClient(c)
 	defer close()
 
-	dir, name, err := getDirApp(".")
+	dir, name, err := getDirApp(".", c)
 	stdcli.ExitOnError(err)
 
 	app, err := api.GetApp(name)
@@ -186,7 +188,7 @@ func createTarball(base string, env map[string]string) ([]byte, error) {
 	dockerfileName := "Dockerfile"
 
 	if _, err := os.Stat(dockerfileName); os.IsNotExist(err) {
-		stdcli.ExitOnError(fmt.Errorf("Dockerfile not found."))
+		stdcli.ExitOnErrorf("Dockerfile not found.")
 	}
 
 	fmt.Print("Creating tarball ...")

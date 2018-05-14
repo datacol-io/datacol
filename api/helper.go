@@ -8,10 +8,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	rollbarAPI "github.com/stvp/rollbar"
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 	"google.golang.org/grpc/metadata"
@@ -138,4 +140,28 @@ func ws(at string, handler websocketFunc) websocket.Handler {
 func copyAsync(dst io.Writer, src io.Reader, wg *sync.WaitGroup) {
 	defer wg.Done()
 	io.Copy(dst, src)
+}
+
+func handlePanicErr(err error, rollbarToken string) {
+	if err == nil {
+		return
+	}
+
+	log.Error(err)
+	if rollbarToken == "" {
+		return
+	}
+
+	rollbarAPI.Platform = "datacol-controller"
+	rollbarAPI.Token = rollbarToken
+
+	fields := []*rollbarAPI.Field{
+		{"version", os.Getenv("DATACOL_VERSION")},
+		{"provider", os.Getenv("DATACOL_PROVIDER")},
+		{"os", runtime.GOOS},
+		{"arch", runtime.GOARCH},
+	}
+
+	rollbarAPI.Error("error", err, fields...)
+	rollbarAPI.Wait()
 }

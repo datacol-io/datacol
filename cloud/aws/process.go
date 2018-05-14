@@ -41,6 +41,10 @@ func (p *AwsCloud) ProcessSave(name string, structure map[string]int32) error {
 		p.latestImage(app), envVars, false, build.Procfile, structure, cloud.AwsProvider)
 }
 
+func (p *AwsCloud) ProcessLimits(name, resource string, limits map[string]string) error {
+	return kube.ProcessLimits(p.kubeClient(), p.DeploymentName, name, resource, limits)
+}
+
 func (p *AwsCloud) latestImage(app *pb.App) string {
 	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:%s",
 		os.Getenv("AWS_ACCOUNT_ID"),

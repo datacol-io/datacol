@@ -139,6 +139,13 @@ message ListDomainReqponse {
   repeated string url = 1;
 }
 
+message CertificateReq {
+  string app = 1;
+  string domain = 2;
+  string cert_encoded = 3;
+  string key_encoded = 4;
+}
+
 service ProviderService {
   rpc Auth(AuthRequest) returns (AuthResponse) {
     option (google.api.http) = {
@@ -176,6 +183,19 @@ service ProviderService {
   rpc AppDelete(AppRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/apps/{name}"
+    };
+  }
+
+  //Certificates API
+  rpc CertificateCreate(CertificateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/certs/{app}"
+    };
+  }
+
+  rpc CertificateDelete(CertificateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/certs/{app}"
     };
   }
 
@@ -314,6 +334,12 @@ service ProviderService {
   rpc ProcessSave(models.Formation) returns (google.protobuf.Empty) {
     option (google.api.http) = { 
       get: "/v1/process/formation"
+    };
+  }
+
+  rpc ProcessLimits(models.ResourceLimits) returns (google.protobuf.Empty) {
+    option (google.api.http) = { 
+      put: "/v1/process/limits"
     };
   }
 

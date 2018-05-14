@@ -160,7 +160,7 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 
 	// If a service is of type NodePort.
 	if svc.Spec.Type == core_v1.ServiceTypeNodePort {
-		ingName := fmt.Sprintf("%s-ing", ns)
+		ingName := ingressName(ns)
 		ing, err := c.Extensions().Ingresses(ns).Get(ingName, meta_v1.GetOptions{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
@@ -180,6 +180,7 @@ func GetServiceEndpoint(c *kubernetes.Clientset, ns, name string) (string, error
 			return endpoint, nil
 		}
 
+		// If customer ingress controller is deployed by us (for AWS/Minikube), try to get the load balancer host from ingress-service
 		if _, ok := ing.Annotations[ingressAnnotationName]; ok {
 			svc, err := c.Core().Services(ingressNamespace(ns)).Get(nginxAppName, meta_v1.GetOptions{})
 			if err != nil {
