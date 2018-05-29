@@ -70,9 +70,9 @@ func cmdDeploy(c *cli.Context) error {
 	if len(buildID) == 0 {
 		var err error
 		if commitID == "" {
-			build, err = executeBuildDir(client, app, dir)
+			build, err = executeBuildDir(client, app, dir, buildID)
 		} else {
-			build, err = executeBuildGitSource(client, app, commitID)
+			build, err = executeBuildGitSource(client, app, commitID, buildID)
 		}
 
 		stdcli.ExitOnError(err)

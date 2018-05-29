@@ -35,6 +35,10 @@ func init() {
 				Name:  "ref",
 				Usage: "branch or commit Id of git repository",
 			},
+			&cli.StringFlag{
+				Name:  "id",
+				Usage: "watch build progress of this build ID",
+			},
 			&appFlag,
 		},
 	})
@@ -116,52 +120,69 @@ func cmdBuild(c *cli.Context) error {
 	}
 
 	ref := c.String("ref")
+	id := c.String("id")
 	if ref == "" {
-		_, err = executeBuildDir(api, app, dir)
+		_, err = executeBuildDir(api, app, dir, id)
 	} else {
-		_, err = executeBuildGitSource(api, app, ref)
+		_, err = executeBuildGitSource(api, app, ref, id)
 	}
 
 	stdcli.ExitOnError(err)
 	return err
 }
 
-func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb.Build, error) {
-	var procfile []byte
-	if _, err := os.Stat("Procfile"); err == nil {
-		content, err := parseProcfile()
-		stdcli.ExitOnError(err)
-		procfile = content
+func executeBuildGitSource(api *client.Client, app *pb.App, version, id string) (*pb.Build, error) {
+	var b *pb.Build
+	var err error
+	if id == "" {
+		var procfile []byte
+		if _, err := os.Stat("Procfile"); err == nil {
+			content, err := parseProcfile()
+			stdcli.ExitOnError(err)
+			procfile = content
+		}
+
+		b, err = api.CreateBuildGit(app, version, procfile)
+	} else {
+		b, err = api.GetBuild(app.Name, id)
 	}
 
-	b, err := api.CreateBuildGit(app, version, procfile)
 	if err != nil {
 		return nil, err
 	}
+
 	return b, finishBuild(api, b)
 }
 
-func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, error) {
-	env, err := api.GetEnvironment(app.Name)
-	if err != nil {
-		return nil, err
+func executeBuildDir(api *client.Client, app *pb.App, dir, id string) (*pb.Build, error) {
+	var b *pb.Build
+	var err error
+	if id == "" {
+
+		env, err := api.GetEnvironment(app.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		tar, err := createTarball(dir, env)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println("OK")
+
+		var procfile []byte
+		if _, err := os.Stat("Procfile"); err == nil {
+			content, err := parseProcfile()
+			stdcli.ExitOnError(err)
+			procfile = content
+		}
+
+		b, err = api.CreateBuild(app, tar, procfile)
+	} else {
+		b, err = api.GetBuild(app.Name, id)
 	}
 
-	tar, err := createTarball(dir, env)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("OK")
-
-	var procfile []byte
-	if _, err := os.Stat("Procfile"); err == nil {
-		content, err := parseProcfile()
-		stdcli.ExitOnError(err)
-		procfile = content
-	}
-
-	b, err := api.CreateBuild(app, tar, procfile)
 	if err != nil {
 		return nil, err
 	}
