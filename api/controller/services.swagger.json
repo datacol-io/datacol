@@ -1112,6 +1112,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "cron_expr": {
+          "type": "string"
         }
       }
     },

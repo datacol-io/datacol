@@ -7,6 +7,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/datacol-io/datacol/cloud"
+	batchv1 "k8s.io/api/batch/v1"
+	batch_v1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -70,6 +72,7 @@ type DeployRequest struct {
 	// For GCP, we need to provision cloudsql-proxy as a sidecar container.
 	EnableCloudSqlProxy bool
 
+	CronExpr *string             // A cron schedule expression, if present we will create an object with `kind: CronJob``
 	Provider cloud.CloudProvider // cloud provider aws, gcp or local
 }
 
@@ -116,6 +119,30 @@ func (d *Deployer) Run(payload *DeployRequest) (*DeployResponse, error) {
 	}
 
 	//TODO: create a limit Range for the namespace (https://hackernoon.com/top-10-kubernetes-tips-and-tricks-27528c2d0222)
+
+	log.Debugf("deploy request => %v", toJson(payload))
+
+	if payload.CronExpr != nil {
+		k8sjob, err := newCronJob(payload)
+		if err != nil {
+			return nil, err
+		}
+
+		if payload.Replicas != nil && *payload.Replicas == 0 {
+			err := d.deleteCronJob(k8sjob, payload.Namespace)
+			log.Infof("created cronjob: %v", k8sjob.Name)
+			return res, err
+		} else {
+			cj, err := d.CreateOrUpdateCronJob(k8sjob, payload.Namespace)
+			if err != nil {
+				return nil, err
+			}
+
+			log.Infof("created cronjob: %v", toJson(cj))
+		}
+
+		return res, nil // let's short circuit the function for cron job
+	}
 
 	// create deployment
 	dp, err := d.CreateOrUpdateDeployment(payload)
@@ -166,6 +193,67 @@ func newNamespace(payload *DeployRequest) *v1.Namespace {
 		ObjectMeta: metav1.ObjectMeta{Name: payload.Namespace},
 		TypeMeta:   metav1.TypeMeta{APIVersion: k8sAPIVersion, Kind: "Namespace"},
 	}
+}
+
+func (r *Deployer) deleteCronJob(cj *batch_v1beta1.CronJob, ns string) error {
+	return r.Client.BatchV1beta1().CronJobs(ns).Delete(cj.Name, &metav1.DeleteOptions{})
+}
+
+func (r *Deployer) CreateOrUpdateCronJob(cj *batch_v1beta1.CronJob, ns string) (*batch_v1beta1.CronJob, error) {
+	newcj, err := r.Client.BatchV1beta1().CronJobs(ns).Create(cj)
+	if err != nil {
+		if !kerrors.IsAlreadyExists(err) {
+			log.Errorf("creating cron job: %v", err)
+			return nil, err
+		}
+
+		oldcj, err := r.Client.BatchV1beta1().CronJobs(ns).Get(cj.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		oldcj.Spec.Schedule = cj.Spec.Schedule
+		oldcj.Spec.JobTemplate.Spec.Parallelism = cj.Spec.JobTemplate.Spec.Parallelism
+
+		return r.Client.BatchV1beta1().CronJobs(ns).Update(oldcj)
+	}
+
+	return newcj, nil
+}
+
+func newCronJob(payload *DeployRequest) (*batch_v1beta1.CronJob, error) {
+	labels := map[string]string{
+		appLabel:  payload.App,
+		typeLabel: payload.Proctype,
+		managedBy: heritage,
+	}
+
+	podSpec, err := newPodSpec(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	podSpec.Spec.RestartPolicy = v1.RestartPolicyOnFailure // for cron job
+
+	return &batch_v1beta1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: payload.Tags,
+			Labels:      labels,
+			Name:        payload.ServiceID,
+		},
+		Spec: batch_v1beta1.CronJobSpec{
+			Schedule: *payload.CronExpr,
+			JobTemplate: batch_v1beta1.JobTemplateSpec{
+				ObjectMeta: newPodMetadata(payload),
+				Spec: batchv1.JobSpec{
+					Parallelism: payload.Replicas,
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: newPodMetadata(payload),
+						Spec:       podSpec.Spec,
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 // CreateOrUpdateService creates or updates a service
@@ -232,8 +320,8 @@ func newService(payload *DeployRequest) *v1.Service {
 	return svc
 }
 
-func findContainer(dp *v1beta1.Deployment, name string) (int, *v1.Container) {
-	for i, c := range dp.Spec.Template.Spec.Containers {
+func findContainer(template v1.PodTemplateSpec, name string) (int, *v1.Container) {
+	for i, c := range template.Spec.Containers {
 		if c.Name == name {
 			return i, &c
 		}
@@ -257,7 +345,7 @@ func (r *Deployer) CreateOrUpdateDeployment(payload *DeployRequest) (*v1beta1.De
 			return nil, fmt.Errorf("creating container manifest: %v", err)
 		}
 
-		if i, prevCntnr := findContainer(d, payload.ServiceID); i >= 0 {
+		if i, prevCntnr := findContainer(d.Spec.Template, payload.ServiceID); i >= 0 {
 			//TODO: we are only updating containers schema for existing deployment.
 			//Add support for updating any any schema change
 			//Below is one workaround of it.

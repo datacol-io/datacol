@@ -10,9 +10,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud"
-	sched "github.com/datacol-io/datacol/k8s"
-	"k8s.io/client-go/kubernetes"
 )
 
 func LoadEnvironment(data []byte) pb.Environment {
@@ -34,54 +31,6 @@ func LoadEnvironment(data []byte) pb.Environment {
 
 func GenerateId(prefix string, size int) string {
 	return prefix + "-" + rand.Characters(size)
-}
-
-func ScaleApp(c *kubernetes.Clientset,
-	namespace, app, image string,
-	envVars map[string]string,
-	enableSQLproxy bool,
-	procFileData []byte,
-	structure map[string]int32,
-	provider cloud.CloudProvider,
-) (err error) {
-
-	var command []string
-
-	log.Debugf("scaling request: %v", structure)
-
-	var procfile Procfile
-	if len(procFileData) > 0 {
-		procfile, err = ParseProcfile(procFileData)
-		if err != nil {
-			return err
-		}
-	}
-
-	scalePodFunc := func(proctype, image string, command []string, replicas int32) error {
-		return sched.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas, enableSQLproxy, envVars, provider)
-	}
-
-	for key, replicas := range structure {
-		if procfile != nil {
-			if procfile.HasProcessType(key) {
-				if cmd, err := procfile.Command(key); err == nil {
-					err = scalePodFunc(key, image, cmd, replicas)
-				}
-			} else {
-				err = fmt.Errorf("Unknown process type: %s", key)
-			}
-		} else if key == "cmd" {
-			err = scalePodFunc(key, image, command, replicas)
-		} else {
-			err = fmt.Errorf("Unknown process type: %s", key)
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return
 }
 
 func GetJobID(name, process_type string) string {
@@ -118,4 +67,34 @@ func GetProcessCommand(proctype string, b *pb.Build) (command []string, err erro
 	}
 
 	return
+}
+
+func MergeAppDomains(domains []string, item string) []string {
+	if item == "" {
+		return domains
+	}
+
+	itemIndex := -1
+	dotted := strings.HasPrefix(item, ":")
+
+	if dotted {
+		item = item[1:]
+	}
+
+	for i, d := range domains {
+		if d == item {
+			itemIndex = i
+			break
+		}
+	}
+
+	if dotted && itemIndex >= 0 {
+		return append(domains[0:itemIndex], domains[itemIndex+1:]...)
+	}
+
+	if !dotted && itemIndex == -1 {
+		return append(domains, item)
+	}
+
+	return domains
 }

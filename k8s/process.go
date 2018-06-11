@@ -122,7 +122,7 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 			return nil, err
 		}
 
-		log.Debugf("got %d pods for %s", len(pods), app)
+		log.Debugf("got %d pods for deployment:%s", len(pods), dp.Name)
 
 		if len(pods) == 0 {
 			continue
@@ -132,7 +132,7 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 		targetPod := pods[len(pods)-1]
 		status := getPodStatusStr(c, &targetPod)
 		proctype := dp.ObjectMeta.Labels[typeLabel]
-		_, container := findContainer(&dp, fmt.Sprintf("%s-%s", app, proctype))
+		_, container := findContainer(dp.Spec.Template, fmt.Sprintf("%s-%s", app, proctype))
 
 		items = append(items, &pb.Process{
 			Proctype: proctype,
@@ -142,6 +142,43 @@ func ProcessList(c *kubernetes.Clientset, ns, app string) ([]*pb.Process, error)
 			Cpu:      getRequestLimit(container.Resources, corev1.ResourceCPU),
 			Memory:   getRequestLimit(container.Resources, corev1.ResourceMemory),
 		})
+	}
+
+	jobs, err := getAllCronJobs(c, ns, app)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cj := range jobs {
+		pods, err := getLatestPodsForCronJob(c, &cj)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Debugf("got %d pods for cronjob:%s", len(pods), cj.Name)
+
+		if len(pods) == 0 {
+			continue
+		}
+		targetPod := pods[len(pods)-1]
+		status := getPodStatusStr(c, &targetPod)
+		proctype := cj.ObjectMeta.Labels[typeLabel]
+		_, container := findContainer(cj.Spec.JobTemplate.Spec.Template, fmt.Sprintf("%s-%s", app, proctype))
+
+		proc := &pb.Process{
+			Proctype: proctype,
+			Status:   status,
+			Command:  container.Args,
+			Cpu:      getRequestLimit(container.Resources, corev1.ResourceCPU),
+			Memory:   getRequestLimit(container.Resources, corev1.ResourceMemory),
+			CronExpr: cj.Spec.Schedule,
+		}
+
+		if count := cj.Spec.JobTemplate.Spec.Parallelism; count != nil {
+			proc.Count = *count
+		}
+
+		items = append(items, proc)
 	}
 
 	return items, nil
@@ -230,7 +267,7 @@ func ProcessLimits(c *kubernetes.Clientset, ns, app, resource string, limits map
 			if dp.ObjectMeta.Labels[typeLabel] == proctype {
 				cName := fmt.Sprintf("%s-%s", app, proctype)
 
-				if idx, container := findContainer(&dp, cName); idx >= 0 {
+				if idx, container := findContainer(dp.Spec.Template, cName); idx >= 0 {
 					if err := mergeResourceConstraints(resourceName, container, rl); err != nil {
 						return err
 					}
