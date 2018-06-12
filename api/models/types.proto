@@ -68,6 +68,7 @@ message Process {
   string cpu = 4;
   string memory = 5;
   repeated string command = 6;
+  string cron_expr = 7;
 }
 
 message Formation {
