@@ -7,6 +7,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/api/store"
+	k8sStore "github.com/datacol-io/datacol/k8s/store"
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -20,6 +22,7 @@ type LocalCloud struct {
 	Releases        pb.Releases
 	EnvMap          map[string]pb.Environment
 	RegistryAddress string
+	store           store.Store
 }
 
 var cacheClientsetOnce sync.Once
@@ -36,6 +39,14 @@ func (g *LocalCloud) kubeClient() *kubernetes.Clientset {
 	})
 
 	return kubeClient
+}
+
+func (g *LocalCloud) Setup() {
+	g.store = &k8sStore.SecretStore{
+		Client:    g.kubeClient(),
+		Stack:     g.Name,
+		Namespace: g.Name, //FIXEME: should the namespace for secrets be different from Stack name ?
+	}
 }
 
 var dkrOnce sync.Once

@@ -52,8 +52,8 @@ func timeNow() *timestamp.Timestamp {
 	return v
 }
 
-func timestampNow() int32 {
-	return int32(time.Now().Unix())
+func timestampNow() int64 {
+	return time.Now().Unix()
 }
 
 func getTokenFile(name string) string {

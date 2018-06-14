@@ -158,7 +158,7 @@ func (g *GCPCloud) resetDatabase() error {
 
 	// delete apps, builds, releases
 	for _, app := range apps {
-		if err := g.deleteAppFromDatastore(app.Name); err != nil {
+		if err := g.store.AppDelete(app.Name); err != nil {
 			return err
 		}
 	}

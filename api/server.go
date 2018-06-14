@@ -50,11 +50,14 @@ func newServer() *Server {
 			log.Fatal("AWS_REGION env var not found")
 		}
 
-		provider = &aws_provider.AwsCloud{
+		awsProvider := &aws_provider.AwsCloud{
 			DeploymentName: name,
 			Region:         region,
 			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
 		}
+
+		awsProvider.Setup()
+		provider = awsProvider
 	case "gcp":
 		var bucket, zone, projectId, projectNumber string
 		bucket = os.Getenv("DATACOL_BUCKET")
@@ -63,7 +66,7 @@ func newServer() *Server {
 		projectId = os.Getenv("GCP_PROJECT")
 		projectNumber = os.Getenv("GCP_PROJECT_NUMBER")
 
-		provider = &google.GCPCloud{
+		gcpProvider := &google.GCPCloud{
 			Project:        projectId,
 			DeploymentName: name,
 			BucketName:     bucket,
@@ -71,6 +74,10 @@ func newServer() *Server {
 			Region:         region,
 			ProjectNumber:  projectNumber,
 		}
+
+		gcpProvider.Setup()
+
+		provider = gcpProvider
 
 	case "local":
 		// Local provider uses registry inside minikube VM to store images. Execute following commands to the registry running
@@ -80,11 +87,14 @@ func newServer() *Server {
 		// 	eval $(minikube docker-env) && \
 		// 	docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
-		provider = &local.LocalCloud{
+		localProvider := &local.LocalCloud{
 			Name:            name,
 			RegistryAddress: "localhost:5000",
 			EnvMap:          make(map[string]pb.Environment),
 		}
+		localProvider.Setup()
+
+		provider = localProvider
 	default:
 		log.Fatalf("Unsupported cloud provider: %s", cid)
 	}
@@ -243,7 +253,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 }
 
 func (s *Server) BuildList(ctx context.Context, req *pbs.AppListRequest) (*pbs.BuildListResponse, error) {
-	items, err := s.Provider.BuildList(req.Name, int(req.Limit))
+	items, err := s.Provider.BuildList(req.Name, req.Limit)
 	if err != nil {
 		return nil, err
 	}

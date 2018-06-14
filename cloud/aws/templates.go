@@ -87,7 +87,7 @@ func cloudAwsTemplatesAppTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/app.tmpl", size: 6660, mode: os.FileMode(420), modTime: time.Unix(1519994908, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/app.tmpl", size: 6660, mode: os.FileMode(436), modTime: time.Unix(1520015640, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func cloudAwsTemplatesElasticsearchTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/elasticsearch.tmpl", size: 4023, mode: os.FileMode(420), modTime: time.Unix(1520701517, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/elasticsearch.tmpl", size: 4023, mode: os.FileMode(436), modTime: time.Unix(1520679773, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +127,7 @@ func cloudAwsTemplatesMysqlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/mysql.tmpl", size: 3587, mode: os.FileMode(420), modTime: time.Unix(1500616848, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/mysql.tmpl", size: 3587, mode: os.FileMode(436), modTime: time.Unix(1520015640, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func cloudAwsTemplatesPostgresTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4389, mode: os.FileMode(420), modTime: time.Unix(1520701517, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/postgres.tmpl", size: 4389, mode: os.FileMode(436), modTime: time.Unix(1520679773, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -167,7 +167,7 @@ func cloudAwsTemplatesRedisTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cloud/aws/templates/redis.tmpl", size: 3164, mode: os.FileMode(420), modTime: time.Unix(1524942118, 0)}
+	info := bindataFileInfo{name: "cloud/aws/templates/redis.tmpl", size: 3164, mode: os.FileMode(436), modTime: time.Unix(1520271844, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

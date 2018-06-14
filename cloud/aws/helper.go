@@ -103,8 +103,8 @@ func cfParams(source map[string]string) map[string]string {
 	return params
 }
 
-func timestampNow() int32 {
-	return int32(time.Now().Unix())
+func timestampNow() int64 {
+	return time.Now().Unix()
 }
 
 func convertGzipToZip(app, src string) (string, error) {

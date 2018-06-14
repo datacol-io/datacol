@@ -77,7 +77,7 @@ message ResourceListResponse {
 
 message AppListRequest {
   string name = 1;
-  int32 limit = 2;
+  int64 limit = 2;
 }
 
 message BuildListResponse {

@@ -12,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/datacol-io/datacol/api/store"
+	dynamo_store "github.com/datacol-io/datacol/cloud/aws/store"
 )
 
 type AwsCloud struct {
@@ -19,7 +21,8 @@ type AwsCloud struct {
 	Region, SettingBucket string
 	Access, Secret, Token string
 
-	lock sync.Mutex
+	lock  sync.Mutex
+	store store.Store
 }
 
 func (p *AwsCloud) config() *aws.Config {
@@ -94,4 +97,14 @@ func (p *AwsCloud) describeStackEvents(input *cloudformation.DescribeStackEvents
 	}
 
 	return res, nil
+}
+
+func (p *AwsCloud) Setup() {
+	store := dynamo_store.DynamoDBStore{
+		DeploymentName: p.DeploymentName,
+		SettingBucket:  p.SettingBucket,
+		DynamoDB:       p.dynamodb(),
+	}
+
+	p.store = &store
 }

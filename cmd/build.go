@@ -159,20 +159,20 @@ func executeBuildDir(api *client.Client, app *pb.App, dir, id string) (*pb.Build
 	var err error
 	if id == "" {
 
-		env, err := api.GetEnvironment(app.Name)
-		if err != nil {
+		env, eerr := api.GetEnvironment(app.Name)
+		if eerr != nil {
 			return nil, err
 		}
 
-		tar, err := createTarball(dir, env)
-		if err != nil {
+		tar, terr := createTarball(dir, env)
+		if terr != nil {
 			return nil, err
 		}
 
 		fmt.Println("OK")
 
 		var procfile []byte
-		if _, err := os.Stat("Procfile"); err == nil {
+		if _, perr := os.Stat("Procfile"); perr == nil {
 			content, err := parseProcfile()
 			stdcli.ExitOnError(err)
 			procfile = content

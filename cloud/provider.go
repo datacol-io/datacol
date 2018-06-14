@@ -22,14 +22,14 @@ type Provider interface {
 
 	BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error)
 	BuildImport(app, filename string) error
-	BuildList(app string, limit int) (pb.Builds, error)
+	BuildList(app string, limit int64) (pb.Builds, error)
 	BuildGet(app, id string) (*pb.Build, error)
 	BuildDelete(app, id string) error
 	BuildRelease(*pb.Build, pb.ReleaseOptions) (*pb.Release, error)
 	BuildLogs(app, id string, index int) (int, []string, error)
 	BuildLogsStream(id string) (io.Reader, error)
 
-	ReleaseList(string, int) (pb.Releases, error)
+	ReleaseList(string, int64) (pb.Releases, error)
 	ReleaseDelete(string, string) error
 
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
