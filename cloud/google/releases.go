@@ -11,8 +11,12 @@ import (
 	"github.com/datacol-io/datacol/common"
 )
 
-func (g *GCPCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	q := datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("app = ", app).Limit(limit)
+func (g *GCPCloud) ReleaseList(app string, limit int64) (pb.Releases, error) {
+	q := datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("app = ", app)
+
+	if limit > 0 {
+		q = q.Limit(int(limit))
+	}
 
 	var rs pb.Releases
 	_, err := g.datastore().GetAll(context.Background(), q, &rs)
@@ -40,12 +44,15 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 	}
 
 	r := &pb.Release{
-		Id:        generateId("R", 5),
 		App:       b.App,
 		BuildId:   b.Id,
 		Status:    pb.StatusCreated,
 		CreatedAt: timestampNow(),
-		Version:   g.releaseCount(b.App) + 1,
+		Version:   g.store.ReleaseCount(b.App) + 1,
+	}
+
+	if err := g.store.ReleaseSave(r); err != nil {
+		return r, err
 	}
 
 	rversion := fmt.Sprintf("%d", r.Version)
@@ -55,29 +62,8 @@ func (g *GCPCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 		return nil, err
 	}
 
-	ctx, key := g.nestedKey(releaseKind, r.Id)
-	_, err = g.datastore().Put(ctx, key, r)
-
-	if err != nil {
-		return r, err
-	}
-
 	app.ReleaseId = r.Id
 	app.BuildId = b.Id
 
-	return r, g.saveApp(app)
-}
-
-func (g *GCPCloud) releaseCount(app string) (version int64) {
-	q := datastore.NewQuery(releaseKind).
-		Namespace(g.DeploymentName).
-		Filter("app = ", app)
-
-	total, err := g.datastore().Count(context.Background(), q)
-	if err != nil {
-		log.Warnf("fetching release total: %v", err)
-	}
-
-	version = int64(total)
-	return
+	return r, g.store.AppUpdate(app)
 }

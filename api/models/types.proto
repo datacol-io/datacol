@@ -17,6 +17,7 @@ message App {
   string build_id   = 5 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
   repeated string domains  = 6 [(gogoproto.moretags) = "datastore:\"domains,noindex\""];
   repeated string resources = 7 [(gogoproto.moretags) = "datastore:\"resources,noindex\""];
+  string repo_url = 8 [(gogoproto.moretags) = "datastore:\"repo_url,noindex\""];
 }
 
 message Build {
@@ -24,7 +25,7 @@ message Build {
   string app            = 2 [(gogoproto.moretags) = "datastore:\"app\""];
   string remote_id      = 3 [(gogoproto.moretags) = "datastore:\"remote_id,noindex\""];
   string status         = 4 [(gogoproto.moretags) = "datastore:\"status\""];
-  int32 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
+  int64 created_at      = 5 [(gogoproto.moretags) = "datastore:\"created_at\""];
   bytes procfile  = 6 [(gogoproto.moretags) = "datastore:\"procfile,noindex\""];
   string version  = 7  [(gogoproto.moretags) = "datastore:\"version,noindex\""];
 }
@@ -34,7 +35,7 @@ message Release {
   string app       = 2 [(gogoproto.moretags) = "datastore:\"app\""];
   string build_id  = 3 [(gogoproto.moretags) = "datastore:\"build_id,noindex\""];
   string status    = 4 [(gogoproto.moretags) = "datastore:\"status,noindex\""];
-  int32 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
+  int64 created_at = 5 [(gogoproto.moretags) = "datastore:\"created_at,noindex\""];
   int64 version    = 6 [(gogoproto.moretags) = "datastore:\"version,noindex\""];
 }
 

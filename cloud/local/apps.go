@@ -1,7 +1,6 @@
 package local
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/appscode/go/log"
@@ -12,14 +11,13 @@ import (
 )
 
 func (l *LocalCloud) AppList() (pb.Apps, error) {
-	return l.Apps, nil
+	return l.store.AppList()
 }
 
 func (g *LocalCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, error) {
-	if _, err := g.AppGet(name); err != nil {
-		g.Apps = append(g.Apps, &pb.App{
-			Name: name,
-		})
+	app := &pb.App{Name: name}
+	if err := g.store.AppCreate(app, req); err != nil {
+		return app, err
 	}
 
 	return g.AppGet(name)
@@ -44,15 +42,9 @@ func (g *LocalCloud) AppRestart(app string) error {
 }
 
 func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
-	var app *pb.App
-	for _, a := range g.Apps {
-		if a.Name == name {
-			app = a
-		}
-	}
-
-	if app == nil {
-		return nil, fmt.Errorf("App Not Found")
+	app, err := g.store.AppGet(name)
+	if err != nil {
+		return nil, err
 	}
 
 	if app.BuildId != "" {
@@ -67,33 +59,15 @@ func (g *LocalCloud) AppGet(name string) (*pb.App, error) {
 		if app.Endpoint, err = sched.GetServiceEndpoint(kc, g.Name, serviceName); err != nil {
 			return app, err
 		}
-		return app, g.saveApp(app)
+		return app, g.store.AppUpdate(app)
 	}
 
 	return app, nil
 }
 
-func (g *LocalCloud) saveApp(a *pb.App) error {
-	for i, app := range g.Apps {
-		if app.Name == a.Name {
-			g.Apps[i] = a
-			break
-		}
-	}
-
-	return nil
-}
-
 func (g *LocalCloud) AppDelete(name string) error {
 	sched.DeleteApp(g.kubeClient(), g.Name, name, cloud.LocalProvider)
-
-	for i, a := range g.Apps {
-		if a.Name == name {
-			g.Apps = append(g.Apps[:i], g.Apps[i+1:]...)
-		}
-	}
-
-	return nil
+	return g.store.AppDelete(name)
 }
 
 // DomainUpdate updates list of Domains for an app
@@ -106,5 +80,5 @@ func (g *LocalCloud) AppUpdateDomain(name, domain string) error {
 
 	app.Domains = common.MergeAppDomains(app.Domains, domain)
 
-	return g.saveApp(app)
+	return g.store.AppUpdate(app)
 }

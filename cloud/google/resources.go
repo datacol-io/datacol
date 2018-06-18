@@ -208,7 +208,7 @@ func (g *GCPCloud) ResourceLink(app, name string) (*pb.Resource, error) {
 
 	appendApp(dbApp, rs)
 
-	if err := g.saveApp(dbApp); err != nil {
+	if err := g.store.AppUpdate(dbApp); err != nil {
 		log.Warnf("saving app %v", err)
 	}
 
@@ -245,7 +245,7 @@ func (g *GCPCloud) ResourceUnlink(app, name string) (*pb.Resource, error) {
 
 	removeApp(dbApp, rs)
 
-	if err := g.saveApp(dbApp); err != nil {
+	if err := g.store.AppUpdate(dbApp); err != nil {
 		log.Warnf("saving app %v", err)
 	}
 
