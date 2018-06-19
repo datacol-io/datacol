@@ -32,11 +32,12 @@ Run
         "context": "dev",
         "auths": [
             {
+                "provider": "local",
                 "name": "dev",
-                "host": "localhost"
+                "api_server": "localhost"
             }
         ]
-    }' >> ~/.datacol/config
+    }' >> ~/.datacol/config.json
 
 #### Start Local Kubernetes server
 
