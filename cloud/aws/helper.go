@@ -20,6 +20,11 @@ import (
 	"github.com/mholt/archiver"
 )
 
+func lastline(data []byte) string {
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	return lines[len(lines)-1]
+}
+
 func generateId(prefix string, size int) string {
 	return prefix + "-" + rand.Characters(size)
 }

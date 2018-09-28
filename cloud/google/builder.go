@@ -13,6 +13,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/common"
+	docker "github.com/fsouza/go-dockerclient"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
@@ -70,7 +72,23 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 	return build, g.store.BuildSave(build)
 }
 
-func (g *GCPCloud) BuildImport(id, filename string) error {
+func (a *GCPCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr, err := docker.NewClientFromEnv()
+	if err != nil {
+		return fmt.Errorf("docker client: %v", err)
+	}
+
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("gcr.io/%s/%v", a.Project, app)
+
+	return common.BuildDockerLoad(target, id, dkr, tr, w)
+}
+
+func (g *GCPCloud) BuildUpload(id, filename string) error {
 	build, err := g.BuildGet("", id)
 	if err != nil {
 		return err

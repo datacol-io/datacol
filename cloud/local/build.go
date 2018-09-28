@@ -47,7 +47,19 @@ func (g *LocalCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Bu
 	return g.store.BuildGet(app, build.Id)
 }
 
-func (g *LocalCloud) BuildImport(id, filename string) error {
+func (a *LocalCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr := dockerEnvClient()
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("%s/%s", a.RegistryAddress, app)
+
+	return common.BuildDockerLoad(target, id, dkr, tr, w)
+}
+
+func (g *LocalCloud) BuildUpload(id, filename string) error {
 	build, err := g.BuildGet("", id)
 	if err != nil {
 		return err
@@ -57,7 +69,7 @@ func (g *LocalCloud) BuildImport(id, filename string) error {
 	if err != nil {
 		return err
 	}
-	dkr, app, id := dockerClient(), build.App, build.Id
+	dkr, app, id := dockerEnvClient(), build.App, build.Id
 
 	if err := dkr.BuildImage(docker.BuildImageOptions{
 		Name:         app,

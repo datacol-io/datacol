@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
@@ -25,7 +26,7 @@ func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Bui
 	md := metadata.Pairs("app", app.Name, "id", b.Id)
 	newctx := metadata.NewOutgoingContext(ctx, md)
 
-	stream, err := c.ProviderServiceClient.BuildImport(newctx)
+	stream, err := c.ProviderServiceClient.BuildUpload(newctx)
 	defer stream.CloseSend()
 
 	if err != nil {
@@ -60,6 +61,22 @@ func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Bui
 	fmt.Printf(" OK\n")
 	_, err = stream.CloseAndRecv()
 	return b, err
+}
+
+func (c *Client) CreateBuildDocker(app *pb.App, images []string, in io.ReadCloser, procfile []byte) (*pb.Build, error) {
+	b, err := c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
+		App:      app.Name,
+		Procfile: procfile,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Stream("/ws/v1/builds/import", map[string]string{"id": b.Id}, in, os.Stdout); err != nil {
+		return b, err
+	}
+
+	return b, nil
 }
 
 func (c *Client) CreateBuildGit(app *pb.App, version string, procfile []byte) (*pb.Build, error) {

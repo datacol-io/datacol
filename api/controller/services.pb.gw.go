@@ -299,9 +299,9 @@ func request_ProviderService_BuildCreate_0(ctx context.Context, marshaler runtim
 
 }
 
-func request_ProviderService_BuildImport_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ProviderService_BuildUpload_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var metadata runtime.ServerMetadata
-	stream, err := client.BuildImport(ctx)
+	stream, err := client.BuildUpload(ctx)
 	if err != nil {
 		grpclog.Printf("Failed to start streaming: %v", err)
 		return nil, metadata, err
@@ -1311,7 +1311,7 @@ func RegisterProviderServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 
 	})
 
-	mux.Handle("POST", pattern_ProviderService_BuildImport_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ProviderService_BuildUpload_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -1329,14 +1329,14 @@ func RegisterProviderServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ProviderService_BuildImport_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ProviderService_BuildUpload_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ProviderService_BuildImport_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ProviderService_BuildUpload_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1973,7 +1973,7 @@ var (
 
 	pattern_ProviderService_BuildCreate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "builds"}, ""))
 
-	pattern_ProviderService_BuildImport_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "builds", "import"}, ""))
+	pattern_ProviderService_BuildUpload_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "builds", "upload"}, ""))
 
 	pattern_ProviderService_BuildRelease_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "releases"}, ""))
 
@@ -2039,7 +2039,7 @@ var (
 
 	forward_ProviderService_BuildCreate_0 = runtime.ForwardResponseMessage
 
-	forward_ProviderService_BuildImport_0 = runtime.ForwardResponseMessage
+	forward_ProviderService_BuildUpload_0 = runtime.ForwardResponseMessage
 
 	forward_ProviderService_BuildRelease_0 = runtime.ForwardResponseMessage
 

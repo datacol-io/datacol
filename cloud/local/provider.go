@@ -49,11 +49,11 @@ func (g *LocalCloud) Setup() {
 	}
 }
 
-var dkrOnce sync.Once
-var dkrClient *docker.Client
+var dkrEnvOnce sync.Once
+var dkrEnvClient *docker.Client
 
-func dockerClient() *docker.Client {
-	dkrOnce.Do(func() {
+func dockerEnvClient() *docker.Client {
+	dkrEnvOnce.Do(func() {
 		client, err := docker.NewClientFromEnv()
 		if err != nil {
 			log.Fatalf("failed to initiate docker client: %v", err)
@@ -62,10 +62,10 @@ func dockerClient() *docker.Client {
 		if err := client.Ping(); err != nil {
 			log.Errorf("Docker ping failed: %v", err)
 		}
-		dkrClient = client
+		dkrEnvClient = client
 	})
 
-	return dkrClient
+	return dkrEnvClient
 }
 
 func getKubeClientset(name string) (*kubernetes.Clientset, error) {

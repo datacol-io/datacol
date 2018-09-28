@@ -1,7 +1,13 @@
 package aws
 
 import (
+	"encoding/base64"
 	"fmt"
+	"log"
+	"net/url"
+	"os"
+	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/datacol-io/datacol/api/store"
 	dynamo_store "github.com/datacol-io/datacol/cloud/aws/store"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type AwsCloud struct {
@@ -57,6 +64,56 @@ func (p *AwsCloud) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
 
 func (p *AwsCloud) ecr() *ecr.ECR {
 	return ecr.New(session.New(), p.config())
+}
+
+func (p *AwsCloud) dockerRegistryURL() string {
+	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("AWS_REGION"))
+}
+
+func (p *AwsCloud) dockerClient() (*docker.Client, error) {
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	return client, err
+}
+
+func (p *AwsCloud) dockerLogin() error {
+	tres, err := p.ecr().GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		log.Printf("ecr auth token: %v\n", err)
+		return err
+	}
+
+	if len(tres.AuthorizationData) != 1 {
+		log.Println("no authorization data")
+		return fmt.Errorf("no authorization data")
+	}
+
+	auth, err := base64.StdEncoding.DecodeString(*tres.AuthorizationData[0].AuthorizationToken)
+	if err != nil {
+		log.Println("encode token", err)
+		return err
+	}
+
+	authParts := strings.SplitN(string(auth), ":", 2)
+	if len(authParts) != 2 {
+		log.Println("invalid auth data")
+		return fmt.Errorf("invalid auth data")
+	}
+
+	registry, err := url.Parse(*tres.AuthorizationData[0].ProxyEndpoint)
+	if err != nil {
+		return err
+	}
+
+	out, err := exec.Command("docker", "login", "-u", authParts[0], "-p", authParts[1], registry.Host).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %s\n", lastline(out), err.Error())
+	}
+
+	return nil
 }
 
 func (p *AwsCloud) describeStack(name string) (*cloudformation.Stack, error) {

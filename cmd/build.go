@@ -39,6 +39,10 @@ func init() {
 				Name:  "id",
 				Usage: "watch build progress of this build ID",
 			},
+			&cli.StringFlag{
+				Name:  "input, i",
+				Usage: "existing docker image archive or pipe",
+			},
 			&appFlag,
 		},
 	})
@@ -121,14 +125,67 @@ func cmdBuild(c *cli.Context) error {
 
 	ref := c.String("ref")
 	id := c.String("id")
-	if ref == "" {
-		_, err = executeBuildDir(api, app, dir, id)
-	} else {
+	file := c.String("file")
+
+	var r io.ReadCloser
+	stat, _ := os.Stdin.Stat()
+
+	if file != "" {
+		f, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+		r = f
+	} else if (stat.Mode() & os.ModeCharDevice) == 0 { // the data is passed via pipes
+		r = ioutil.NopCloser(os.Stdin)
+	}
+
+	if r != nil {
+		err = executeBuildDockerArchive(api, app, r)
+	} else if ref != "" {
 		_, err = executeBuildGitSource(api, app, ref, id)
+	} else {
+		_, err = executeBuildDir(api, app, dir, id)
 	}
 
 	stdcli.ExitOnError(err)
 	return err
+}
+
+func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) error {
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	b, err := api.CreateBuildDocker(app, images, nil, procfile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b.Id)
+	return nil
+}
+
+func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser) error {
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	defer r.Close()
+
+	b, err := api.CreateBuildDocker(app, []string{}, r, procfile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b.Id)
+	return nil
 }
 
 func executeBuildGitSource(api *client.Client, app *pb.App, version, id string) (*pb.Build, error) {

@@ -197,9 +197,9 @@
         ]
       }
     },
-    "/v1/builds/import": {
+    "/v1/builds/upload": {
       "post": {
-        "operationId": "BuildImport",
+        "operationId": "BuildUpload",
         "responses": {
           "200": {
             "description": "",

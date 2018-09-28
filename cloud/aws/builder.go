@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/common"
 	"github.com/ejholmes/cloudwatch"
 )
 
@@ -58,7 +59,33 @@ func (a *AwsCloud) BuildList(app string, limit int64) (pb.Builds, error) {
 	return a.store.BuildList(app, limit)
 }
 
-func (a *AwsCloud) BuildImport(id, gzipPath string) error {
+func (a *AwsCloud) BuildStatus(id string, status string) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	build.Status = status
+
+	return a.store.BuildSave(build)
+}
+
+func (a *AwsCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr, err := a.dockerClient()
+	if err != nil {
+		return fmt.Errorf("docker client: %v", err)
+	}
+
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("%s/%s", a.dockerRegistryURL(), app)
+
+	return common.BuildDockerLoad(target, id, dkr, tr, w)
+}
+
+func (a *AwsCloud) BuildUpload(id, gzipPath string) error {
 	build, err := a.BuildGet("", id)
 	if err != nil {
 		return err

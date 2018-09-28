@@ -209,7 +209,7 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 	})
 }
 
-func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error {
+func (s *Server) BuildUpload(stream pbs.ProviderService_BuildUploadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
 		return internalError(fmt.Errorf("No context found"), "No context found")
@@ -245,7 +245,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 		return internalError(err, "failed to close tmpfile")
 	}
 
-	if err := s.Provider.BuildImport(buildId, fd.Name()); err != nil {
+	if err := s.Provider.BuildUpload(buildId, fd.Name()); err != nil {
 		return internalError(err, "failed to upload source.")
 	}
 
@@ -293,6 +293,15 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	}
 
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+}
+
+func (s *Server) BuildImport(ws *websocket.Conn) error {
+	buildId := ws.Request().Header.Get("id")
+	if buildId == "" {
+		return errors.New("Missing required header: id")
+	}
+
+	return s.Provider.BuildImport(buildId, ws, ws)
 }
 
 // Streaming build logs with websocket

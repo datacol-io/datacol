@@ -56,7 +56,8 @@ You can now navigate to your app directory or clone a sample node.js application
     cd ~/ && git clone git@github.com:datacol-io/node-demo.git && cd node-demo
 
 Run followings commands to deploy the app
-    
+
+    kubectl create ns dev
     datacol apps create
     datacol deploy
 

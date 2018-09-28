@@ -213,9 +213,9 @@ service ProviderService {
     };
   }
 
-  rpc BuildImport(stream StreamMsg) returns (google.protobuf.Empty) {
+  rpc BuildUpload(stream StreamMsg) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/builds/import"
+      post: "/v1/builds/upload"
     };
   }
 
