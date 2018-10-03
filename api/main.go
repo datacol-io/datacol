@@ -16,7 +16,7 @@ import (
 
 var (
 	rpcPort  = 10000
-	port     = 9000
+	port     = 8080
 	logPath  string
 	debugF   bool
 	timeout  int

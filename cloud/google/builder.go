@@ -85,7 +85,19 @@ func (a *GCPCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error 
 	app, id := build.App, build.Id
 	target := fmt.Sprintf("gcr.io/%s/%v", a.Project, app)
 
-	return common.BuildDockerLoad(target, id, dkr, tr, w)
+	err = common.BuildDockerLoad(target, id, dkr, tr, w)
+	if err == nil {
+		build.Status = "SUCCESS"
+	} else {
+		build.Status = "FAILED"
+	}
+
+	// Ignore the error by build save
+	if berr := a.store.BuildSave(build); berr != nil {
+		log.Errorf("Failed to save build: %v", berr)
+	}
+
+	return err
 }
 
 func (g *GCPCloud) BuildUpload(id, filename string) error {
