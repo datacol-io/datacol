@@ -68,8 +68,14 @@ func cmdDeploy(c *cli.Context) error {
 	commitID, buildID := c.String("ref"), c.String("build")
 
 	if len(buildID) == 0 {
-		var err error
-		if commitID == "" {
+		r, err := stdinInput(c)
+		if err != nil {
+			return err
+		}
+
+		if r != nil {
+			build, err = executeBuildDockerArchive(client, app, r)
+		} else if commitID == "" {
 			build, err = executeBuildDir(client, app, dir, buildID)
 		} else {
 			build, err = executeBuildGitSource(client, app, commitID, buildID)

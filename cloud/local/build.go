@@ -56,7 +56,19 @@ func (a *LocalCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) erro
 	app, id := build.App, build.Id
 	target := fmt.Sprintf("%s/%s", a.RegistryAddress, app)
 
-	return common.BuildDockerLoad(target, id, dkr, tr, w)
+	err = common.BuildDockerLoad(target, id, dkr, tr, w)
+	if err == nil {
+		build.Status = "SUCCEEDED"
+	} else {
+		build.Status = "FAILED"
+	}
+
+	// Ignore the error by build save
+	if berr := a.store.BuildSave(build); berr != nil {
+		log.Errorf("Failed to save build: %v", berr)
+	}
+
+	return err
 }
 
 func (g *LocalCloud) BuildUpload(id, filename string) error {

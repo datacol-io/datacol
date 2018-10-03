@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"sort"
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"k8s.io/api/core/v1"
@@ -18,8 +19,6 @@ func (s *SecretStore) BuildSave(b *pb.Build) error {
 		b.Id = generateId("B", 8)
 	}
 	name := buildkey(b.Id)
-
-	fmt.Println(toJson(b))
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,8 +69,10 @@ func (s *SecretStore) BuildList(app string, limit int64) (pb.Builds, error) {
 	scope = fmt.Sprintf("%s,%s=%s", scope, appLabelKey, app)
 
 	lo := metav1.ListOptions{LabelSelector: scope}
+
 	if limit > 0 {
-		lo.Limit = limit
+		// Ignore the limit para for now as I don't know to how k8s order things
+		// lo.Limit = limit
 	}
 
 	secretList, err := s.Client.CoreV1().Secrets(s.Namespace).List(lo)
@@ -85,7 +86,15 @@ func (s *SecretStore) BuildList(app string, limit int64) (pb.Builds, error) {
 		builds = append(builds, newBuildFromSecret(secret))
 	}
 
-	return builds, nil
+	sort.Slice(builds, func(i, j int) bool {
+		return builds[i].CreatedAt > builds[j].CreatedAt
+	})
+
+	if len(builds) < int(limit) {
+		limit = int64(len(builds))
+	}
+
+	return builds[0:limit], nil
 }
 
 func (s *SecretStore) BuildDelete(app, id string) error {

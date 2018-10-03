@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [CLI] `build` can accept build's id to monitor progress of unfinished build
 - Support for CronJobs using extended Procfile
+- [CLI] BuildImport API to create a build from docker archive
 
 ## [1.0.0-alpha.14] - 2018-05-15
 ### Fixed

@@ -125,23 +125,11 @@ func cmdBuild(c *cli.Context) error {
 
 	ref := c.String("ref")
 	id := c.String("id")
-	file := c.String("file")
-
-	var r io.ReadCloser
-	stat, _ := os.Stdin.Stat()
-
-	if file != "" {
-		f, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		r = f
-	} else if (stat.Mode() & os.ModeCharDevice) == 0 { // the data is passed via pipes
-		r = ioutil.NopCloser(os.Stdin)
-	}
+	r, err := stdinInput(c)
+	stdcli.ExitOnError(err)
 
 	if r != nil {
-		err = executeBuildDockerArchive(api, app, r)
+		_, err = executeBuildDockerArchive(api, app, r)
 	} else if ref != "" {
 		_, err = executeBuildGitSource(api, app, ref, id)
 	} else {
@@ -149,7 +137,9 @@ func cmdBuild(c *cli.Context) error {
 	}
 
 	stdcli.ExitOnError(err)
-	return err
+
+	term.Printf("OK")
+	return nil
 }
 
 func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) error {
@@ -169,7 +159,7 @@ func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) 
 	return nil
 }
 
-func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser) error {
+func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser) (*pb.Build, error) {
 	var procfile []byte
 	if _, err := os.Stat("Procfile"); err == nil {
 		content, err := parseProcfile()
@@ -181,11 +171,10 @@ func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser)
 
 	b, err := api.CreateBuildDocker(app, []string{}, r, procfile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Println(b.Id)
-	return nil
+	return b, nil
 }
 
 func executeBuildGitSource(api *client.Client, app *pb.App, version, id string) (*pb.Build, error) {
@@ -428,4 +417,21 @@ func waitforAwsBuild(api *client.Client, b *pb.Build, done chan bool, ws *websoc
 
 	ws.Close()
 	done <- true
+}
+
+func stdinInput(c *cli.Context) (r io.ReadCloser, err error) {
+	stat, _ := os.Stdin.Stat()
+	file := c.String("file")
+
+	if file != "" {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, err
+		}
+		r = f
+	} else if (stat.Mode() & os.ModeCharDevice) == 0 { // the data is passed via pipes
+		r = ioutil.NopCloser(os.Stdin)
+	}
+
+	return
 }
