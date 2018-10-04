@@ -18,24 +18,36 @@ import (
 func init() {
 	stdcli.AddCommand(cli.Command{
 		Name:      "login",
-		ArgsUsage: "<host> [password]",
+		ArgsUsage: "[host]",
 		Usage:     "login in to datacol",
 		Action:    cmdLogin,
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:   "host",
+				Usage:  "datacol API host",
+				EnvVar: "DATACOL_API_HOST",
+			},
+			cli.StringFlag{
+				Name:   "api-key",
+				Usage:  "datacol API Key",
+				EnvVar: "DATACOL_API_KEY",
+			},
+		},
 	})
 }
 
 func cmdLogin(c *cli.Context) error {
 	host := c.Args().First()
 	if host == "" {
-		term.Warningln("Missing required argument: host")
-		stdcli.Usage(c)
+		host = c.String("host")
+		if host == "" {
+			term.Warningln("Missing required argument: host")
+			stdcli.Usage(c)
+		}
 	}
 
-	var passwd string
-	if c.NArg() > 1 {
-		passwd = c.Args().Get(1)
-	} else {
-
+	passwd := c.String("api-key")
+	if passwd == "" {
 		r := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter your password: ")
 
