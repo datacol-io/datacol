@@ -74,7 +74,7 @@ func cmdDeploy(c *cli.Context) error {
 		}
 
 		if r != nil {
-			build, err = executeBuildDockerArchive(client, app, r)
+			build, err = executeBuildDockerArchive(client, app, r, commitID)
 		} else if commitID == "" {
 			build, err = executeBuildDir(client, app, dir, buildID)
 		} else {

@@ -48,6 +48,7 @@ message CreateBuildRequest {
   string app = 1;
   string version = 2;
   bytes procfile = 3;
+  bool trigger = 4;
 }
 
 message AppIdRequest {

@@ -129,7 +129,7 @@ func cmdBuild(c *cli.Context) error {
 	stdcli.ExitOnError(err)
 
 	if r != nil {
-		_, err = executeBuildDockerArchive(api, app, r)
+		_, err = executeBuildDockerArchive(api, app, r, ref)
 	} else if ref != "" {
 		_, err = executeBuildGitSource(api, app, ref, id)
 	} else {
@@ -142,7 +142,7 @@ func cmdBuild(c *cli.Context) error {
 	return nil
 }
 
-func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) error {
+func executeBuildDockerImages(api *client.Client, app *pb.App, images []string, ref string) error {
 	var procfile []byte
 	if _, err := os.Stat("Procfile"); err == nil {
 		content, err := parseProcfile()
@@ -150,7 +150,7 @@ func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) 
 		procfile = content
 	}
 
-	b, err := api.CreateBuildDocker(app, images, nil, procfile)
+	b, err := api.CreateBuildDocker(app, ref, images, nil, procfile)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func executeBuildDockerImages(api *client.Client, app *pb.App, images []string) 
 	return nil
 }
 
-func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser) (*pb.Build, error) {
+func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser, ref string) (*pb.Build, error) {
 	var procfile []byte
 	if _, err := os.Stat("Procfile"); err == nil {
 		content, err := parseProcfile()
@@ -169,7 +169,7 @@ func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser)
 
 	defer r.Close()
 
-	b, err := api.CreateBuildDocker(app, []string{}, r, procfile)
+	b, err := api.CreateBuildDocker(app, ref, []string{}, r, procfile)
 	if err != nil {
 		return nil, err
 	}

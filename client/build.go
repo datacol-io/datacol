@@ -63,10 +63,11 @@ func (c *Client) CreateBuild(app *pb.App, data []byte, procfile []byte) (*pb.Bui
 	return b, err
 }
 
-func (c *Client) CreateBuildDocker(app *pb.App, images []string, in io.ReadCloser, procfile []byte) (*pb.Build, error) {
+func (c *Client) CreateBuildDocker(app *pb.App, ref string, images []string, in io.ReadCloser, procfile []byte) (*pb.Build, error) {
 	b, err := c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
 		App:      app.Name,
 		Procfile: procfile,
+		Version:  ref,
 	})
 	if err != nil {
 		return nil, err
@@ -84,6 +85,7 @@ func (c *Client) CreateBuildGit(app *pb.App, version string, procfile []byte) (*
 		App:      app.Name,
 		Version:  version,
 		Procfile: procfile,
+		Trigger:  true,
 	})
 }
 

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appscode/go/log"
+	"github.com/Sirupsen/logrus"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -21,7 +21,7 @@ type imageManifest []struct {
 	RepoTags []string
 }
 
-func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.Writer) error {
+func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.Writer, auth *docker.AuthConfiguration) error {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return fmt.Errorf("gz reader: %v", err)
@@ -45,7 +45,7 @@ func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.W
 			return err
 		}
 
-		fmt.Println("GOT", header.Name, header.Size)
+		logrus.Println("GOT", header.Name, header.Size)
 		tw.WriteHeader(header)
 
 		if header.Name == "manifest.json" {
@@ -75,7 +75,7 @@ func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.W
 	}
 
 	if len(manifest) == 0 {
-		log.Errorf("invalid image manifest: no data")
+		logrus.Error("invalid image manifest: no data")
 		return fmt.Errorf("invalid image manifest: no data")
 	}
 
@@ -89,19 +89,32 @@ func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.W
 		return fmt.Errorf("%s: %v", out, err)
 	}
 
+	if auth == nil {
+		auth = &docker.AuthConfiguration{}
+	}
+
+	defer func() {
+		for _, tags := range manifest {
+			for _, image := range tags.RepoTags {
+				dkr.RemoveImage(image)
+				dkr.RemoveImage(target + ":" + tag)
+			}
+		}
+	}()
+
 	for _, tags := range manifest {
 		for _, image := range tags.RepoTags {
 			if err := dkr.TagImage(image, docker.TagImageOptions{Repo: target, Tag: tag}); err != nil {
 				return err
 			}
-			fmt.Printf("pushing image %s to %s:%s\n", image, target, tag)
+			logrus.Printf("pushing image %s to %s:%s", image, target, tag)
 
 			if err := dkr.PushImage(docker.PushImageOptions{
 				Name:              target,
 				Tag:               tag,
 				OutputStream:      w,
 				InactivityTimeout: 5 * time.Minute,
-			}, docker.AuthConfiguration{}); err != nil {
+			}, *auth); err != nil {
 				return fmt.Errorf("failed to push image=%s:%s err:%v", target, tag, err)
 			}
 		}

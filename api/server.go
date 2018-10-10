@@ -206,6 +206,7 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
 		Procfile: req.Procfile,
 		Version:  req.Version,
+		Trigger:  req.Trigger,
 	})
 }
 

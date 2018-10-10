@@ -80,9 +80,14 @@ func (a *AwsCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error 
 	}
 
 	app, id := build.App, build.Id
-	target := fmt.Sprintf("%s/%s", a.dockerRegistryURL(), app)
+	target := fmt.Sprintf("%s/%s-%s-repo", a.dockerRegistryURL(), a.DeploymentName, app)
 
-	err = common.BuildDockerLoad(target, id, dkr, tr, w)
+	auth, err := a.dockerLogin()
+	if err != nil {
+		return err
+	}
+
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, auth)
 	if err == nil {
 		build.Status = "SUCCEEDED"
 	} else {
@@ -150,10 +155,7 @@ func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		CreatedAt: timestampNow(),
 	}
 
-	//FIXME: If version is not blank, we can trigger the build. this is a hack as of now and
-	// should be replaced with better build API
-	// Version os GIT COMMIT hash
-	if req.Version != "" {
+	if req.Trigger {
 		return build, a.startBuild(build, req)
 	}
 

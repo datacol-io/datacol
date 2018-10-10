@@ -85,7 +85,7 @@ func (a *GCPCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error 
 	app, id := build.App, build.Id
 	target := fmt.Sprintf("gcr.io/%s/%v", a.Project, app)
 
-	err = common.BuildDockerLoad(target, id, dkr, tr, w)
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, nil)
 	if err == nil {
 		build.Status = "SUCCESS"
 	} else {

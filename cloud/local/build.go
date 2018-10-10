@@ -56,7 +56,7 @@ func (a *LocalCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) erro
 	app, id := build.App, build.Id
 	target := fmt.Sprintf("%s/%s", a.RegistryAddress, app)
 
-	err = common.BuildDockerLoad(target, id, dkr, tr, w)
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, nil)
 	if err == nil {
 		build.Status = "SUCCEEDED"
 	} else {
