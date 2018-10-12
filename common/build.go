@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	docker "github.com/fsouza/go-dockerclient"
@@ -105,18 +104,18 @@ func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.W
 
 	for _, tags := range manifest {
 		for _, image := range tags.RepoTags {
+			targetTag := target + ":" + tag
 			if err := dkr.TagImage(image, docker.TagImageOptions{Repo: target, Tag: tag}); err != nil {
 				return err
 			}
-			logrus.Printf("pushing image %s to %s:%s", image, target, tag)
+			logrus.Printf("pushing image %s to %s", image, targetTag)
 
-			if err := dkr.PushImage(docker.PushImageOptions{
-				Name:              target,
-				Tag:               tag,
-				OutputStream:      w,
-				InactivityTimeout: 5 * time.Minute,
-			}, *auth); err != nil {
-				return fmt.Errorf("failed to push image=%s:%s err:%v", target, tag, err)
+			cmd := exec.Command("docker", "push", targetTag)
+			cmd.Stdout = w
+			cmd.Stderr = w
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to push image=%s err:%v", targetTag, err)
 			}
 		}
 	}
