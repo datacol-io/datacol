@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/datacol-io/datacol/cloud"
+	batch_v1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,7 @@ import (
 
 //ScalePodReplicas can scale up/down pods as per replicas count
 func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, command []string,
-	replicas int32, sqlproxy bool, envVars map[string]string, provider cloud.CloudProvider,
+	replicas int32, sqlproxy bool, cronExpr *string, envVars map[string]string, provider cloud.CloudProvider,
 ) error {
 	runner, _ := NewDeployer(c)
 
@@ -31,6 +32,7 @@ func ScalePodReplicas(c *kubernetes.Clientset, ns, app, proctype, image string, 
 		Proctype:            proctype,
 		EnableCloudSqlProxy: sqlproxy,
 		EnvVars:             envVars,
+		CronExpr:            cronExpr,
 		Provider:            provider,
 	}
 
@@ -101,6 +103,17 @@ func getAllDeployments(c *kubernetes.Clientset, ns, app string) ([]v1beta1.Deplo
 	return res.Items, nil
 }
 
+func getAllCronJobs(c *kubernetes.Clientset, ns, app string) ([]batch_v1beta1.CronJob, error) {
+	tags := map[string]string{appLabel: app, managedBy: heritage}
+	selector := klabels.Set(tags).AsSelector()
+	res, err := c.BatchV1beta1().CronJobs(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Items, nil
+}
+
 func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
 	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
 	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
@@ -114,11 +127,23 @@ func getPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1
 // Will return the pods in ordered by status.StartTime, Ideally we should filter the pods by the app's
 // release version
 func getLatestPodsForDeployment(c *kubernetes.Clientset, dp *v1beta1.Deployment) ([]v1.Pod, error) {
-	selector := klabels.Set(dp.Spec.Selector.MatchLabels).AsSelector()
-	res, err := c.Core().Pods(dp.Namespace).List(metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
+	return getPodsByListOptions(c, dp.Namespace, dp.Spec.Selector.MatchLabels)
+}
 
+// Will return the pods in ordered by status.StartTime, Ideally we should filter the pods by the app's
+// release version
+func getLatestPodsForCronJob(c *kubernetes.Clientset, cj *batch_v1beta1.CronJob) ([]v1.Pod, error) {
+	return getPodsByListOptions(c, cj.Namespace, cj.ObjectMeta.Labels)
+}
+
+func getPodsByListOptions(c *kubernetes.Clientset, ns string, labels map[string]string) ([]v1.Pod, error) {
+	selector := klabels.Set(labels).AsSelector()
+	options := metav1.ListOptions{
+		LabelSelector: selector.String(),
+	}
+
+	log.Debugf("Fetching pods by %v", toJson(options))
+	res, err := c.Core().Pods(ns).List(options)
 	if err != nil {
 		return nil, err
 	}

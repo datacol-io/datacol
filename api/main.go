@@ -58,6 +58,7 @@ func runHttpServer(server *Server) error {
 	mux.Handle("/ws/v1/exec", ws("processExec", server.ProcessRunWs))
 	mux.Handle("/ws/v1/proxy", ws("appProxy", server.ResourceProxy))
 	mux.Handle("/ws/v1/builds/logs", ws("buildLogs", server.BuildLogStreamReq))
+	mux.Handle("/ws/v1/builds/import", ws("buildImport", server.BuildImport))
 	mux.Handle("/", gwmux)
 
 	fmt.Printf("Starting server on http=%d and grpc=%d ports\n", port, rpcPort)

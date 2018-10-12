@@ -31,6 +31,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/api/store"
+	datastoreStore "github.com/datacol-io/datacol/cloud/google/store"
+
 	gcp "github.com/datacol-io/datacol/cmd/provider/gcp"
 	"google.golang.org/grpc"
 )
@@ -45,6 +48,8 @@ type GCPCloud struct {
 	BucketName     string
 	DefaultZone    string
 	Region         string
+
+	store store.Store
 }
 
 func (g *GCPCloud) storage() *storage.Service {
@@ -218,6 +223,13 @@ func (g *GCPCloud) gsPut(bucket, key string, body io.Reader) error {
 	service := g.storage()
 	_, err := service.Objects.Insert(bucket, &storage.Object{Name: key}).Media(body).Do()
 	return err
+}
+
+func (g *GCPCloud) Setup() {
+	g.store = &datastoreStore.DSBackend{
+		DeploymentName: g.DeploymentName,
+		Client:         g.datastore(),
+	}
 }
 
 var cacheClientsetOnce sync.Once

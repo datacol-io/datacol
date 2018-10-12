@@ -5,17 +5,16 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/codebuild"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/common"
 	"github.com/ejholmes/cloudwatch"
 )
 
@@ -27,33 +26,15 @@ func (a *AwsCloud) codebuildProjectName(n string) string {
 	return fmt.Sprintf("%s-%s-code-builder", a.DeploymentName, n)
 }
 
-func (a *AwsCloud) dynamoBuilds() string {
-	return fmt.Sprintf("%s-builds", a.DeploymentName)
-}
-
 func (a *AwsCloud) codeBuildBucket() string {
 	return a.SettingBucket
 }
 
 func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {
-	req := &dynamodb.GetItemInput{
-		ConsistentRead: aws.Bool(true),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {S: aws.String(id)},
-		},
-		TableName: aws.String(a.dynamoBuilds()),
-	}
-
-	res, err := a.dynamodb().GetItem(req)
+	build, err := a.store.BuildGet(app, id)
 	if err != nil {
 		return nil, err
 	}
-
-	if res.Item == nil {
-		return nil, fmt.Errorf("no build found by id: %s", id)
-	}
-
-	build := a.buildFromItem(res.Item)
 
 	if build.Status == "IN_PROGRESS" {
 		rb, err := a.fetchRemoteBuild(build.RemoteId)
@@ -63,7 +44,7 @@ func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {
 		status := rb.BuildStatus
 		if status != nil && *status != build.Status {
 			build.Status = *status
-			a.buildSave(build)
+			a.store.BuildSave(build)
 		}
 	}
 
@@ -71,42 +52,57 @@ func (a *AwsCloud) BuildGet(app, id string) (*pb.Build, error) {
 }
 
 func (a *AwsCloud) BuildDelete(app, id string) error {
-	return nil
+	return notImplemented
 }
 
-func (a *AwsCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	req := &dynamodb.ScanInput{
-		ConsistentRead: aws.Bool(true),
-		TableName:      aws.String(a.dynamoBuilds()),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":app": {S: aws.String(app)},
-		},
-		FilterExpression: aws.String("app=:app"),
-	}
+func (a *AwsCloud) BuildList(app string, limit int64) (pb.Builds, error) {
+	return a.store.BuildList(app, limit)
+}
 
-	res, err := a.dynamodb().Scan(req)
+func (a *AwsCloud) BuildStatus(id string, status string) error {
+	build, err := a.BuildGet("", id)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	build.Status = status
 
-	builds := make(pb.Builds, len(res.Items))
-
-	for i, item := range res.Items {
-		builds[i] = a.buildFromItem(item)
-	}
-
-	sort.Slice(builds, func(i, j int) bool {
-		return builds[i].CreatedAt > builds[j].CreatedAt
-	})
-
-	if len(res.Items) < limit {
-		limit = len(res.Items)
-	}
-
-	return builds[0:limit], nil
+	return a.store.BuildSave(build)
 }
 
-func (a *AwsCloud) BuildImport(id, gzipPath string) error {
+func (a *AwsCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr, err := a.dockerClient()
+	if err != nil {
+		return fmt.Errorf("docker client: %v", err)
+	}
+
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("%s/%s-%s-repo", a.dockerRegistryURL(), a.DeploymentName, app)
+
+	auth, err := a.dockerLogin()
+	if err != nil {
+		return err
+	}
+
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, auth)
+	if err == nil {
+		build.Status = "SUCCEEDED"
+	} else {
+		build.Status = "FAILED"
+	}
+
+	// Ignore the error by build save
+	if berr := a.store.BuildSave(build); berr != nil {
+		log.Errorf("Failed to save build: %v", berr)
+	}
+
+	return err
+}
+
+func (a *AwsCloud) BuildUpload(id, gzipPath string) error {
 	build, err := a.BuildGet("", id)
 	if err != nil {
 		return err
@@ -159,14 +155,11 @@ func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		CreatedAt: timestampNow(),
 	}
 
-	//FIXME: If version is not blank, we can trigger the build. this is a hack as of now and
-	// should be replaced with better build API
-	// Version os GIT COMMIT hash
-	if req.Version != "" {
+	if req.Trigger {
 		return build, a.startBuild(build, req)
 	}
 
-	return build, a.buildSave(build)
+	return build, a.store.BuildSave(build)
 }
 
 func (a *AwsCloud) BuildLogs(app, id string, index int) (int, []string, error) {
@@ -209,53 +202,6 @@ func (a *AwsCloud) BuildLogsStream(id string) (io.Reader, error) {
 	log.Debugf("Will start streaming from stream: %s", *rb.Logs.StreamName)
 
 	return cloudwatch.NewGroup(*rb.Logs.GroupName, a.cloudwatchlogs()).Open(*rb.Logs.StreamName)
-}
-
-func (a *AwsCloud) buildFromItem(item map[string]*dynamodb.AttributeValue) *pb.Build {
-	return &pb.Build{
-		Id:        coalesce(item["id"], ""),
-		App:       coalesce(item["app"], ""),
-		Status:    coalesce(item["status"], ""),
-		Version:   coalesce(item["version"], ""),
-		RemoteId:  coalesce(item["remote_id"], ""),
-		Procfile:  coalesceBytes(item["procfile"]),
-		CreatedAt: int32(coalesceInt(item["created_at"], 0)),
-	}
-}
-
-func (a *AwsCloud) buildSave(b *pb.Build) error {
-	req := &dynamodb.PutItemInput{
-		Item: map[string]*dynamodb.AttributeValue{
-			"id":  {S: aws.String(b.Id)},
-			"app": {S: aws.String(b.App)},
-		},
-		TableName: aws.String(a.dynamoBuilds()),
-	}
-
-	if b.Status != "" {
-		req.Item["status"] = &dynamodb.AttributeValue{S: aws.String(b.Status)}
-	}
-
-	if b.Version != "" {
-		req.Item["version"] = &dynamodb.AttributeValue{S: aws.String(b.Version)}
-	}
-
-	if b.RemoteId != "" {
-		req.Item["remote_id"] = &dynamodb.AttributeValue{S: aws.String(b.RemoteId)}
-	}
-
-	if len(b.Procfile) > 0 {
-		req.Item["procfile"] = &dynamodb.AttributeValue{B: b.Procfile}
-	}
-
-	if b.CreatedAt > 0 {
-		req.Item["created_at"] = &dynamodb.AttributeValue{
-			N: aws.String(fmt.Sprintf("%d", b.CreatedAt)),
-		}
-	}
-
-	_, err := a.dynamodb().PutItem(req)
-	return err
 }
 
 func (a *AwsCloud) fetchRemoteBuild(id string) (*codebuild.Build, error) {
@@ -326,5 +272,5 @@ func (a *AwsCloud) startBuild(build *pb.Build, req *pb.CreateBuildOptions) error
 
 	log.Debugf("Persisting build: %+v", build)
 
-	return a.buildSave(build)
+	return a.store.BuildSave(build)
 }

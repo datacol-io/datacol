@@ -197,9 +197,9 @@
         ]
       }
     },
-    "/v1/builds/import": {
+    "/v1/builds/upload": {
       "post": {
-        "operationId": "BuildImport",
+        "operationId": "BuildUpload",
         "responses": {
           "200": {
             "description": "",
@@ -324,8 +324,8 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "type": "integer",
-            "format": "int32"
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1046,6 +1046,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "repo_url": {
+          "type": "string"
         }
       }
     },
@@ -1065,8 +1068,8 @@
           "type": "string"
         },
         "created_at": {
-          "type": "integer",
-          "format": "int32"
+          "type": "string",
+          "format": "int64"
         },
         "procfile": {
           "type": "string",
@@ -1112,6 +1115,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "cron_expr": {
+          "type": "string"
         }
       }
     },
@@ -1131,8 +1137,8 @@
           "type": "string"
         },
         "created_at": {
-          "type": "integer",
-          "format": "int32"
+          "type": "string",
+          "format": "int64"
         },
         "version": {
           "type": "string",

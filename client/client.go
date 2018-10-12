@@ -22,7 +22,7 @@ import (
 const (
 	apiHttpPort = 8080
 	apiRpcPort  = 10000
-	apiTimeout  = 10
+	apiTimeout  = 20
 )
 
 func init() {
@@ -114,13 +114,12 @@ func GrpcClient(host, password string) (pb.ProviderServiceClient, func() error) 
 	return pb.NewProviderServiceClient(conn), conn.Close
 }
 
-func (c *Client) Stream(path string, headers map[string]string, in io.Reader, out io.Writer) error {
+func (c *Client) Stream(path string, headers map[string]string, in io.ReadCloser, out io.Writer) error {
 	ws, err := c.StreamClient(path, headers)
 	if err != nil {
 		return err
 	}
 	defer ws.Close()
-
 	var wg sync.WaitGroup
 
 	if in != nil {
@@ -133,7 +132,6 @@ func (c *Client) Stream(path string, headers map[string]string, in io.Reader, ou
 	}
 
 	wg.Wait()
-
 	return nil
 }
 
@@ -176,4 +174,9 @@ func wsConn(path, server, version, apiKey string, headers map[string]string) (*w
 func copyAsync(dst io.Writer, src io.Reader, wg *sync.WaitGroup) {
 	defer wg.Done()
 	io.Copy(dst, src)
+}
+
+func iocopy(dst io.Writer, src io.Reader, c chan error) {
+	_, err := io.Copy(dst, src)
+	c <- err
 }

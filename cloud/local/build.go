@@ -7,7 +7,6 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/appscode/go/crypto/rand"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
 	"github.com/datacol-io/datacol/common"
@@ -15,44 +14,64 @@ import (
 )
 
 func (g *LocalCloud) BuildGet(app, id string) (*pb.Build, error) {
-	for _, b := range g.Builds {
-		if b.Id == id {
-			return b, nil
-		}
-	}
-
-	return nil, fmt.Errorf("build not found")
+	return g.store.BuildGet(app, id)
 }
 
 func (g *LocalCloud) BuildDelete(app, id string) error {
-	return nil
+	return g.store.BuildDelete(app, id)
 }
 
-func (g *LocalCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	return g.Builds, nil
+func (g *LocalCloud) BuildList(app string, limit int64) (pb.Builds, error) {
+	return g.store.BuildList(app, limit)
 }
 
-func (g *LocalCloud) ReleaseList(app string, limit int) (pb.Releases, error) {
-	return nil, nil
+func (g *LocalCloud) ReleaseList(app string, limit int64) (pb.Releases, error) {
+	return g.store.ReleaseList(app, limit)
 }
 
 func (g *LocalCloud) ReleaseDelete(app, id string) error {
-	return nil
+	return g.store.ReleaseDelete(app, id)
 }
 
 func (g *LocalCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
 	build := &pb.Build{
 		App:      app,
-		Id:       rand.Characters(5),
 		Status:   "CREATED",
 		Procfile: req.Procfile,
 	}
 
-	g.Builds = append(g.Builds, build)
-	return build, nil
+	if err := g.store.BuildSave(build); err != nil {
+		return nil, err
+	}
+
+	return g.store.BuildGet(app, build.Id)
 }
 
-func (g *LocalCloud) BuildImport(id, filename string) error {
+func (a *LocalCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr := dockerEnvClient()
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("%s/%s", a.RegistryAddress, app)
+
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, nil)
+	if err == nil {
+		build.Status = "SUCCEEDED"
+	} else {
+		build.Status = "FAILED"
+	}
+
+	// Ignore the error by build save
+	if berr := a.store.BuildSave(build); berr != nil {
+		log.Errorf("Failed to save build: %v", berr)
+	}
+
+	return err
+}
+
+func (g *LocalCloud) BuildUpload(id, filename string) error {
 	build, err := g.BuildGet("", id)
 	if err != nil {
 		return err
@@ -62,7 +81,7 @@ func (g *LocalCloud) BuildImport(id, filename string) error {
 	if err != nil {
 		return err
 	}
-	dkr, app, id := dockerClient(), build.App, build.Id
+	dkr, app, id := dockerEnvClient(), build.App, build.Id
 
 	if err := dkr.BuildImage(docker.BuildImageOptions{
 		Name:         app,
@@ -120,11 +139,14 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	}
 
 	r := &pb.Release{
-		Id:      common.GenerateId("R", 5),
 		App:     b.App,
 		BuildId: b.Id,
 		Status:  pb.StatusCreated,
 		Version: int64(len(g.Releases) + 1),
+	}
+
+	if err := g.store.ReleaseSave(r); err != nil {
+		return nil, err
 	}
 
 	if err := common.UpdateApp(g.kubeClient(), b, g.Name, image, false,
@@ -136,5 +158,5 @@ func (g *LocalCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.R
 	app.BuildId = b.Id
 	app.ReleaseId = r.Id
 
-	return r, g.saveApp(app)
+	return r, g.store.AppUpdate(app)
 }

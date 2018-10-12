@@ -1,6 +1,6 @@
 require "rubygems"
 
-$version = ENV.fetch("VERSION", "1.0.0-alpha.14")
+$version = ENV.fetch("VERSION", "1.0.0-alpha.15")
 $env = ENV.fetch("DATACOL_ENV") # dev or prod
 $cgo = ENV.fetch("CGO_ENABLED", "0")
 $rb_token = ENV.fetch("ROLLBAR_TOKEN")
@@ -35,7 +35,7 @@ def build_all
       bin_name += ".exe" if os == "windows"
 
       with_cmd("GOOS=#{os} CGO_ENABLED=#{$cgo} GOARCH=#{arch} go build " +
-               "-ldflags=\"-s -w -X main.rbToken=#{$rb_token} -X main.version=#{$version}\"" +
+               "-ldflags=\"-s -w -X main.rbToken=#{$rb_token} -X main.version=#{$version}\" " +
                "-o dist/#{$version}/#{bin_name} .")
     end
   end

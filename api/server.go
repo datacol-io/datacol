@@ -50,11 +50,14 @@ func newServer() *Server {
 			log.Fatal("AWS_REGION env var not found")
 		}
 
-		provider = &aws_provider.AwsCloud{
+		awsProvider := &aws_provider.AwsCloud{
 			DeploymentName: name,
 			Region:         region,
 			SettingBucket:  os.Getenv("DATACOL_BUCKET"),
 		}
+
+		awsProvider.Setup()
+		provider = awsProvider
 	case "gcp":
 		var bucket, zone, projectId, projectNumber string
 		bucket = os.Getenv("DATACOL_BUCKET")
@@ -63,7 +66,7 @@ func newServer() *Server {
 		projectId = os.Getenv("GCP_PROJECT")
 		projectNumber = os.Getenv("GCP_PROJECT_NUMBER")
 
-		provider = &google.GCPCloud{
+		gcpProvider := &google.GCPCloud{
 			Project:        projectId,
 			DeploymentName: name,
 			BucketName:     bucket,
@@ -71,6 +74,10 @@ func newServer() *Server {
 			Region:         region,
 			ProjectNumber:  projectNumber,
 		}
+
+		gcpProvider.Setup()
+
+		provider = gcpProvider
 
 	case "local":
 		// Local provider uses registry inside minikube VM to store images. Execute following commands to the registry running
@@ -80,11 +87,14 @@ func newServer() *Server {
 		// 	eval $(minikube docker-env) && \
 		// 	docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
-		provider = &local.LocalCloud{
+		localProvider := &local.LocalCloud{
 			Name:            name,
 			RegistryAddress: "localhost:5000",
 			EnvMap:          make(map[string]pb.Environment),
 		}
+		localProvider.Setup()
+
+		provider = localProvider
 	default:
 		log.Fatalf("Unsupported cloud provider: %s", cid)
 	}
@@ -196,10 +206,11 @@ func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (
 	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
 		Procfile: req.Procfile,
 		Version:  req.Version,
+		Trigger:  req.Trigger,
 	})
 }
 
-func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error {
+func (s *Server) BuildUpload(stream pbs.ProviderService_BuildUploadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
 		return internalError(fmt.Errorf("No context found"), "No context found")
@@ -235,7 +246,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 		return internalError(err, "failed to close tmpfile")
 	}
 
-	if err := s.Provider.BuildImport(buildId, fd.Name()); err != nil {
+	if err := s.Provider.BuildUpload(buildId, fd.Name()); err != nil {
 		return internalError(err, "failed to upload source.")
 	}
 
@@ -243,7 +254,7 @@ func (s *Server) BuildImport(stream pbs.ProviderService_BuildImportServer) error
 }
 
 func (s *Server) BuildList(ctx context.Context, req *pbs.AppListRequest) (*pbs.BuildListResponse, error) {
-	items, err := s.Provider.BuildList(req.Name, int(req.Limit))
+	items, err := s.Provider.BuildList(req.Name, req.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -283,6 +294,15 @@ func (s *Server) BuildLogs(ctx context.Context, req *pbs.BuildLogRequest) (*pbs.
 	}
 
 	return &pbs.BuildLogResponse{Pos: int32(pos), Lines: lines}, nil
+}
+
+func (s *Server) BuildImport(ws *websocket.Conn) error {
+	buildId := ws.Request().Header.Get("id")
+	if buildId == "" {
+		return errors.New("Missing required header: id")
+	}
+
+	return s.Provider.BuildImport(buildId, ws, ws)
 }
 
 // Streaming build logs with websocket

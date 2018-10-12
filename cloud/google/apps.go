@@ -1,11 +1,9 @@
 package google
 
 import (
-	"context"
 	"strings"
 	"time"
 
-	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
@@ -16,22 +14,12 @@ import (
 const appKind = "App"
 
 func (g *GCPCloud) AppList() (pb.Apps, error) {
-	var apps pb.Apps
-
-	q := datastore.NewQuery(appKind).Namespace(g.DeploymentName)
-	if _, err := g.datastore().GetAll(context.Background(), q, &apps); err != nil {
-		return nil, err
-	}
-
-	return apps, nil
+	return g.store.AppList()
 }
 
 func (g *GCPCloud) AppCreate(name string, req *pb.AppCreateOptions) (*pb.App, error) {
 	app := &pb.App{Name: name, Status: pb.StatusCreated}
-	ctx, key := g.nestedKey(appKind, name)
-	_, err := g.datastore().Put(ctx, key, app)
-
-	return app, err
+	return app, g.store.AppCreate(app, req)
 }
 
 func (g *GCPCloud) AppRestart(app string) error {
@@ -48,10 +36,8 @@ func (g *GCPCloud) AppRestart(app string) error {
 }
 
 func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
-	app := new(pb.App)
-
-	ctx, key := g.nestedKey(appKind, name)
-	if err := g.datastore().Get(ctx, key, app); err != nil {
+	app, err := g.store.AppGet(name)
+	if err != nil {
 		return nil, err
 	}
 
@@ -69,8 +55,7 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 		}
 		app.Endpoint = endpoint
 
-		_, err = g.datastore().Put(ctx, key, app)
-		return app, err
+		return app, g.store.AppUpdate(app)
 	}
 
 	return app, nil
@@ -78,7 +63,7 @@ func (g *GCPCloud) AppGet(name string) (*pb.App, error) {
 
 func (g *GCPCloud) AppDelete(name string) error {
 	g.deleteAppFromCluster(name)
-	return g.deleteAppFromDatastore(name)
+	return g.store.AppDelete(name)
 }
 
 // DomainUpdate updates list of Domains for an app
@@ -91,13 +76,7 @@ func (g *GCPCloud) AppUpdateDomain(name, domain string) error {
 
 	app.Domains = common.MergeAppDomains(app.Domains, domain)
 
-	return g.saveApp(app)
-}
-
-func (g *GCPCloud) saveApp(app *pb.App) error {
-	ctx, key := g.nestedKey(appKind, app.Name)
-	_, err := g.datastore().Put(ctx, key, app)
-	return err
+	return g.store.AppUpdate(app)
 }
 
 func (g *GCPCloud) appLinkedDB(app *pb.App) bool {
@@ -113,28 +92,6 @@ func (g *GCPCloud) appLinkedWith(app *pb.App, kind string) bool {
 	}
 
 	return false
-}
-
-func (g *GCPCloud) deleteAppFromDatastore(name string) error {
-	store, ctx := g.datastore(), context.Background()
-
-	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).Filter("app =", name).KeysOnly()
-	if err := deleteFromQuery(store, ctx, q); err != nil {
-		return err
-	}
-
-	q = datastore.NewQuery(releaseKind).Namespace(g.DeploymentName).Filter("app =", name).KeysOnly()
-
-	if err := deleteFromQuery(store, ctx, q); err != nil {
-		return err
-	}
-
-	ctx, key := g.nestedKey(appKind, name)
-	if err := store.Delete(ctx, key); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (g *GCPCloud) deleteAppFromCluster(name string) error {

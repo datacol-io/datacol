@@ -35,6 +35,14 @@ func init() {
 				Name:  "ref",
 				Usage: "branch or commit Id of git repository",
 			},
+			&cli.StringFlag{
+				Name:  "id",
+				Usage: "watch build progress of this build ID",
+			},
+			&cli.StringFlag{
+				Name:  "input, i",
+				Usage: "existing docker image archive or pipe",
+			},
 			&appFlag,
 		},
 	})
@@ -116,17 +124,25 @@ func cmdBuild(c *cli.Context) error {
 	}
 
 	ref := c.String("ref")
-	if ref == "" {
-		_, err = executeBuildDir(api, app, dir)
+	id := c.String("id")
+	r, err := stdinInput(c)
+	stdcli.ExitOnError(err)
+
+	if r != nil {
+		_, err = executeBuildDockerArchive(api, app, r, ref)
+	} else if ref != "" {
+		_, err = executeBuildGitSource(api, app, ref, id)
 	} else {
-		_, err = executeBuildGitSource(api, app, ref)
+		_, err = executeBuildDir(api, app, dir, id)
 	}
 
 	stdcli.ExitOnError(err)
-	return err
+
+	term.Printf("OK")
+	return nil
 }
 
-func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb.Build, error) {
+func executeBuildDockerImages(api *client.Client, app *pb.App, images []string, ref string) error {
 	var procfile []byte
 	if _, err := os.Stat("Procfile"); err == nil {
 		content, err := parseProcfile()
@@ -134,34 +150,85 @@ func executeBuildGitSource(api *client.Client, app *pb.App, version string) (*pb
 		procfile = content
 	}
 
-	b, err := api.CreateBuildGit(app, version, procfile)
+	b, err := api.CreateBuildDocker(app, ref, images, nil, procfile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b.Id)
+	return nil
+}
+
+func executeBuildDockerArchive(api *client.Client, app *pb.App, r io.ReadCloser, ref string) (*pb.Build, error) {
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	defer r.Close()
+
+	b, err := api.CreateBuildDocker(app, ref, []string{}, r, procfile)
 	if err != nil {
 		return nil, err
 	}
+
+	return b, nil
+}
+
+func executeBuildGitSource(api *client.Client, app *pb.App, version, id string) (*pb.Build, error) {
+	var b *pb.Build
+	var err error
+	if id == "" {
+		var procfile []byte
+		if _, err := os.Stat("Procfile"); err == nil {
+			content, err := parseProcfile()
+			stdcli.ExitOnError(err)
+			procfile = content
+		}
+
+		b, err = api.CreateBuildGit(app, version, procfile)
+	} else {
+		b, err = api.GetBuild(app.Name, id)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	return b, finishBuild(api, b)
 }
 
-func executeBuildDir(api *client.Client, app *pb.App, dir string) (*pb.Build, error) {
-	env, err := api.GetEnvironment(app.Name)
-	if err != nil {
-		return nil, err
+func executeBuildDir(api *client.Client, app *pb.App, dir, id string) (*pb.Build, error) {
+	var b *pb.Build
+	var err error
+	if id == "" {
+
+		env, eerr := api.GetEnvironment(app.Name)
+		if eerr != nil {
+			return nil, err
+		}
+
+		tar, terr := createTarball(dir, env)
+		if terr != nil {
+			return nil, err
+		}
+
+		fmt.Println("OK")
+
+		var procfile []byte
+		if _, perr := os.Stat("Procfile"); perr == nil {
+			content, err := parseProcfile()
+			stdcli.ExitOnError(err)
+			procfile = content
+		}
+
+		b, err = api.CreateBuild(app, tar, procfile)
+	} else {
+		b, err = api.GetBuild(app.Name, id)
 	}
 
-	tar, err := createTarball(dir, env)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("OK")
-
-	var procfile []byte
-	if _, err := os.Stat("Procfile"); err == nil {
-		content, err := parseProcfile()
-		stdcli.ExitOnError(err)
-		procfile = content
-	}
-
-	b, err := api.CreateBuild(app, tar, procfile)
 	if err != nil {
 		return nil, err
 	}
@@ -350,4 +417,21 @@ func waitforAwsBuild(api *client.Client, b *pb.Build, done chan bool, ws *websoc
 
 	ws.Close()
 	done <- true
+}
+
+func stdinInput(c *cli.Context) (r io.ReadCloser, err error) {
+	stat, _ := os.Stdin.Stat()
+	file := c.String("file")
+
+	if file != "" {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, err
+		}
+		r = f
+	} else if (stat.Mode() & os.ModeCharDevice) == 0 { // the data is passed via pipes
+		r = ioutil.NopCloser(os.Stdin)
+	}
+
+	return
 }

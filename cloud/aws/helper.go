@@ -20,6 +20,11 @@ import (
 	"github.com/mholt/archiver"
 )
 
+func lastline(data []byte) string {
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	return lines[len(lines)-1]
+}
+
 func generateId(prefix string, size int) string {
 	return prefix + "-" + rand.Characters(size)
 }
@@ -103,8 +108,8 @@ func cfParams(source map[string]string) map[string]string {
 	return params
 }
 
-func timestampNow() int32 {
-	return int32(time.Now().Unix())
+func timestampNow() int64 {
+	return time.Now().Unix()
 }
 
 func convertGzipToZip(app, src string) (string, error) {

@@ -1,8 +1,8 @@
 package common
 
 import (
+	"fmt"
 	"strconv"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
@@ -79,6 +79,10 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 			Version:             version,
 		}
 
+		if proc.CronExpr != "" {
+			req.CronExpr = &proc.CronExpr
+		}
+
 		if proctype == WebProcessKind || proctype == CmdProcessKind {
 			req.ContainerPort = intstr.FromInt(port)
 		}
@@ -92,32 +96,58 @@ func UpdateApp(c *kubernetes.Clientset, build *pb.Build,
 	return nil
 }
 
-func MergeAppDomains(domains []string, item string) []string {
-	if item == "" {
-		return domains
-	}
+func ScaleApp(c *kubernetes.Clientset,
+	namespace, app, image string,
+	envVars map[string]string,
+	enableSQLproxy bool,
+	procFileData []byte,
+	structure map[string]int32,
+	provider cloud.CloudProvider,
+) (err error) {
 
-	itemIndex := -1
-	dotted := strings.HasPrefix(item, ":")
+	var command []string
 
-	if dotted {
-		item = item[1:]
-	}
+	log.Debugf("scaling request: %v", structure)
 
-	for i, d := range domains {
-		if d == item {
-			itemIndex = i
-			break
+	var procfile Procfile
+	if len(procFileData) > 0 {
+		procfile, err = ParseProcfile(procFileData)
+		if err != nil {
+			return err
 		}
 	}
 
-	if dotted && itemIndex >= 0 {
-		return append(domains[0:itemIndex], domains[itemIndex+1:]...)
+	scalePodFunc := func(proctype, image string, command []string, replicas int32, cronexpr *string) error {
+		return kube.ScalePodReplicas(c, namespace, app, proctype, image, command, replicas, enableSQLproxy, cronexpr, envVars, provider)
 	}
 
-	if !dotted && itemIndex == -1 {
-		return append(domains, item)
+	for key, replicas := range structure {
+		if procfile != nil {
+			cmd, cerr := procfile.Command(key)
+			if cerr != nil {
+				return cerr
+			}
+
+			if procfile.HasProcessType(key) {
+				switch proc := procfile.(type) {
+				case ExtProcfile:
+					err = scalePodFunc(key, image, cmd, replicas, proc[key].Cron)
+				default:
+					err = scalePodFunc(key, image, cmd, replicas, nil)
+				}
+			} else {
+				err = fmt.Errorf("Unknown process type: %s", key)
+			}
+		} else if key == "cmd" {
+			err = scalePodFunc(key, image, command, replicas, nil)
+		} else {
+			err = fmt.Errorf("Unknown process type: %s", key)
+		}
+
+		if err != nil {
+			return err
+		}
 	}
 
-	return domains
+	return
 }

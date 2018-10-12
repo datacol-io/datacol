@@ -1,7 +1,6 @@
 package google
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,13 +8,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
-	"cloud.google.com/go/datastore"
 	log "github.com/Sirupsen/logrus"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/common"
+	docker "github.com/fsouza/go-dockerclient"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
@@ -27,10 +26,9 @@ const (
 )
 
 func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
-	var b pb.Build
-	ctx, key := g.nestedKey(buildKind, id)
-	if err := g.datastore().Get(ctx, key, &b); err != nil {
-		return nil, fmt.Errorf("fetching build: %v", err)
+	b, err := g.store.BuildGet(app, id)
+	if err != nil {
+		return nil, err
 	}
 
 	// Sometime GCP don't assign Status for a newly trigged build. We should also check for empty build status.
@@ -43,11 +41,11 @@ func (g *GCPCloud) BuildGet(app, id string) (*pb.Build, error) {
 
 		if b.Status != rb.Status {
 			b.Status = rb.Status
-			return &b, g.saveBuild(&b)
+			return b, g.store.BuildSave(b)
 		}
 	}
 
-	return &b, nil
+	return b, nil
 }
 
 func (g *GCPCloud) BuildDelete(app, id string) error {
@@ -55,25 +53,8 @@ func (g *GCPCloud) BuildDelete(app, id string) error {
 	return g.datastore().Delete(ctx, key)
 }
 
-func (g *GCPCloud) BuildList(app string, limit int) (pb.Builds, error) {
-	q := datastore.NewQuery(buildKind).Namespace(g.DeploymentName).
-		Filter("app = ", app)
-
-		// Limit(limit).
-		// Order("-" + "created_at") // FIXME:: need compound for created_at in desc order
-
-	var builds pb.Builds
-	_, err := g.datastore().GetAll(context.Background(), q, &builds)
-
-	sort.Slice(builds, func(i, j int) bool {
-		return builds[i].CreatedAt > builds[j].CreatedAt
-	})
-
-	if len(builds) < limit {
-		limit = len(builds)
-	}
-
-	return builds[0:limit], err
+func (g *GCPCloud) BuildList(app string, limit int64) (pb.Builds, error) {
+	return g.store.BuildList(app, limit)
 }
 
 func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
@@ -88,10 +69,38 @@ func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Buil
 		CreatedAt: timestampNow(),
 	}
 
-	return build, g.saveBuild(build)
+	return build, g.store.BuildSave(build)
 }
 
-func (g *GCPCloud) BuildImport(id, filename string) error {
+func (a *GCPCloud) BuildImport(id string, tr io.Reader, w io.WriteCloser) error {
+	build, err := a.BuildGet("", id)
+	if err != nil {
+		return err
+	}
+	dkr, err := docker.NewClientFromEnv()
+	if err != nil {
+		return fmt.Errorf("docker client: %v", err)
+	}
+
+	app, id := build.App, build.Id
+	target := fmt.Sprintf("gcr.io/%s/%v", a.Project, app)
+
+	err = common.BuildDockerLoad(target, id, dkr, tr, w, nil)
+	if err == nil {
+		build.Status = "SUCCESS"
+	} else {
+		build.Status = "FAILED"
+	}
+
+	// Ignore the error by build save
+	if berr := a.store.BuildSave(build); berr != nil {
+		log.Errorf("Failed to save build: %v", berr)
+	}
+
+	return err
+}
+
+func (g *GCPCloud) BuildUpload(id, filename string) error {
 	build, err := g.BuildGet("", id)
 	if err != nil {
 		return err
@@ -163,18 +172,7 @@ func (g *GCPCloud) BuildImport(id, filename string) error {
 	}
 
 	build.RemoteId = remoteId
-	return g.saveBuild(build)
-}
-
-func (g *GCPCloud) saveBuild(b *pb.Build) error {
-	log.Debugf("Saving build %s", toJson(b))
-
-	ctx, key := g.nestedKey(buildKind, b.Id)
-	if _, err := g.datastore().Put(ctx, key, b); err != nil {
-		return fmt.Errorf("saving build err: %v", err)
-	}
-
-	return nil
+	return g.store.BuildSave(build)
 }
 
 func (g *GCPCloud) BuildLogs(app, id string, index int) (int, []string, error) {
