@@ -93,6 +93,7 @@ func BuildDockerLoad(target, tag string, dkr *docker.Client, r io.Reader, w io.W
 		auth = &docker.AuthConfiguration{}
 	}
 
+	// cleanup the docker images after completion
 	defer func() {
 		for _, tags := range manifest {
 			for _, image := range tags.RepoTags {

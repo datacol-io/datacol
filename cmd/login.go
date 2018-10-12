@@ -41,7 +41,7 @@ func cmdLogin(c *cli.Context) error {
 	if host == "" {
 		host = c.String("host")
 		if host == "" {
-			term.Warningln("Missing required argument: host")
+			term.Warningln("Missing required argument: host or set DATACOL_API_HOST in env")
 			stdcli.Usage(c)
 		}
 	}
