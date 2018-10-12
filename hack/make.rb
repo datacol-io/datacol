@@ -1,6 +1,6 @@
 require "rubygems"
 
-$version = ENV.fetch("VERSION", "1.0.0-alpha.14")
+$version = ENV.fetch("VERSION", "1.0.0-alpha.15")
 $env = ENV.fetch("DATACOL_ENV") # dev or prod
 $cgo = ENV.fetch("CGO_ENABLED", "0")
 $rb_token = ENV.fetch("ROLLBAR_TOKEN")
