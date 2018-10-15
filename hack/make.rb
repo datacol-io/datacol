@@ -100,6 +100,8 @@ def with_cmd(cmd)
   end
 end
 
+with_cmd("gcloud config set account dinesh1042@gmail.com")
+
 if ARGV.size > 0
   send(ARGV[0])
 else
