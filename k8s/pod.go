@@ -50,7 +50,7 @@ func GetAllPods(c *kubernetes.Clientset, ns, app string) ([]v1.Pod, error) {
 	}
 
 	sort.Slice(res.Items, func(i, j int) bool {
-		return res.Items[i].Status.StartTime.Before(res.Items[j].Status.StartTime)
+		return res.Items[i].ObjectMeta.CreationTimestamp.Before(&res.Items[j].ObjectMeta.CreationTimestamp)
 	})
 
 	return res.Items, nil
@@ -149,7 +149,7 @@ func getPodsByListOptions(c *kubernetes.Clientset, ns string, labels map[string]
 	}
 
 	sort.Slice(res.Items, func(i, j int) bool {
-		return res.Items[i].Status.StartTime.Before(res.Items[j].Status.StartTime)
+		return res.Items[i].ObjectMeta.CreationTimestamp.Before(&res.Items[j].ObjectMeta.CreationTimestamp)
 	})
 
 	return res.Items, nil
