@@ -18,7 +18,7 @@ func init() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "image, i",
-				Usage: "docker image to use",
+				Usage: "docker image tag to use",
 			},
 			&cli.IntFlag{
 				Name:  "port, p",
@@ -65,7 +65,7 @@ func cmdDeploy(c *cli.Context) error {
 	}
 
 	var build *pb.Build
-	commitID, buildID := c.String("ref"), c.String("build")
+	commitID, buildID, image := c.String("ref"), c.String("build"), c.String("image")
 
 	if len(buildID) == 0 {
 		r, err := stdinInput(c)
@@ -75,6 +75,8 @@ func cmdDeploy(c *cli.Context) error {
 
 		if r != nil {
 			build, err = executeBuildDockerArchive(client, app, r, commitID)
+		} else if image != "" {
+			build, err = executeBuildImage(client, app, image, commitID)
 		} else if commitID == "" {
 			build, err = executeBuildDir(client, app, dir, buildID)
 		} else {

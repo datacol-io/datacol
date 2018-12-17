@@ -66,3 +66,16 @@ func (a *AwsCloud) BuildRelease(b *pb.Build, options pb.ReleaseOptions) (*pb.Rel
 func (a *AwsCloud) ReleaseDelete(app, id string) error {
 	return a.store.ReleaseDelete(app, id)
 }
+
+func (a *AwsCloud) DockerCredsGet() (*pb.DockerCred, error) {
+	auth, err := a.dockerLogin()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DockerCred{
+		Host:     auth.ServerAddress,
+		Username: auth.Username,
+		Password: auth.Password,
+	}, nil
+}

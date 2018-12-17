@@ -144,7 +144,10 @@ func (a *AwsCloud) BuildUpload(id, gzipPath string) error {
 }
 
 func (a *AwsCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
-	Id := generateId("B", 5)
+	Id := req.DockerTag
+	if Id == "" {
+		Id = generateId("B", 5)
+	}
 
 	build := &pb.Build{
 		App:       app,

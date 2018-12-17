@@ -82,3 +82,9 @@ message ResourceLimits {
   string proctype = 2;
   map<string,string> limits = 3;
 }
+
+message DockerCred {
+  string host = 1;
+  string username = 2;
+  string password = 3;
+}

@@ -46,3 +46,7 @@ func (g *LocalCloud) ProcessSave(name string, structure map[string]int32) error 
 	return common.ScaleApp(g.kubeClient(), g.Name, name, g.latestImage(app), envVars,
 		false, build.Procfile, structure, cloud.LocalProvider)
 }
+
+func (a *LocalCloud) DockerCredsGet() (*pb.DockerCred, error) {
+	return nil, nil
+}
