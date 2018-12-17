@@ -52,7 +52,11 @@ func cmdDockerLogin(c *cli.Context) error {
 
 	configfile, err := dkrconfig.Load("")
 	stdcli.ExitOnError(err)
-	configfile.AuthConfigs[result.Host] = dkrtypes.AuthConfig{}
+	configfile.AuthConfigs[result.Host] = dkrtypes.AuthConfig{
+		Username:      result.Username,
+		Password:      result.Password,
+		ServerAddress: result.Host,
+	}
 
 	stdcli.ExitOnError(configfile.Save())
 	return nil
