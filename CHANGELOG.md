@@ -3,8 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
+
+## [1.0.0-alpha.16] - 2018-12-21
 ### Added
 - [CLI] `docker-login` to push/pull docker images from CI/CD provider
+### Fixed
+- sorting with metadata.creationTimestamp
+- activate gcloud email account
 
 ## [1.0.0-alpha.15] - 2018-10-12
 ### Added
