@@ -48,4 +48,5 @@ type Provider interface {
 	ResourceUnlink(string, string) (*pb.Resource, error)
 
 	K8sConfigPath() (string, error)
+	DockerCredsGet() (*pb.DockerCred, error)
 }

@@ -58,7 +58,10 @@ func (g *GCPCloud) BuildList(app string, limit int64) (pb.Builds, error) {
 }
 
 func (g *GCPCloud) BuildCreate(app string, req *pb.CreateBuildOptions) (*pb.Build, error) {
-	id := generateId("B", 5)
+	id := req.DockerTag
+	if id == "" {
+		id = generateId("B", 5)
+	}
 
 	build := &pb.Build{
 		App:       app,

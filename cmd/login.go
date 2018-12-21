@@ -11,6 +11,8 @@ import (
 	pbs "github.com/datacol-io/datacol/api/controller"
 	"github.com/datacol-io/datacol/client"
 	"github.com/datacol-io/datacol/cmd/stdcli"
+	dkrconfig "github.com/docker/docker/cliconfig"
+	dkrtypes "github.com/docker/engine-api/types"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -34,6 +36,30 @@ func init() {
 			},
 		},
 	})
+
+	stdcli.AddCommand(cli.Command{
+		Name:   "docker-login",
+		Action: cmdDockerLogin,
+	})
+}
+
+func cmdDockerLogin(c *cli.Context) error {
+	client, close := getApiClient(c)
+	defer close()
+
+	result, err := client.GetDockerCreds()
+	stdcli.ExitOnError(err)
+
+	configfile, err := dkrconfig.Load("")
+	stdcli.ExitOnError(err)
+	configfile.AuthConfigs[result.Host] = dkrtypes.AuthConfig{
+		Username:      result.Username,
+		Password:      result.Password,
+		ServerAddress: result.Host,
+	}
+
+	stdcli.ExitOnError(configfile.Save())
+	return nil
 }
 
 func cmdLogin(c *cli.Context) error {

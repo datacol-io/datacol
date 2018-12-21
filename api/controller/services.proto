@@ -49,6 +49,7 @@ message CreateBuildRequest {
   string version = 2;
   bytes procfile = 3;
   bool trigger = 4;
+  string docker_tag = 5;
 }
 
 message AppIdRequest {
@@ -351,5 +352,11 @@ service ProviderService {
     };
   }
 
+  // Docker Cred API
+  rpc DockerCredsGet(google.protobuf.Empty) returns (models.DockerCred) {
+    option (google.api.http) = {
+      get: "/v1/docker/login"
+    };
+  }
 }
 

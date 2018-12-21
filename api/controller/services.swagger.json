@@ -380,6 +380,23 @@
         ]
       }
     },
+    "/v1/docker/login": {
+      "get": {
+        "summary": "Docker Cred API",
+        "operationId": "DockerCredsGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/modelsDockerCred"
+            }
+          }
+        },
+        "tags": [
+          "ProviderService"
+        ]
+      }
+    },
     "/v1/domains/{app}": {
       "put": {
         "summary": "Update Domain API",
@@ -1076,6 +1093,20 @@
           "format": "byte"
         },
         "version": {
+          "type": "string"
+        }
+      }
+    },
+    "modelsDockerCred": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
           "type": "string"
         }
       }

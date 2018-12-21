@@ -110,8 +110,11 @@
   name = "github.com/docker/docker"
   packages = [
     "builder/dockerignore",
+    "cliconfig",
+    "cliconfig/configfile",
     "pkg/archive",
     "pkg/fileutils",
+    "pkg/homedir",
     "pkg/idtools",
     "pkg/ioutils",
     "pkg/longpath",
@@ -121,6 +124,28 @@
   ]
   revision = "bb80604a0b200140a440675348c848a137a1b2e2"
   version = "v1.12.2"
+
+[[projects]]
+  name = "github.com/docker/engine-api"
+  packages = [
+    "types",
+    "types/blkiodev",
+    "types/container",
+    "types/filters",
+    "types/network",
+    "types/registry",
+    "types/strslice",
+    "types/swarm",
+    "types/versions"
+  ]
+  revision = "3d1601b9d2436a70b0dfc045a23f6503d19195df"
+  version = "v0.4.0"
+
+[[projects]]
+  name = "github.com/docker/go-connections"
+  packages = ["nat"]
+  revision = "7395e3f8aa162843a74ed6d48e79627d9792ac55"
+  version = "v0.4.0"
 
 [[projects]]
   name = "github.com/docker/go-units"
@@ -550,6 +575,12 @@
   revision = "b8a9be070da40449e501c3c4730a889e42d87a9e"
 
 [[projects]]
+  name = "github.com/opencontainers/runc"
+  packages = ["libcontainer/user"]
+  revision = "baf6536d6259209c3edfa2b22237af82942d3dfa"
+  version = "v0.1.1"
+
+[[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   revision = "16398bac157da96aa88f98a2df640c7f32af1da2"
@@ -662,11 +693,11 @@
   packages = [
     "context",
     "context/ctxhttp",
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace",
     "websocket"
   ]
@@ -971,6 +1002,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe0eef90da7ceca27e995dad7a2329d4498c38fceaa81e64f18e656f8b4a9fc5"
+  inputs-digest = "580321b712a229a8ad792502f64a9951f2e14265078fefb5c846d93662ed1100"
   solver-name = "gps-cdcl"
   solver-version = 1

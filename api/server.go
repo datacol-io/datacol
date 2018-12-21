@@ -204,9 +204,10 @@ func (s *Server) AppRestart(ctx context.Context, req *pbs.AppRequest) (*empty.Em
 
 func (s *Server) BuildCreate(ctx context.Context, req *pbs.CreateBuildRequest) (*pb.Build, error) {
 	return s.Provider.BuildCreate(req.App, &pb.CreateBuildOptions{
-		Procfile: req.Procfile,
-		Version:  req.Version,
-		Trigger:  req.Trigger,
+		Procfile:  req.Procfile,
+		Version:   req.Version,
+		Trigger:   req.Trigger,
+		DockerTag: req.DockerTag,
 	})
 }
 
@@ -395,6 +396,10 @@ func (s *Server) ResourceUnlink(ctx context.Context, req *pbs.AppResourceReq) (*
 		return nil, internalError(err, fmt.Sprintf("failed to unlink resource %s", req.Resource))
 	}
 	return ret, nil
+}
+
+func (s *Server) DockerCredsGet(ctx context.Context, _ *empty.Empty) (*pb.DockerCred, error) {
+	return s.Provider.DockerCredsGet()
 }
 
 func (s *Server) unaryInterceptor(

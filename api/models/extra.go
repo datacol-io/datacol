@@ -63,6 +63,7 @@ type CreateBuildOptions struct {
 	Author      string
 	Description string
 	Procfile    []byte
+	DockerTag   string
 	Trigger     bool // trigger the build in the cloud (in gcp-cloudbuild or aws-codebuild)
 }
 

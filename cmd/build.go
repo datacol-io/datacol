@@ -200,6 +200,17 @@ func executeBuildGitSource(api *client.Client, app *pb.App, version, id string) 
 	return b, finishBuild(api, b)
 }
 
+func executeBuildImage(api *client.Client, app *pb.App, tag, ref string) (*pb.Build, error) {
+	var procfile []byte
+	if _, err := os.Stat("Procfile"); err == nil {
+		content, err := parseProcfile()
+		stdcli.ExitOnError(err)
+		procfile = content
+	}
+
+	return api.CreateBuildBare(app, ref, tag, procfile)
+}
+
 func executeBuildDir(api *client.Client, app *pb.App, dir, id string) (*pb.Build, error) {
 	var b *pb.Build
 	var err error

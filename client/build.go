@@ -80,6 +80,15 @@ func (c *Client) CreateBuildDocker(app *pb.App, ref string, images []string, in 
 	return b, nil
 }
 
+func (c *Client) CreateBuildBare(app *pb.App, version, tag string, procfile []byte) (*pb.Build, error) {
+	return c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
+		App:       app.Name,
+		Version:   version,
+		Procfile:  procfile,
+		DockerTag: tag,
+	})
+}
+
 func (c *Client) CreateBuildGit(app *pb.App, version string, procfile []byte) (*pb.Build, error) {
 	return c.ProviderServiceClient.BuildCreate(ctx, &pbs.CreateBuildRequest{
 		App:      app.Name,

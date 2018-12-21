@@ -8,6 +8,7 @@ import (
 	"github.com/appscode/go/term"
 	pbs "github.com/datacol-io/datacol/api/controller"
 	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/golang/protobuf/ptypes/empty"
 )
 
 func (c *Client) ListProcess(name string) ([]*pb.Process, error) {
@@ -59,4 +60,9 @@ func (c *Client) RunProcess(name string, args []string) error {
 		"app":     name,
 		"command": strings.Join(args, "#"),
 	}, os.Stdin, os.Stdout)
+}
+
+func (c *Client) GetDockerCreds() (*pb.DockerCred, error) {
+	et := &empty.Empty{}
+	return c.ProviderServiceClient.DockerCredsGet(ctx, et)
 }
