@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
+
+## [1.0.0-alpha.17] - 2019-02-01
 ### Added
 - Support terminal raw mode for process exec/run cli
 

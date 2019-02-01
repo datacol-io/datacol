@@ -68,19 +68,21 @@ func cmdDeploy(c *cli.Context) error {
 	commitID, buildID, image := c.String("ref"), c.String("build"), c.String("image")
 
 	if len(buildID) == 0 {
-		r, err := stdinInput(c)
-		if err != nil {
-			return err
-		}
-
-		if r != nil {
-			build, err = executeBuildDockerArchive(client, app, r, commitID)
-		} else if image != "" {
+		if image != "" {
 			build, err = executeBuildImage(client, app, image, commitID)
-		} else if commitID == "" {
-			build, err = executeBuildDir(client, app, dir, buildID)
 		} else {
-			build, err = executeBuildGitSource(client, app, commitID, buildID)
+			r, err := stdinInput(c)
+			if err != nil {
+				return err
+			}
+
+			if r != nil {
+				build, err = executeBuildDockerArchive(client, app, r, commitID)
+			} else if commitID == "" {
+				build, err = executeBuildDir(client, app, dir, buildID)
+			} else {
+				build, err = executeBuildGitSource(client, app, commitID, buildID)
+			}
 		}
 
 		stdcli.ExitOnError(err)
