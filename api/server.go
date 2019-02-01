@@ -38,6 +38,10 @@ func newServer() *Server {
 	name := os.Getenv("DATACOL_STACK")
 	password := os.Getenv("DATACOL_API_KEY")
 
+	if name == "" {
+		log.Fatal("Missing `DATACOL_STACK` environment variable")
+	}
+
 	switch cid {
 	case "aws":
 		region := os.Getenv("AWS_REGION")

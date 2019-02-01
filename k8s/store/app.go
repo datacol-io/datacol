@@ -21,7 +21,7 @@ func (s *SecretStore) AppCreate(app *pb.App, req *pb.AppCreateOptions) error {
 	}
 
 	secret := appToSecret(name, s.Stack, app)
-	fmt.Printf("creating %v", toJson(secret))
+	fmt.Printf("creating app %v in %s\n", toJson(secret), s.Namespace)
 	_, err := s.Client.Core().Secrets(s.Namespace).Create(secret)
 
 	return err

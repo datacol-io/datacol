@@ -36,7 +36,7 @@ type Provider interface {
 	LogStream(app string, w io.Writer, opts pb.LogStreamOptions) error
 
 	ProcessList(app string) ([]*pb.Process, error)
-	ProcessRun(app string, r io.ReadWriter, command []string) error
+	ProcessRun(app string, r io.ReadWriter, opts pb.ProcessRunOptions) error
 	ProcessSave(app string, formation map[string]int32) error
 	ProcessLimits(app, resource string, limits map[string]string) error
 

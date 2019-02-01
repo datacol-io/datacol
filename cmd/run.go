@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func init() {
@@ -13,7 +15,13 @@ func init() {
 		Name:   "run",
 		Usage:  "execute a command in an app",
 		Action: cmdAppRun,
-		Flags:  []cli.Flag{&appFlag},
+		Flags: []cli.Flag{
+			&appFlag,
+			cli.BoolFlag{
+				Name:  "detach, d",
+				Usage: "run the command in detached mode",
+			},
+		},
 	})
 }
 
@@ -28,23 +36,44 @@ func cmdAppRun(c *cli.Context) error {
 	_, err = client.GetApp(name)
 	stdcli.ExitOnError(err)
 
-	args := prepareCommand(c)
-	stdcli.ExitOnError(client.RunProcess(name, args))
+	restore := restoreTerm(os.Stdin, os.Stdout) // restore terminal raw state
+	defer restore()
+
+	args := c.Args()
+	stdcli.ExitOnError(client.RunProcess(name, args, isTerminal(os.Stdin), c.Bool("detach")))
 
 	return nil
 }
 
-func prepareCommand(c *cli.Context) []string {
-	args := c.Args()
-
-	return append([]string{"env", fmt.Sprintf("TERM=%s", getTermEnv())}, args...)
+func isTerminal(f *os.File) bool {
+	return terminal.IsTerminal(int(f.Fd()))
 }
 
-func getTermEnv() string {
-	term := os.Getenv("TERM")
-	if term == "" {
-		term = "xterm"
+func restoreTerm(in io.Reader, out io.Writer) func() {
+	fn := terminalRaw(in)
+	return func() {
+		if fn() {
+			fmt.Fprint(out, '\n')
+		}
+	}
+}
+
+func terminalRaw(reader io.Reader) func() bool {
+	var fd int
+	var state *terminal.State
+
+	if f, ok := reader.(*os.File); ok {
+		fd = int(f.Fd())
+		if s, err := terminal.MakeRaw(fd); err == nil {
+			state = s
+		}
 	}
 
-	return term
+	return func() bool {
+		if state != nil {
+			terminal.Restore(fd, state)
+			return true
+		}
+		return false
+	}
 }
