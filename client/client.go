@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	apiHttpPort = 8888
+	apiHttpPort = 8080
 	apiRpcPort  = 10000
 	apiTimeout  = 20
 )
