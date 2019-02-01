@@ -67,4 +67,11 @@ type CreateBuildOptions struct {
 	Trigger     bool // trigger the build in the cloud (in gcp-cloudbuild or aws-codebuild)
 }
 
+type ProcessRunOptions struct {
+	Entrypoint    []string
+	Tty           bool
+	Detach        bool
+	Width, Height int
+}
+
 type ProcessList []*Process

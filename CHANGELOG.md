@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
 
+## [1.0.0-alpha.17] - 2019-02-01
+### Added
+- Support terminal raw mode for process exec/run cli
+
 ## [1.0.0-alpha.16] - 2018-12-21
 ### Added
 - [CLI] `docker-login` to push/pull docker images from CI/CD provider

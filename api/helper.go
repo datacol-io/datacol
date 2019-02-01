@@ -148,7 +148,8 @@ func handlePanicErr(err error, rollbarToken string) {
 	}
 
 	log.Error(err)
-	if rollbarToken == "" {
+
+	if rollbarToken == "" || os.Getenv("DATACOL_PROVIDER") == "local" {
 		return
 	}
 
