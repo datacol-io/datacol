@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cmd/stdcli"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/ssh/terminal"
@@ -30,6 +31,12 @@ func cmdAppRun(c *cli.Context) error {
 	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
+	var opts pb.ProcessRunOptions
+	if w, h, err := terminal.GetSize(int(os.Stdout.Fd())); err == nil {
+		opts.Width = w
+		opts.Height = h
+	}
+
 	client, close := getApiClient(c)
 	defer close()
 
@@ -40,7 +47,10 @@ func cmdAppRun(c *cli.Context) error {
 	defer restore()
 
 	args := c.Args()
-	stdcli.ExitOnError(client.RunProcess(name, args, isTerminal(os.Stdin), c.Bool("detach")))
+	opts.Tty = isTerminal(os.Stdin)
+	opts.Detach = c.Bool("detach")
+
+	stdcli.ExitOnError(client.RunProcess(name, args, opts))
 
 	return nil
 }

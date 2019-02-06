@@ -53,27 +53,27 @@ func (s *Server) ResourceProxy(ws *websocket.Conn) error {
 
 func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
 	headers := ws.Request().Header
-	app := headers.Get("app")
+	app, width, height := headers.Get("app"), headers.Get("width"), headers.Get("height")
+	tty, detach := headers.Get("tty"), headers.Get("detach")
 
 	if app == "" {
 		return fmt.Errorf("Missing require param: app")
 	}
 
-	tty, err := strconv.ParseBool(headers.Get("tty"))
-	if err != nil {
-		return err
-	}
-	detach, err := strconv.ParseBool(headers.Get("detach"))
-	if err != nil {
-		return err
+	var options pb.ProcessRunOptions
+
+	options.Tty, _ = strconv.ParseBool(tty)
+	options.Detach, _ = strconv.ParseBool(detach)
+	if width != "" {
+		options.Width, _ = strconv.Atoi(width)
 	}
 
-	command := strings.Split(headers.Get("command"), "#")
-	return s.Provider.ProcessRun(app, ws, pb.ProcessRunOptions{
-		Entrypoint: command,
-		Tty:        tty,
-		Detach:     detach,
-	})
+	if height != "" {
+		options.Height, _ = strconv.Atoi(height)
+	}
+
+	options.Entrypoint = strings.Split(headers.Get("command"), "#")
+	return s.Provider.ProcessRun(app, ws, options)
 }
 
 func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
