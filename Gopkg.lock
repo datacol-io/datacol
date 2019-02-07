@@ -15,6 +15,15 @@
   version = "v0.17.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/Azure/go-ansiterm"
+  packages = [
+    ".",
+    "winterm"
+  ]
+  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
+
+[[projects]]
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
   revision = "8a290539e2e8629dbc4e6bad948158f790ec31f4"
@@ -120,7 +129,9 @@
     "pkg/longpath",
     "pkg/pools",
     "pkg/promise",
-    "pkg/system"
+    "pkg/system",
+    "pkg/term",
+    "pkg/term/windows"
   ]
   revision = "bb80604a0b200140a440675348c848a137a1b2e2"
   version = "v1.12.2"
@@ -555,6 +566,12 @@
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+
+[[projects]]
+  name = "github.com/mitchellh/go-wordwrap"
+  packages = ["."]
+  revision = "9e67c67572bc5dd02aef930e2b0ae3c02a4b5a5c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -999,9 +1016,18 @@
   packages = ["pkg/common"]
   revision = "39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1"
 
+[[projects]]
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/kubectl/util/term",
+    "pkg/util/interrupt"
+  ]
+  revision = "721bfa751924da8d1680787490c54b9179b1fed0"
+  version = "v1.13.3"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "580321b712a229a8ad792502f64a9951f2e14265078fefb5c846d93662ed1100"
+  inputs-digest = "b5f3bcc7e390db6aecf14afc1f838115e0d8bf4f1199a543db0f05c51d1c3c35"
   solver-name = "gps-cdcl"
   solver-version = 1

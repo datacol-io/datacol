@@ -7,15 +7,16 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
-	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/kubernetes/pkg/kubectl/util/term"
+
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
 )
 
 /*
@@ -35,12 +36,23 @@ func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *rest.
 		return fmt.Errorf("failed to create SPDY executor: %v", err)
 	}
 
-	return exec.Stream(remotecommand.StreamOptions{
+	streamOptions := remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
 		Tty:    tty,
-	})
+	}
+
+	if tty {
+		t := term.TTY{
+			Out: stdout,
+			In:  stdin,
+		}
+		terminalSize := t.MonitorSize(t.GetSize())
+		streamOptions.TerminalSizeQueue = terminalSize
+	}
+
+	return exec.Stream(streamOptions)
 }
 
 // ExecOptions declare the arguments accepted by the Exec command
