@@ -124,6 +124,11 @@ message ProcessRunReq {
   repeated string command = 2;
 }
 
+message ProcessRunResp {
+  string name = 1;
+  string status = 2;
+}
+
 message StreamMsg {
   bytes data = 1;
 }
@@ -321,7 +326,7 @@ service ProviderService {
   }
 
   // Process api
-  rpc ProcessRun(stream StreamMsg) returns (stream StreamMsg) {
+  rpc ProcessRun(ProcessRunReq) returns (ProcessRunResp) {
     option (google.api.http) = { 
       get: "/v1/process/run"
     };

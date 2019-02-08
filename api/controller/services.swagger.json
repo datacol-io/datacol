@@ -632,19 +632,27 @@
         "operationId": "ProcessRun",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controllerStreamMsg"
+              "$ref": "#/definitions/controllerProcessRunResp"
             }
           }
         },
         "parameters": [
           {
-            "name": "data",
+            "name": "name",
             "in": "query",
             "required": false,
-            "type": "string",
-            "format": "byte"
+            "type": "string"
+          },
+          {
+            "name": "command",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         ],
         "tags": [
@@ -1000,6 +1008,17 @@
           "items": {
             "$ref": "#/definitions/modelsProcess"
           }
+        }
+      }
+    },
+    "controllerProcessRunResp": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
         }
       }
     },

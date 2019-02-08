@@ -15,7 +15,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
-	"google.golang.org/grpc/metadata"
 )
 
 func (s *Server) ResourceProxy(ws *websocket.Conn) error {
@@ -73,34 +72,24 @@ func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
 	}
 
 	options.Entrypoint = strings.Split(headers.Get("command"), "#")
-	return s.Provider.ProcessRun(app, ws, options)
+	_, err := s.Provider.ProcessRun(app, ws, options)
+	return err
 }
 
-func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
-	md, _ := metadata.FromIncomingContext(srv.Context())
-	app, command := md["app"][0], md["command"][0]
-	tty, err := strconv.ParseBool(md["tty"][0])
-	if err != nil {
-		return err
-	}
-	detach, err := strconv.ParseBool(md["detach"][0])
-	if err != nil {
-		return err
-	}
+func (s *Server) ProcessRun(ctx context.Context, req *pbs.ProcessRunReq) (*pbs.ProcessRunResp, error) {
+	app, command := req.Name, req.Command
 
-	stream := &runStreamRW{srv}
-
-	commandParts := strings.Split(command, "#")
-	if err = s.Provider.ProcessRun(app, stream, pb.ProcessRunOptions{
-		Entrypoint: commandParts,
-		Tty:        tty,
-		Detach:     detach,
-	}); err != nil {
+	job, err := s.Provider.ProcessRun(app, nil, pb.ProcessRunOptions{
+		Entrypoint: command,
+		Tty:        false,
+		Detach:     true,
+	})
+	if err != nil {
 		log.Errorf("failed to run the process: %v", err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &pbs.ProcessRunResp{Name: job}, nil
 }
 
 func (s *Server) ProcessSave(ctx context.Context, req *pb.Formation) (*empty.Empty, error) {
@@ -123,28 +112,4 @@ func (s *Server) ProcessList(ctx context.Context, req *pbs.AppRequest) (*pbs.Pro
 	items, err := s.Provider.ProcessList(req.Name)
 
 	return &pbs.ProcessListResponse{Items: items}, err
-}
-
-type runStreamRW struct {
-	stream pbs.ProviderService_ProcessRunServer
-}
-
-func (rs runStreamRW) Read(p []byte) (n int, err error) {
-	msg, err := rs.stream.Recv()
-	if err != nil {
-		return len(p), err
-	}
-
-	copy(p, msg.Data)
-	return len(p), nil
-}
-
-func (rs runStreamRW) Write(p []byte) (n int, err error) {
-	if err = rs.stream.Send(&pbs.StreamMsg{
-		Data: p,
-	}); err != nil {
-		log.Errorf("sending bytes to stream %s: %v", string(p), err)
-	}
-
-	return len(p), err
 }

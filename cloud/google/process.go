@@ -10,11 +10,11 @@ import (
 	kube "github.com/datacol-io/datacol/k8s"
 )
 
-func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, opts pb.ProcessRunOptions) error {
+func (g *GCPCloud) ProcessRun(name string, stream io.ReadWriter, opts pb.ProcessRunOptions) (string, error) {
 	ns := g.DeploymentName
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	app, _ := g.AppGet(name)

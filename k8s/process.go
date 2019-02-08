@@ -194,7 +194,7 @@ func ProcessRun(
 	sqlproxy bool,
 	stream io.ReadWriter,
 	provider cloud.CloudProvider,
-) error {
+) (string, error) {
 	proctype := runProcessKind
 	podName := fmt.Sprintf("%s-%s-%s", name, proctype, rand.Characters(6))
 
@@ -210,10 +210,14 @@ func ProcessRun(
 		Provider:            provider,
 	}
 
-	// Delete the pod sunce it's ephemeral
-	defer deletePodByName(c, ns, podName)
-
-	return processRun(c, cfg, ns, options, req, stream)
+	if options.Detach {
+		req.Args = options.Entrypoint
+		return podName, processRun(c, cfg, ns, options, req, nil)
+	} else {
+		// Delete the pod sunce it's ephemeral
+		defer deletePodByName(c, ns, podName)
+		return podName, processRun(c, cfg, ns, options, req, stream)
+	}
 }
 
 func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
@@ -254,6 +258,10 @@ func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, options pb
 
 	if err = waitUntilPodRunning(c, ns, pod.ObjectMeta.Name); err != nil {
 		return err
+	}
+
+	if options.Detach {
+		return nil
 	}
 
 	log.Debugf("Running command %v inside pod: %v", options.Entrypoint, pod.ObjectMeta.Name)

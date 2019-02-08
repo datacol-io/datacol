@@ -56,14 +56,28 @@ func (c *Client) UpdateProcessLimits(name, resource string, limits map[string]st
 }
 
 func (c *Client) RunProcess(name string, args []string, opts pb.ProcessRunOptions) error {
-	return c.Stream("/ws/v1/exec", map[string]string{
+	headers := map[string]string{
 		"app":     name,
 		"command": strings.Join(args, "#"),
 		"tty":     strconv.FormatBool(opts.Tty),
 		"detach":  strconv.FormatBool(opts.Detach),
 		"width":   strconv.Itoa(opts.Width),
 		"height":  strconv.Itoa(opts.Height),
-	}, os.Stdin, os.Stdout)
+	}
+
+	if opts.Detach {
+		resp, err := c.ProviderServiceClient.ProcessRun(ctx, &pbs.ProcessRunReq{
+			Name:    name,
+			Command: args,
+		})
+		if err != nil {
+			return err
+		}
+		term.Printf("Started %s ...\n", resp.GetName())
+		return nil
+	} else {
+		return c.Stream("/ws/v1/exec", headers, os.Stdin, os.Stdout)
+	}
 }
 
 func (c *Client) GetDockerCreds() (*pb.DockerCred, error) {

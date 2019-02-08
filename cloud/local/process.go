@@ -9,11 +9,11 @@ import (
 	sched "github.com/datacol-io/datacol/k8s"
 )
 
-func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, opts pb.ProcessRunOptions) error {
+func (g *LocalCloud) ProcessRun(name string, stream io.ReadWriter, opts pb.ProcessRunOptions) (string, error) {
 	ns := g.Name
 	cfg, err := getKubeClientConfig(ns)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	app, _ := g.AppGet(name)

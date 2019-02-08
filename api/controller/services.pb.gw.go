@@ -838,56 +838,21 @@ func request_ProviderService_Kubectl_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_ProviderService_ProcessRun_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (ProviderService_ProcessRunClient, runtime.ServerMetadata, error) {
+var (
+	filter_ProviderService_ProcessRun_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
+func request_ProviderService_ProcessRun_0(ctx context.Context, marshaler runtime.Marshaler, client ProviderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ProcessRunReq
 	var metadata runtime.ServerMetadata
-	stream, err := client.ProcessRun(ctx)
-	if err != nil {
-		grpclog.Printf("Failed to start streaming: %v", err)
-		return nil, metadata, err
+
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_ProviderService_ProcessRun_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	dec := marshaler.NewDecoder(req.Body)
-	handleSend := func() error {
-		var protoReq StreamMsg
-		err = dec.Decode(&protoReq)
-		if err == io.EOF {
-			return err
-		}
-		if err != nil {
-			grpclog.Printf("Failed to decode request: %v", err)
-			return err
-		}
-		if err = stream.Send(&protoReq); err != nil {
-			grpclog.Printf("Failed to send request: %v", err)
-			return err
-		}
-		return nil
-	}
-	if err := handleSend(); err != nil {
-		if cerr := stream.CloseSend(); cerr != nil {
-			grpclog.Printf("Failed to terminate client stream: %v", cerr)
-		}
-		if err == io.EOF {
-			return stream, metadata, nil
-		}
-		return nil, metadata, err
-	}
-	go func() {
-		for {
-			if err := handleSend(); err != nil {
-				break
-			}
-		}
-		if err := stream.CloseSend(); err != nil {
-			grpclog.Printf("Failed to terminate client stream: %v", err)
-		}
-	}()
-	header, err := stream.Header()
-	if err != nil {
-		grpclog.Printf("Failed to get header from client: %v", err)
-		return nil, metadata, err
-	}
-	metadata.HeaderMD = header
-	return stream, metadata, nil
+
+	msg, err := client.ProcessRun(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
 }
 
 var (
@@ -1839,7 +1804,7 @@ func RegisterProviderServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 			return
 		}
 
-		forward_ProviderService_ProcessRun_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_ProviderService_ProcessRun_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2114,7 +2079,7 @@ var (
 
 	forward_ProviderService_Kubectl_0 = runtime.ForwardResponseMessage
 
-	forward_ProviderService_ProcessRun_0 = runtime.ForwardResponseStream
+	forward_ProviderService_ProcessRun_0 = runtime.ForwardResponseMessage
 
 	forward_ProviderService_ProcessList_0 = runtime.ForwardResponseMessage
 

@@ -31,27 +31,29 @@ func cmdAppRun(c *cli.Context) error {
 	name, err := getCurrentApp(c)
 	stdcli.ExitOnError(err)
 
-	var opts pb.ProcessRunOptions
-	if w, h, err := terminal.GetSize(int(os.Stdout.Fd())); err == nil {
-		opts.Width = w
-		opts.Height = h
-	}
-
 	client, close := getApiClient(c)
 	defer close()
-
 	_, err = client.GetApp(name)
 	stdcli.ExitOnError(err)
 
-	restore := restoreTerm(os.Stdin, os.Stdout) // restore terminal raw state
-	defer restore()
-
-	args := c.Args()
-	opts.Tty = isTerminal(os.Stdin)
+	var opts pb.ProcessRunOptions
 	opts.Detach = c.Bool("detach")
 
-	stdcli.ExitOnError(client.RunProcess(name, args, opts))
+	if !opts.Detach {
+		if w, h, err := terminal.GetSize(int(os.Stdout.Fd())); err == nil {
+			opts.Width = w
+			opts.Height = h
+		}
 
+		opts.Tty = isTerminal(os.Stdin)
+		if opts.Tty {
+			restore := restoreTerm(os.Stdin, os.Stdout) // restore terminal raw state
+			defer restore()
+		}
+	}
+
+	args := c.Args()
+	stdcli.ExitOnError(client.RunProcess(name, args, opts))
 	return nil
 }
 
