@@ -13,7 +13,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	"k8s.io/kubernetes/pkg/kubectl/util/term"
 
 	pb "github.com/datacol-io/datacol/api/models"
 	"github.com/datacol-io/datacol/cloud"
@@ -41,15 +40,6 @@ func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *rest.
 		Stdout: stdout,
 		Stderr: stderr,
 		Tty:    tty,
-	}
-
-	if tty {
-		t := term.TTY{
-			Out: stdout,
-			In:  stdin,
-		}
-		terminalSize := t.MonitorSize(t.GetSize())
-		streamOptions.TerminalSizeQueue = terminalSize
 	}
 
 	return exec.Stream(streamOptions)
@@ -241,6 +231,20 @@ func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, options pb
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Spec.TerminationGracePeriodSeconds = &zero
 	spec.Spec.Containers[0].Stdin = options.Tty
+
+	if options.Width > 0 {
+		spec.Spec.Containers[0].Env = append(spec.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "COLUMNS",
+			Value: fmt.Sprintf("%d", options.Width),
+		})
+	}
+
+	if options.Height > 0 {
+		spec.Spec.Containers[0].Env = append(spec.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "LINES",
+			Value: fmt.Sprintf("%d", options.Height),
+		})
+	}
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
 	pod, err := c.Core().Pods(ns).Create(spec)
