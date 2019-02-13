@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,23 +53,49 @@ func (s *Server) ResourceProxy(ws *websocket.Conn) error {
 
 func (s *Server) ProcessRunWs(ws *websocket.Conn) error {
 	headers := ws.Request().Header
-	app := headers.Get("app")
+	app, width, height := headers.Get("app"), headers.Get("width"), headers.Get("height")
+	tty, detach := headers.Get("tty"), headers.Get("detach")
 
 	if app == "" {
 		return fmt.Errorf("Missing require param: app")
 	}
 
-	command := strings.Split(headers.Get("command"), "#")
-	return s.Provider.ProcessRun(app, ws, command)
+	var options pb.ProcessRunOptions
+
+	options.Tty, _ = strconv.ParseBool(tty)
+	options.Detach, _ = strconv.ParseBool(detach)
+	if width != "" {
+		options.Width, _ = strconv.Atoi(width)
+	}
+
+	if height != "" {
+		options.Height, _ = strconv.Atoi(height)
+	}
+
+	options.Entrypoint = strings.Split(headers.Get("command"), "#")
+	return s.Provider.ProcessRun(app, ws, options)
 }
 
 func (s *Server) ProcessRun(srv pbs.ProviderService_ProcessRunServer) error {
 	md, _ := metadata.FromIncomingContext(srv.Context())
 	app, command := md["app"][0], md["command"][0]
+	tty, err := strconv.ParseBool(md["tty"][0])
+	if err != nil {
+		return err
+	}
+	detach, err := strconv.ParseBool(md["detach"][0])
+	if err != nil {
+		return err
+	}
+
 	stream := &runStreamRW{srv}
 
 	commandParts := strings.Split(command, "#")
-	if err := s.Provider.ProcessRun(app, stream, commandParts); err != nil {
+	if err = s.Provider.ProcessRun(app, stream, pb.ProcessRunOptions{
+		Entrypoint: commandParts,
+		Tty:        tty,
+		Detach:     detach,
+	}); err != nil {
 		log.Errorf("failed to run the process: %v", err)
 		return err
 	}

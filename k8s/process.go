@@ -7,15 +7,15 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/appscode/go/crypto/rand"
-	pb "github.com/datacol-io/datacol/api/models"
-	"github.com/datacol-io/datacol/cloud"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+
+	pb "github.com/datacol-io/datacol/api/models"
+	"github.com/datacol-io/datacol/cloud"
 )
 
 /*
@@ -35,12 +35,14 @@ func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *rest.
 		return fmt.Errorf("failed to create SPDY executor: %v", err)
 	}
 
-	return exec.Stream(remotecommand.StreamOptions{
+	streamOptions := remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
 		Tty:    tty,
-	})
+	}
+
+	return exec.Stream(streamOptions)
 }
 
 // ExecOptions declare the arguments accepted by the Exec command
@@ -89,16 +91,15 @@ func (p *ExecOptions) Run() error {
 		Name(pod.Name).
 		Namespace(pod.Namespace).
 		SubResource("exec").
-		Param("container", containerName)
-
-	req.VersionedParams(&corev1.PodExecOptions{
-		Container: containerName,
-		Command:   p.Command,
-		Stdin:     stdin != nil,
-		Stdout:    p.Out != nil,
-		Stderr:    p.Err != nil,
-		TTY:       true,
-	}, scheme.ParameterCodec)
+		Param("container", containerName).
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   p.Command,
+			Stdin:     stdin != nil,
+			Stdout:    p.Out != nil,
+			Stderr:    p.Err != nil,
+			TTY:       true,
+		}, scheme.ParameterCodec)
 
 	if p.Executor == nil {
 		p.Executor = &DefaultRemoteExecutor{}
@@ -188,7 +189,7 @@ func ProcessRun(
 	c *kubernetes.Clientset,
 	cfg *rest.Config,
 	ns, name, image string,
-	command []string,
+	options pb.ProcessRunOptions,
 	envVars map[string]string,
 	sqlproxy bool,
 	stream io.ReadWriter,
@@ -197,6 +198,7 @@ func ProcessRun(
 	proctype := runProcessKind
 	podName := fmt.Sprintf("%s-%s-%s", name, proctype, rand.Characters(6))
 
+	// Create a app Pod.  By running `sleep infinity`, the Pod will sit and do nothing.
 	req := &DeployRequest{
 		ServiceID:           podName,
 		Image:               image,
@@ -211,20 +213,38 @@ func ProcessRun(
 	// Delete the pod sunce it's ephemeral
 	defer deletePodByName(c, ns, podName)
 
-	return processRun(c, cfg, ns, command, req, stream)
+	return processRun(c, cfg, ns, options, req, stream)
 }
 
 func deletePodByName(c *kubernetes.Clientset, ns, name string) error {
 	return c.Core().Pods(ns).Delete(name, &metav1.DeleteOptions{})
 }
 
-func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []string, req *DeployRequest, stream io.ReadWriter) error {
+// Inspired from https://docs.okd.io/latest/go_client/executing_remote_processes.html
+func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, options pb.ProcessRunOptions, req *DeployRequest, stream io.ReadWriter) error {
 	spec, err := newPodSpec(req)
 	if err != nil {
 		return fmt.Errorf("creating container manifest for process: %v", err)
 	}
 
+	var zero int64
 	spec.Spec.RestartPolicy = corev1.RestartPolicyNever
+	spec.Spec.TerminationGracePeriodSeconds = &zero
+	spec.Spec.Containers[0].Stdin = options.Tty
+
+	if options.Width > 0 {
+		spec.Spec.Containers[0].Env = append(spec.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "COLUMNS",
+			Value: fmt.Sprintf("%d", options.Width),
+		})
+	}
+
+	if options.Height > 0 {
+		spec.Spec.Containers[0].Env = append(spec.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "LINES",
+			Value: fmt.Sprintf("%d", options.Height),
+		})
+	}
 
 	log.Debugf("creating pod with spec %s", toJson(spec))
 	pod, err := c.Core().Pods(ns).Create(spec)
@@ -236,13 +256,13 @@ func processRun(c *kubernetes.Clientset, cfg *rest.Config, ns string, command []
 		return err
 	}
 
-	log.Debugf("Running command %v inside pod: %v", command, pod.ObjectMeta.Name)
+	log.Debugf("Running command %v inside pod: %v", options.Entrypoint, pod.ObjectMeta.Name)
 
 	executer := &ExecOptions{
 		Namespace: ns,
 		PodName:   req.ServiceID,
-		Command:   command,
-		Stdin:     true,
+		Command:   options.Entrypoint,
+		Stdin:     options.Tty,
 		In:        stream,
 		Out:       stream,
 		Err:       stream,

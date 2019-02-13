@@ -1,6 +1,6 @@
 require "rubygems"
 
-$version = ENV.fetch("VERSION", "1.0.0-alpha.16")
+$version = ENV.fetch("VERSION", "1.0.0-alpha.18")
 $env = ENV.fetch("DATACOL_ENV") # dev or prod
 $cgo = ENV.fetch("CGO_ENABLED", "0")
 $rb_token = ENV.fetch("ROLLBAR_TOKEN")
@@ -100,7 +100,7 @@ def with_cmd(cmd)
   end
 end
 
-with_cmd("gcloud config set account dinesh1042@gmail.com")
+with_cmd("gcloud config configurations activate d1042")
 
 if ARGV.size > 0
   send(ARGV[0])

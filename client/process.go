@@ -55,10 +55,14 @@ func (c *Client) UpdateProcessLimits(name, resource string, limits map[string]st
 	return err
 }
 
-func (c *Client) RunProcess(name string, args []string) error {
+func (c *Client) RunProcess(name string, args []string, opts pb.ProcessRunOptions) error {
 	return c.Stream("/ws/v1/exec", map[string]string{
 		"app":     name,
 		"command": strings.Join(args, "#"),
+		"tty":     strconv.FormatBool(opts.Tty),
+		"detach":  strconv.FormatBool(opts.Detach),
+		"width":   strconv.Itoa(opts.Width),
+		"height":  strconv.Itoa(opts.Height),
 	}, os.Stdin, os.Stdout)
 }
 
