@@ -9,7 +9,7 @@ import (
 	"github.com/datacol-io/datacol/cloud"
 	batchv1 "k8s.io/api/batch/v1"
 	batch_v1beta1 "k8s.io/api/batch/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -213,6 +213,7 @@ func (r *Deployer) CreateOrUpdateCronJob(cj *batch_v1beta1.CronJob, ns string) (
 		}
 		oldcj.Spec.Schedule = cj.Spec.Schedule
 		oldcj.Spec.JobTemplate.Spec.Parallelism = cj.Spec.JobTemplate.Spec.Parallelism
+		oldcj.Spec.JobTemplate.Spec.Template = cj.Spec.JobTemplate.Spec.Template
 
 		return r.Client.BatchV1beta1().CronJobs(ns).Update(oldcj)
 	}
