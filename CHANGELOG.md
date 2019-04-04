@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [UNRELEASED] - 0000-00-00
+- Deleting cronjobs while deleting app
+- Fix internal error for index bound
 
 ## [1.0.0-alpha.18] - 2019-02-14
 ### Fixed

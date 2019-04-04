@@ -58,6 +58,10 @@ func DeleteApp(c *kubernetes.Clientset, ns, app string, provider cloud.CloudProv
 		}
 	}
 
+	if err := c.BatchV1beta1().CronJobs(ns).DeleteCollection(&meta_v1.DeleteOptions{}, listSelector); err != nil {
+		log.Warnf("deleting cronjobs: %v", err)
+	}
+
 	commonListSelector := meta_v1.ListOptions{
 		LabelSelector: klabels.Set(map[string]string{managedBy: heritage}).String(),
 	}

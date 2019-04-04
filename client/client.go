@@ -55,8 +55,8 @@ func NewClient(c *cli.Context) (*Client, func() error) {
 
 	psc, close := GrpcClient(auth.ApiServer, auth.ApiKey)
 	conn := &Client{
-		Version: c.App.Version,
-		Auth:    *auth,
+		Version:               c.App.Version,
+		Auth:                  *auth,
 		ProviderServiceClient: psc,
 	}
 
