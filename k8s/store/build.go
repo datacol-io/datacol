@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	pb "github.com/datacol-io/datacol/api/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -92,6 +92,10 @@ func (s *SecretStore) BuildList(app string, limit int64) (pb.Builds, error) {
 
 	if len(builds) < int(limit) {
 		limit = int64(len(builds))
+	}
+
+	if len(builds) == 0 {
+		return builds, nil
 	}
 
 	return builds[0:limit], nil
